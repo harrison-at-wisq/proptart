@@ -92,15 +92,82 @@ function SelectWithOther({
 }
 
 type FormSection =
-  | 'company'
+  | 'deal-info'
   | 'pricing'
   | 'roi'
-  | 'value-drivers'
-  | 'ai-personalization'
-  | 'customer-quotes'
-  | 'faqs'
+  | 'enhancements'
   | 'rfp-response'
   | 'review';
+
+type EnhancementsTab = 'ai-personalization' | 'customer-quotes' | 'faqs';
+
+function DraggableOrderList({
+  items,
+  onReorder,
+}: {
+  items: { id: string; label: string }[];
+  onReorder: (newOrder: string[]) => void;
+}) {
+  const [dragIndex, setDragIndex] = React.useState<number | null>(null);
+  const [overIndex, setOverIndex] = React.useState<number | null>(null);
+
+  const handleDragStart = (index: number) => (e: React.DragEvent) => {
+    setDragIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (index: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setOverIndex(index);
+  };
+
+  const handleDrop = (index: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragIndex === null || dragIndex === index) {
+      setDragIndex(null);
+      setOverIndex(null);
+      return;
+    }
+    const newOrder = items.map(i => i.id);
+    const [moved] = newOrder.splice(dragIndex, 1);
+    newOrder.splice(index, 0, moved);
+    onReorder(newOrder);
+    setDragIndex(null);
+    setOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setOverIndex(null);
+  };
+
+  return (
+    <div className="space-y-1">
+      {items.map((item, index) => (
+        <div
+          key={item.id}
+          draggable
+          onDragStart={handleDragStart(index)}
+          onDragOver={handleDragOver(index)}
+          onDrop={handleDrop(index)}
+          onDragEnd={handleDragEnd}
+          className={`flex items-center gap-2 text-sm py-1.5 px-2 rounded cursor-grab active:cursor-grabbing select-none transition-colors ${
+            dragIndex === index
+              ? 'bg-blue-50 border border-blue-200 opacity-50'
+              : overIndex === index && dragIndex !== null
+              ? 'bg-blue-50 border border-blue-300'
+              : 'bg-gray-50'
+          }`}
+        >
+          <span className="text-gray-300 flex-shrink-0" title="Drag to reorder">⠿</span>
+          <span className="text-gray-400 w-5 text-center flex-shrink-0">{index + 1}</span>
+          <span className="flex-1 text-gray-700">{item.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface ProposalFormProps {
   proposalId: string | null;
@@ -110,7 +177,7 @@ interface ProposalFormProps {
 }
 
 export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: ProposalFormProps) {
-  const [activeSection, setActiveSection] = useState<FormSection>('company');
+  const [activeSection, setActiveSection] = useState<FormSection>('deal-info');
   const [isLoading, setIsLoading] = useState(!!proposalId);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -130,6 +197,7 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
   const [hrOperations, setHROperations] = useState<HROperationsInputs>(DEFAULT_HR_OPERATIONS);
   const [legalCompliance, setLegalCompliance] = useState<LegalComplianceInputs>(DEFAULT_LEGAL_COMPLIANCE);
   const [employeeExperience, setEmployeeExperience] = useState<EmployeeExperienceInputs>(DEFAULT_EMPLOYEE_EXPERIENCE);
+  const [roiEstimateGenerated, setRoiEstimateGenerated] = useState(false);
   const [primaryValueDriver, setPrimaryValueDriver] = useState<ValueDriver | null>(null);
   const [painPoints, setPainPoints] = useState<PainPoint[]>([]);
   const [integrations, setIntegrations] = useState<CustomerIntegrations>({
@@ -170,6 +238,7 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
   const [faqDealContext, setFaqDealContext] = useState('');
   const [faqGongNotes, setFaqGongNotes] = useState('');
   const [isGeneratingFaqs, setIsGeneratingFaqs] = useState(false);
+  const [enhancementsTab, setEnhancementsTab] = useState<EnhancementsTab>('ai-personalization');
 
   // Track whether initial load has completed to prevent saving empty state
   const hasLoadedRef = useRef(false);
@@ -399,13 +468,10 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
   }, []);
 
   const sections: { id: FormSection; label: string; icon: string }[] = [
-    { id: 'company', label: 'Company Info', icon: '🏢' },
+    { id: 'deal-info', label: 'Deal Info', icon: '🏢' },
     { id: 'pricing', label: 'Pricing', icon: '💰' },
     { id: 'roi', label: 'ROI Calculator', icon: '📊' },
-    { id: 'value-drivers', label: 'Value & Pain Points', icon: '🎯' },
-    { id: 'ai-personalization', label: 'AI Personalization', icon: '🤖' },
-    { id: 'customer-quotes', label: 'Customer Quotes', icon: '💬' },
-    { id: 'faqs', label: 'FAQs', icon: '❓' },
+    { id: 'enhancements', label: 'Enhancements', icon: '✚' },
     // { id: 'rfp-response', label: 'RFP Response', icon: '📋' }, // Hidden for now - feature in development
     { id: 'review', label: 'Review & Generate', icon: '✨' },
   ];
@@ -418,20 +484,14 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
 
   const canProceed = () => {
     switch (activeSection) {
-      case 'company':
-        return company.companyName && company.contactName && company.contactEmail;
+      case 'deal-info':
+        return company.companyName && company.contactName && company.contactEmail && painPoints.length > 0;
       case 'pricing':
         return pricing.employeeCount > 0;
       case 'roi':
         return true;
-      case 'value-drivers':
-        return painPoints.length > 0; // Value drivers are static, just need pain points
-      case 'ai-personalization':
-        return true; // AI personalization is optional
-      case 'customer-quotes':
-        return true; // Customer quotes are optional
-      case 'faqs':
-        return true; // FAQs are optional
+      case 'enhancements':
+        return true; // All enhancement tabs are optional
       case 'rfp-response':
         return true; // RFP response is optional
       default:
@@ -615,7 +675,7 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
       {/* Main Content */}
       {!isLoading && !loadError && <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Company Info Section */}
-        {activeSection === 'company' && (
+        {activeSection === 'deal-info' && (
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-semibold text-gray-900">Company Information</h2>
@@ -718,6 +778,7 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
                   <option value="">Select AE...</option>
                   <option value="Alex Macaulay | alex@wisq.com">Alex Macaulay | alex@wisq.com</option>
                   <option value="Fraser Aitken | faitken@wisq.com">Fraser Aitken | faitken@wisq.com</option>
+                  <option value="Harrison Roloff | hroloff@wisq.com">Harrison Roloff | hroloff@wisq.com</option>
                   <option value="Marc Lombardo | mlombardo@wisq.com">Marc Lombardo | mlombardo@wisq.com</option>
                   <option value="Scott Sinatra | ssinatra@wisq.com">Scott Sinatra | ssinatra@wisq.com</option>
                   <option value="Jim Barnett | jjb@wisq.com">Jim Barnett | jjb@wisq.com</option>
@@ -778,58 +839,18 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Cover Page Highlights</h3>
-              <p className="text-sm text-gray-500 mb-4">Optional key messages for the cover page. Use separate lines for each highlight point.</p>
-              <textarea
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Cover Page Quote</h3>
+              <p className="text-sm text-gray-500 mb-4">Optional quote displayed on the cover page.</p>
+              <input
+                type="text"
                 value={coverQuote}
                 onChange={(e) => setCoverQuote(e.target.value)}
-                placeholder={"Reduce HR response times by 80%\nImprove employee satisfaction scores\nFull compliance audit trail"}
-                rows={4}
+                placeholder="Transforming HR from reactive to strategic"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#03143B]"
               />
             </div>
-          </div>
-        )}
 
-        {/* Pricing Section */}
-        {activeSection === 'pricing' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900">Pricing Configuration</h2>
-              <p className="text-gray-600 mt-1">
-                Configure the investment based on employee count and product selection.
-              </p>
-            </div>
-
-            <PricingCalculator inputs={pricing} onChange={updatePricing} />
-          </div>
-        )}
-
-        {/* ROI Calculator Section */}
-        {activeSection === 'roi' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900">ROI Calculator</h2>
-              <p className="text-gray-600 mt-1">
-                Model the return on investment across HR operations, compliance, and employee
-                experience.
-              </p>
-            </div>
-
-            <ROICalculator
-              hrInputs={hrOperations}
-              legalInputs={legalCompliance}
-              employeeInputs={employeeExperience}
-              onHRChange={(updates) => setHROperations({ ...hrOperations, ...updates })}
-              onLegalChange={(updates) => setLegalCompliance({ ...legalCompliance, ...updates })}
-              onEmployeeChange={(updates) => setEmployeeExperience({ ...employeeExperience, ...updates })}
-            />
-          </div>
-        )}
-
-        {/* Value Drivers & Pain Points Section */}
-        {activeSection === 'value-drivers' && (
-          <div className="space-y-6">
+            {/* Value Drivers & Pain Points */}
             <div>
               <h2 className="text-2xl font-semibold text-gray-900">Value Drivers & Pain Points</h2>
               <p className="text-gray-600 mt-1">
@@ -988,45 +1009,15 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
               {painPointOrder.length > 1 && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Display Order</h4>
-                  <div className="space-y-1">
-                    {painPointOrder.map((id, index) => {
-                      const label = (PAIN_POINT_LABELS as Record<string, string>)[id]
+                  <DraggableOrderList
+                    items={painPointOrder.map(id => ({
+                      id,
+                      label: (PAIN_POINT_LABELS as Record<string, string>)[id]
                         || customPainPoints.find(cp => cp.id === id)?.headline
-                        || id;
-                      return (
-                        <div key={id} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 rounded">
-                          <span className="text-gray-400 w-5 text-center">{index + 1}</span>
-                          <span className="flex-1 text-gray-700">{label}</span>
-                          <button
-                            disabled={index === 0}
-                            onClick={() => {
-                              setPainPointOrder(prev => {
-                                const arr = [...prev];
-                                [arr[index - 1], arr[index]] = [arr[index], arr[index - 1]];
-                                return arr;
-                              });
-                            }}
-                            className="text-gray-400 hover:text-gray-700 disabled:opacity-30 p-0.5"
-                          >
-                            &#9650;
-                          </button>
-                          <button
-                            disabled={index === painPointOrder.length - 1}
-                            onClick={() => {
-                              setPainPointOrder(prev => {
-                                const arr = [...prev];
-                                [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
-                                return arr;
-                              });
-                            }}
-                            className="text-gray-400 hover:text-gray-700 disabled:opacity-30 p-0.5"
-                          >
-                            &#9660;
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        || id,
+                    }))}
+                    onReorder={setPainPointOrder}
+                  />
                 </div>
               )}
             </div>
@@ -1145,46 +1136,18 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
               {nextStepOrder.length > 1 && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Display Order</h4>
-                  <div className="space-y-1">
-                    {nextStepOrder.map((id, index) => {
+                  <DraggableOrderList
+                    items={nextStepOrder.map(id => {
                       const predefined = NEXT_STEPS_OPTIONS.find(s => s.id === id);
-                      const label = predefined?.title
-                        || customNextSteps.find(cs => cs.id === id)?.title
-                        || id;
-                      return (
-                        <div key={id} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 rounded">
-                          <span className="text-gray-400 w-5 text-center">{index + 1}</span>
-                          <span className="flex-1 text-gray-700">{label}</span>
-                          <button
-                            disabled={index === 0}
-                            onClick={() => {
-                              setNextStepOrder(prev => {
-                                const arr = [...prev];
-                                [arr[index - 1], arr[index]] = [arr[index], arr[index - 1]];
-                                return arr;
-                              });
-                            }}
-                            className="text-gray-400 hover:text-gray-700 disabled:opacity-30 p-0.5"
-                          >
-                            &#9650;
-                          </button>
-                          <button
-                            disabled={index === nextStepOrder.length - 1}
-                            onClick={() => {
-                              setNextStepOrder(prev => {
-                                const arr = [...prev];
-                                [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
-                                return arr;
-                              });
-                            }}
-                            className="text-gray-400 hover:text-gray-700 disabled:opacity-30 p-0.5"
-                          >
-                            &#9660;
-                          </button>
-                        </div>
-                      );
+                      return {
+                        id,
+                        label: predefined?.title
+                          || customNextSteps.find(cs => cs.id === id)?.title
+                          || id,
+                      };
                     })}
-                  </div>
+                    onReorder={setNextStepOrder}
+                  />
                 </div>
               )}
             </div>
@@ -1202,328 +1165,379 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
           </div>
         )}
 
-        {/* AI Personalization Section */}
-        {activeSection === 'ai-personalization' && (
+        {/* Pricing Section */}
+        {activeSection === 'pricing' && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-semibold text-gray-900">AI Personalization</h2>
+              <h2 className="text-2xl font-semibold text-gray-900">Pricing Configuration</h2>
               <p className="text-gray-600 mt-1">
-                Use AI to generate personalized content based on instructions, documents, and account research.
+                Configure the investment based on employee count and product selection.
               </p>
             </div>
 
-            <AIPersonalizationSection
-              inputs={aiPersonalization}
-              proposalInputs={{
-                company,
-                pricing,
-                hrOperations,
-                legalCompliance,
-                employeeExperience,
-                primaryValueDriver: primaryValueDriver || undefined,
-                painPoints,
-                integrations,
-                nextSteps,
-                customNotes,
-              }}
-              onChange={setAIPersonalization}
-              onGenerate={setGeneratedContent}
-            />
+            <PricingCalculator inputs={pricing} onChange={updatePricing} />
+          </div>
+        )}
 
-            {generatedContent && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
+        {/* ROI Calculator Section */}
+        {activeSection === 'roi' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900">ROI Calculator</h2>
+              <p className="text-gray-600 mt-1">
+                Model the return on investment across HR operations, compliance, and employee
+                experience.
+              </p>
+            </div>
+
+            <ROICalculator
+              hrInputs={hrOperations}
+              legalInputs={legalCompliance}
+              employeeInputs={employeeExperience}
+              onHRChange={(updates) => setHROperations({ ...hrOperations, ...updates })}
+              onLegalChange={(updates) => setLegalCompliance({ ...legalCompliance, ...updates })}
+              onEmployeeChange={(updates) => setEmployeeExperience({ ...employeeExperience, ...updates })}
+              estimateGenerated={roiEstimateGenerated}
+              onEstimateGeneratedChange={setRoiEstimateGenerated}
+            />
+          </div>
+        )}
+
+        {/* Enhancements Section (AI Personalization, Customer Quotes, FAQs) */}
+        {activeSection === 'enhancements' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900">Enhancements</h2>
+              <p className="text-gray-600 mt-1">
+                Optional additions to strengthen your proposal with AI content, social proof, and anticipated questions.
+              </p>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+              {([
+                { id: 'ai-personalization' as EnhancementsTab, label: 'AI Personalization' },
+                { id: 'customer-quotes' as EnhancementsTab, label: 'Customer Quotes' },
+                { id: 'faqs' as EnhancementsTab, label: 'FAQs' },
+              ]).map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setEnhancementsTab(tab.id)}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                    enhancementsTab === tab.id
+                      ? 'bg-white text-[#03143B] shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* AI Personalization Tab */}
+            {enhancementsTab === 'ai-personalization' && (
+              <div className="space-y-6">
+                <AIPersonalizationSection
+                  inputs={aiPersonalization}
+                  proposalInputs={{
+                    company,
+                    pricing,
+                    hrOperations,
+                    legalCompliance,
+                    employeeExperience,
+                    primaryValueDriver: primaryValueDriver || undefined,
+                    painPoints,
+                    integrations,
+                    nextSteps,
+                    customNotes,
+                  }}
+                  onChange={setAIPersonalization}
+                  onGenerate={setGeneratedContent}
+                />
+
+                {generatedContent && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-green-800">AI Content Generated</h4>
+                        <p className="text-sm text-green-700 mt-1">
+                          Personalized content has been generated and will be included in the proposal.
+                          You can edit any text after generating the proposal.
+                        </p>
+                        <p className="text-xs text-green-600 mt-2">
+                          Generated at: {new Date(generatedContent.generatedAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-medium text-green-800">AI Content Generated</h4>
-                    <p className="text-sm text-green-700 mt-1">
-                      Personalized content has been generated and will be included in the proposal.
-                      You can edit any text after generating the proposal.
-                    </p>
-                    <p className="text-xs text-green-600 mt-2">
-                      Generated at: {new Date(generatedContent.generatedAt).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Customer Quotes Section */}
-        {activeSection === 'customer-quotes' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900">Customer Quotes</h2>
-              <p className="text-gray-600 mt-1">
-                Add social proof to your proposal. Select up to one quote per section.
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
-                {(() => {
-                  const sectionsWithQuotes = QUOTE_SECTIONS_ORDER.filter(section =>
-                    selectedQuotes.some(id => getQuoteById(id)?.section === section)
-                  ).length;
-                  return `${sectionsWithQuotes} of ${QUOTE_SECTIONS_ORDER.length} sections have quotes`;
-                })()}
-              </p>
-            </div>
+            {/* Customer Quotes Tab */}
+            {enhancementsTab === 'customer-quotes' && (
+              <div className="space-y-6">
+                <p className="text-sm text-gray-500">
+                  {(() => {
+                    const sectionsWithQuotes = QUOTE_SECTIONS_ORDER.filter(section =>
+                      selectedQuotes.some(id => getQuoteById(id)?.section === section)
+                    ).length;
+                    return `${sectionsWithQuotes} of ${QUOTE_SECTIONS_ORDER.length} sections have quotes`;
+                  })()}
+                </p>
 
-            {QUOTE_SECTIONS_ORDER.map((section) => {
-              const sectionQuotes = getQuotesBySection(section);
-              const selectedInSection = selectedQuotes.find(id => getQuoteById(id)?.section === section);
+                {QUOTE_SECTIONS_ORDER.map((section) => {
+                  const sectionQuotes = getQuotesBySection(section);
+                  const selectedInSection = selectedQuotes.find(id => getQuoteById(id)?.section === section);
 
-              return (
-                <div key={section} className="bg-white rounded-lg border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                    {QUOTE_SECTION_LABELS[section]}
-                  </h3>
-                  <p className="text-sm text-gray-500 mb-4">
-                    {selectedInSection ? '1 quote selected' : 'No quote selected'}
-                  </p>
-                  <div className="space-y-3">
-                    {sectionQuotes.map((quote) => {
-                      const isSelected = selectedQuotes.includes(quote.id);
-                      return (
-                        <button
-                          key={quote.id}
-                          onClick={() => {
-                            setSelectedQuotes(prev => {
-                              // Remove any existing quote for this section
-                              const filtered = prev.filter(id => getQuoteById(id)?.section !== section);
-                              // Toggle: if clicking the already-selected quote, just remove it
-                              if (isSelected) return filtered;
-                              // Otherwise add the new one
-                              return [...filtered, quote.id];
-                            });
-                          }}
-                          className={`w-full p-4 rounded-lg border-2 text-left transition-colors ${
-                            isSelected
-                              ? 'border-[#4d65ff] bg-[#4d65ff]/5'
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <span
-                              className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                                isSelected
-                                  ? 'bg-[#4d65ff] border-[#4d65ff]'
-                                  : 'border-gray-300'
-                              }`}
-                            >
-                              {isSelected && (
-                                <svg className="w-3 h-3 text-white" viewBox="0 0 12 12">
-                                  <path
-                                    fill="currentColor"
-                                    d="M10.28 2.28L4.5 8.06 1.72 5.28a.75.75 0 00-1.06 1.06l3.5 3.5a.75.75 0 001.06 0l6.5-6.5a.75.75 0 00-1.06-1.06z"
-                                  />
-                                </svg>
-                              )}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-gray-900 text-sm italic leading-relaxed">
-                                &ldquo;{quote.text}&rdquo;
-                              </p>
-                              <div className="flex items-center gap-3 mt-2">
-                                <p className="text-gray-500 text-xs">
-                                  &mdash; {quote.attribution}
-                                </p>
-                                <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded">
-                                  {quote.theme}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* FAQ Section */}
-        {activeSection === 'faqs' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900">FAQs & Objection Handling</h2>
-              <p className="text-gray-600 mt-1">
-                Generate anticipated questions from IT, CFO, and CEO stakeholders. Provide deal context for more relevant FAQs.
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Deal Context (Optional)</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">HubSpot Deal Summary</label>
-                  <textarea
-                    value={faqDealContext}
-                    onChange={(e) => setFaqDealContext(e.target.value)}
-                    placeholder="Paste deal notes, stage info, or summary from HubSpot..."
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#03143B]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gong Call Notes</label>
-                  <textarea
-                    value={faqGongNotes}
-                    onChange={(e) => setFaqGongNotes(e.target.value)}
-                    placeholder="Paste relevant notes from Gong call recordings..."
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#03143B]"
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={async () => {
-                  setIsGeneratingFaqs(true);
-                  try {
-                    const response = await fetch('/api/generate-faqs', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        proposalInputs: {
-                          company,
-                          pricing,
-                          painPoints,
-                          integrations,
-                          primaryValueDriver,
-                        },
-                        dealContext: faqDealContext || undefined,
-                        gongNotes: faqGongNotes || undefined,
-                      }),
-                    });
-                    if (response.ok) {
-                      const data = await response.json();
-                      setFAQSections(data.faqSections || []);
-                    }
-                  } catch (err) {
-                    console.error('FAQ generation failed:', err);
-                  } finally {
-                    setIsGeneratingFaqs(false);
-                  }
-                }}
-                disabled={isGeneratingFaqs}
-                className="mt-4 px-6 py-2 bg-[#03143B] text-white rounded-lg hover:bg-[#020e29] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isGeneratingFaqs ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Generating FAQs...
-                  </>
-                ) : (
-                  'Generate FAQs'
-                )}
-              </button>
-            </div>
-
-            {/* Editable FAQ List */}
-            {faqSections.length > 0 && (
-              <div className="space-y-4">
-                {faqSections.map((section, sectionIndex) => (
-                  <div key={section.pageId} className="bg-white rounded-lg border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {FAQ_PAGE_LABELS[section.pageId]}
+                  return (
+                    <div key={section} className="bg-white rounded-lg border border-gray-200 p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                        {QUOTE_SECTION_LABELS[section]}
                       </h3>
-                      <button
-                        onClick={() => {
-                          setFAQSections(prev => prev.filter((_, i) => i !== sectionIndex));
-                        }}
-                        className="text-sm text-red-500 hover:text-red-700"
-                      >
-                        Remove Section
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {section.faqs.map((faq, faqIndex) => (
-                        <div key={faqIndex} className="border border-gray-100 rounded-lg p-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 space-y-2">
-                              <input
-                                type="text"
-                                value={faq.question}
-                                onChange={(e) => {
-                                  setFAQSections(prev => {
-                                    const updated = [...prev];
-                                    updated[sectionIndex] = {
-                                      ...updated[sectionIndex],
-                                      faqs: updated[sectionIndex].faqs.map((f, i) =>
-                                        i === faqIndex ? { ...f, question: e.target.value } : f
-                                      ),
-                                    };
-                                    return updated;
-                                  });
-                                }}
-                                className="w-full px-2 py-1 text-sm font-medium text-gray-900 border border-transparent hover:border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#03143B] focus:border-[#03143B]"
-                              />
-                              <textarea
-                                value={faq.answer}
-                                onChange={(e) => {
-                                  setFAQSections(prev => {
-                                    const updated = [...prev];
-                                    updated[sectionIndex] = {
-                                      ...updated[sectionIndex],
-                                      faqs: updated[sectionIndex].faqs.map((f, i) =>
-                                        i === faqIndex ? { ...f, answer: e.target.value } : f
-                                      ),
-                                    };
-                                    return updated;
-                                  });
-                                }}
-                                rows={2}
-                                className="w-full px-2 py-1 text-sm text-gray-600 border border-transparent hover:border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#03143B] focus:border-[#03143B]"
-                              />
-                            </div>
+                      <p className="text-sm text-gray-500 mb-4">
+                        {selectedInSection ? '1 quote selected' : 'No quote selected'}
+                      </p>
+                      <div className="space-y-3">
+                        {sectionQuotes.map((quote) => {
+                          const isSelected = selectedQuotes.includes(quote.id);
+                          return (
                             <button
+                              key={quote.id}
                               onClick={() => {
-                                setFAQSections(prev => {
-                                  const updated = [...prev];
-                                  updated[sectionIndex] = {
-                                    ...updated[sectionIndex],
-                                    faqs: updated[sectionIndex].faqs.filter((_, i) => i !== faqIndex),
-                                  };
-                                  return updated;
+                                setSelectedQuotes(prev => {
+                                  // Remove any existing quote for this section
+                                  const filtered = prev.filter(id => getQuoteById(id)?.section !== section);
+                                  // Toggle: if clicking the already-selected quote, just remove it
+                                  if (isSelected) return filtered;
+                                  // Otherwise add the new one
+                                  return [...filtered, quote.id];
                                 });
                               }}
-                              className="text-gray-400 hover:text-red-500 p-1"
+                              className={`w-full p-4 rounded-lg border-2 text-left transition-colors ${
+                                isSelected
+                                  ? 'border-[#4d65ff] bg-[#4d65ff]/5'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
+                              <div className="flex items-start gap-3">
+                                <span
+                                  className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                                    isSelected
+                                      ? 'bg-[#4d65ff] border-[#4d65ff]'
+                                      : 'border-gray-300'
+                                  }`}
+                                >
+                                  {isSelected && (
+                                    <svg className="w-3 h-3 text-white" viewBox="0 0 12 12">
+                                      <path
+                                        fill="currentColor"
+                                        d="M10.28 2.28L4.5 8.06 1.72 5.28a.75.75 0 00-1.06 1.06l3.5 3.5a.75.75 0 001.06 0l6.5-6.5a.75.75 0 00-1.06-1.06z"
+                                      />
+                                    </svg>
+                                  )}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-gray-900 text-sm italic leading-relaxed">
+                                    &ldquo;{quote.text}&rdquo;
+                                  </p>
+                                  <div className="flex items-center gap-3 mt-2">
+                                    <p className="text-gray-500 text-xs">
+                                      &mdash; {quote.attribution}
+                                    </p>
+                                    <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded">
+                                      {quote.theme}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             </button>
-                          </div>
-                        </div>
-                      ))}
-                      <button
-                        onClick={() => {
-                          setFAQSections(prev => {
-                            const updated = [...prev];
-                            updated[sectionIndex] = {
-                              ...updated[sectionIndex],
-                              faqs: [...updated[sectionIndex].faqs, { question: '', answer: '' }],
-                            };
-                            return updated;
-                          });
-                        }}
-                        className="text-sm text-[#03143B] font-medium hover:underline"
-                      >
-                        + Add FAQ
-                      </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* FAQs Tab */}
+            {enhancementsTab === 'faqs' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Deal Context (Optional)</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">HubSpot Deal Summary</label>
+                      <textarea
+                        value={faqDealContext}
+                        onChange={(e) => setFaqDealContext(e.target.value)}
+                        placeholder="Paste deal notes, stage info, or summary from HubSpot..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#03143B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Gong Call Notes</label>
+                      <textarea
+                        value={faqGongNotes}
+                        onChange={(e) => setFaqGongNotes(e.target.value)}
+                        placeholder="Paste relevant notes from Gong call recordings..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#03143B]"
+                      />
                     </div>
                   </div>
-                ))}
+
+                  <button
+                    onClick={async () => {
+                      setIsGeneratingFaqs(true);
+                      try {
+                        const response = await fetch('/api/generate-faqs', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            proposalInputs: {
+                              company,
+                              pricing,
+                              painPoints,
+                              integrations,
+                              primaryValueDriver,
+                            },
+                            dealContext: faqDealContext || undefined,
+                            gongNotes: faqGongNotes || undefined,
+                          }),
+                        });
+                        if (response.ok) {
+                          const data = await response.json();
+                          setFAQSections(data.faqSections || []);
+                        }
+                      } catch (err) {
+                        console.error('FAQ generation failed:', err);
+                      } finally {
+                        setIsGeneratingFaqs(false);
+                      }
+                    }}
+                    disabled={isGeneratingFaqs}
+                    className="mt-4 px-6 py-2 bg-[#03143B] text-white rounded-lg hover:bg-[#020e29] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isGeneratingFaqs ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Generating FAQs...
+                      </>
+                    ) : (
+                      'Generate FAQs'
+                    )}
+                  </button>
+                </div>
+
+                {/* Editable FAQ List */}
+                {faqSections.length > 0 && (
+                  <div className="space-y-4">
+                    {faqSections.map((section, sectionIndex) => (
+                      <div key={section.pageId} className="bg-white rounded-lg border border-gray-200 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {FAQ_PAGE_LABELS[section.pageId]}
+                          </h3>
+                          <button
+                            onClick={() => {
+                              setFAQSections(prev => prev.filter((_, i) => i !== sectionIndex));
+                            }}
+                            className="text-sm text-red-500 hover:text-red-700"
+                          >
+                            Remove Section
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          {section.faqs.map((faq, faqIndex) => (
+                            <div key={faqIndex} className="border border-gray-100 rounded-lg p-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 space-y-2">
+                                  <input
+                                    type="text"
+                                    value={faq.question}
+                                    onChange={(e) => {
+                                      setFAQSections(prev => {
+                                        const updated = [...prev];
+                                        updated[sectionIndex] = {
+                                          ...updated[sectionIndex],
+                                          faqs: updated[sectionIndex].faqs.map((f, i) =>
+                                            i === faqIndex ? { ...f, question: e.target.value } : f
+                                          ),
+                                        };
+                                        return updated;
+                                      });
+                                    }}
+                                    className="w-full px-2 py-1 text-sm font-medium text-gray-900 border border-transparent hover:border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#03143B] focus:border-[#03143B]"
+                                  />
+                                  <textarea
+                                    value={faq.answer}
+                                    onChange={(e) => {
+                                      setFAQSections(prev => {
+                                        const updated = [...prev];
+                                        updated[sectionIndex] = {
+                                          ...updated[sectionIndex],
+                                          faqs: updated[sectionIndex].faqs.map((f, i) =>
+                                            i === faqIndex ? { ...f, answer: e.target.value } : f
+                                          ),
+                                        };
+                                        return updated;
+                                      });
+                                    }}
+                                    rows={2}
+                                    className="w-full px-2 py-1 text-sm text-gray-600 border border-transparent hover:border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#03143B] focus:border-[#03143B]"
+                                  />
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setFAQSections(prev => {
+                                      const updated = [...prev];
+                                      updated[sectionIndex] = {
+                                        ...updated[sectionIndex],
+                                        faqs: updated[sectionIndex].faqs.filter((_, i) => i !== faqIndex),
+                                      };
+                                      return updated;
+                                    });
+                                  }}
+                                  className="text-gray-400 hover:text-red-500 p-1"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                          <button
+                            onClick={() => {
+                              setFAQSections(prev => {
+                                const updated = [...prev];
+                                updated[sectionIndex] = {
+                                  ...updated[sectionIndex],
+                                  faqs: [...updated[sectionIndex].faqs, { question: '', answer: '' }],
+                                };
+                                return updated;
+                              });
+                            }}
+                            className="text-sm text-[#03143B] font-medium hover:underline"
+                          >
+                            + Add FAQ
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

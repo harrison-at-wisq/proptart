@@ -1,0 +1,115 @@
+REQUEST FOR PROPOSAL (RFP)
+HR OPERATIONS AUTOMATION PLATFORM
+Issued By: [Confidential Organization]
+Employee Population: ~2,000 Employees
+Issue Date: [MM/DD/YYYY]
+Proposal Due Date: [MM/DD/YYYY]
+
+1. ORGANIZATION OVERVIEW
+
+[Confidential Organization] is a rapidly growing company with approximately 2,000 employees across multiple U.S. locations. The People Operations function supports a diverse workforce and includes HR Business Partners, Shared Services, Employee Relations, Total Rewards, and HRIS.
+
+The HR team is currently experiencing high volumes of transactional inquiries, manual process administration, and inconsistent intake workflows. We are seeking an AI-enabled HR Operations Automation Platform to improve efficiency, reduce service delivery costs, mitigate compliance risk, and enhance the employee experience.
+
+2. OBJECTIVE
+
+The objective of this RFP is to identify and select a vendor that can deliver an AI-powered HR operations solution capable of:
+
+- Automating Tier 0 and Tier 1 employee inquiries
+- Reducing service ticket volume and manual case handling
+- Guiding managers through compliant decision-making processes
+- Integrating seamlessly with Workday
+- Providing operational visibility and analytics
+
+3. CURRENT STATE CHALLENGES
+
+Vendors should address how their solution would improve the following:
+
+- High volume of repetitive HR inquiries (policy questions, benefits, PTO, payroll timing)
+- Manual leave of absence intake and documentation collection
+- Manager reliance on HRBPs for performance documentation guidance
+- HRIS data corrections and transaction processing delays
+- Fragmented intake across Slack, email, and ticketing systems
+- Limited analytics into case trends, policy gaps, and deflection rates
+
+4. SCOPE OF REQUIREMENTS
+
+4.1 AI HR Inquiry Automation
+- Natural language understanding for policy and benefits questions
+- Context-aware responses using company-specific documentation
+- Ability to escalate to HR when appropriate
+- Audit trail of interactions
+
+4.2 Workflow & Process Automation
+- Guided workflows for leave intake, performance management support, job changes, and onboarding tasks
+- Intelligent document collection and validation
+- Automated routing to appropriate stakeholders
+- Structured case intake and tracking
+
+4.3 Manager Enablement
+- Real-time guidance for performance concerns, corrective actions, and documentation best practices
+- Policy-aligned recommendations
+- Standardized templates and documentation support
+
+4.4 HRIS & Systems Integration
+- Must integrate with Workday (required)
+- Ability to initiate or facilitate Workday transactions (e.g., job changes, PTO updates, data corrections)
+- API-based architecture preferred
+- SSO support (Okta or similar)
+
+4.5 Communication Channel Integration
+- Deployment within Slack and/or Microsoft Teams
+- Email support
+- Optional integration with ServiceNow or similar ticketing systems
+
+4.6 Compliance & Risk Management
+- Policy-consistent responses
+- Configurable approval flows
+- Secure data handling and role-based permissions
+- SOC 2 or equivalent certification preferred
+
+4.7 Analytics & Reporting
+- Dashboard showing deflection rates
+- Case volume trends and topic clustering
+- SLA tracking
+- ROI reporting (time saved, cost avoidance estimates)
+
+5. IMPLEMENTATION REQUIREMENTS
+
+- Implementation timeline under 12 weeks preferred
+- Clear onboarding and configuration process
+- Dedicated implementation and customer success support
+- Change management best practices included
+
+6. VENDOR RESPONSE REQUIREMENTS
+
+Vendors should provide:
+
+- Company overview and client references
+- Description of AI architecture and approach to data security
+- Integration details specific to Workday
+- Implementation methodology and timeline
+- Pricing structure (subscription-based preferred)
+- Case studies demonstrating measurable impact (e.g., deflection rate improvements, cost savings)
+
+7. EVALUATION CRITERIA
+
+Proposals will be evaluated based on:
+
+- Depth of HR operations automation capability
+- Strength of Workday integration
+- Demonstrated ROI and measurable outcomes
+- Security and compliance posture
+- User experience for employees and managers
+- Total cost of ownership
+
+8. TIMELINE
+
+RFP Issued: [MM/DD/YYYY]
+Vendor Q&A Deadline: [MM/DD/YYYY]
+Proposal Submission Deadline: [MM/DD/YYYY]
+Finalist Demos: [MM/DD/YYYY]
+Anticipated Vendor Selection: [MM/DD/YYYY]
+Target Go-Live: [MM/DD/YYYY]
+
+We look forward to reviewing proposals from qualified vendors that can modernize and scale our HR operations function while improving service delivery and reducing operational burden.

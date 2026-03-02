@@ -127,29 +127,26 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
     })
   );
 
-  // Cover quote if exists - support multi-line
+  // Cover quote if exists
   if (inputs.coverQuote) {
-    const coverLines = inputs.coverQuote.split('\n').filter(line => line.trim());
-    coverLines.forEach((line, i) => {
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: coverLines.length === 1 ? `"${line}"` : line,
-              italics: true,
-              size: 36,
-              color: '4B5563',
-              font: 'Arial',
-            }),
-          ],
-          spacing: { before: i === 0 ? 400 : 100, after: i === coverLines.length - 1 ? 1000 : 100 },
-          border: {
-            left: { style: BorderStyle.SINGLE, size: 30, color: BRAND_COLOR },
-          },
-          indent: { left: convertInchesToTwip(0.4) },
-        })
-      );
-    });
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: `\u201C${inputs.coverQuote}\u201D`,
+            italics: true,
+            size: 36,
+            color: '4B5563',
+            font: 'Arial',
+          }),
+        ],
+        spacing: { before: 400, after: 1000 },
+        border: {
+          left: { style: BorderStyle.SINGLE, size: 30, color: BRAND_COLOR },
+        },
+        indent: { left: convertInchesToTwip(0.4) },
+      })
+    );
   }
 
   // Large spacer before contact info

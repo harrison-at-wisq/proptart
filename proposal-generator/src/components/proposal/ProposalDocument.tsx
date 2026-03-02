@@ -405,27 +405,16 @@ export function ProposalDocument({ inputs, proposalId, onClose, onContentChange 
               className="text-5xl font-bold text-[#03143B] leading-tight mb-6"
             />
             <div className="w-24 h-1 bg-[#03143B] mb-8"></div>
-            {(inputs.coverQuote || contentOverrides.coverQuote) && (() => {
-              const coverText = contentOverrides.coverQuote || inputs.coverQuote || '';
-              const coverLines = coverText.split('\n').filter((line: string) => line.trim());
-              return (
-                <div className="text-xl text-gray-700 italic border-l-4 border-[#03143B] pl-4 mb-8 max-w-2xl space-y-2">
-                  {coverLines.length > 1 ? (
-                    coverLines.map((line: string, i: number) => (
-                      <p key={i}>{line}</p>
-                    ))
-                  ) : (
-                    <EditableText
-                      value={contentOverrides.coverQuote || ''}
-                      defaultValue={inputs.coverQuote || ''}
-                      onChange={(value) => updateOverride('coverQuote', value)}
-                      as="p"
-                      multiline
-                    />
-                  )}
-                </div>
-              );
-            })()}
+            {(inputs.coverQuote || contentOverrides.coverQuote) && (
+              <div className="text-xl text-gray-700 italic border-l-4 border-[#03143B] pl-4 mb-8 max-w-2xl">
+                <p>&ldquo;<EditableText
+                  value={contentOverrides.coverQuote || ''}
+                  defaultValue={inputs.coverQuote || ''}
+                  onChange={(value) => updateOverride('coverQuote', value)}
+                  as="span"
+                />&rdquo;</p>
+              </div>
+            )}
             <div className="text-lg text-gray-600 space-y-1">
               <p>Prepared for <span className="font-semibold text-gray-900">{inputs.company.contactName}</span>, {resolveOtherValue(inputs.company.contactTitle, inputs.company.customContactTitle)}</p>
             </div>

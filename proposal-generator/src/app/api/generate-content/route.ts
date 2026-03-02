@@ -23,6 +23,7 @@ const BRAND_VOICE_PROMPT = `You create executive-level HR technology proposals f
 VOICE: Confident not arrogant, human-centered not cold, expert not jargon-heavy
 USE: "AI teammate", "transform", "enable", "purpose-built"
 AVOID: "chatbot", "leverage", "synergy", "revolutionary", "cutting-edge", "game-changer"
+FORMATTING: Never use em dashes (—). Use commas, periods, or colons instead.
 HARPER: Wisq's AI is named Harper. She is an "AI HR Generalist". Always refer to Harper as she/her.
 
 PROOF POINTS:
@@ -202,7 +203,7 @@ Generate a JSON response:
     const [execSummaryResult, valueDriverResult, whyNowResult, visionResult] = await Promise.all([
       openai.chat.completions.create({
         model: 'gpt-5.2',
-        max_tokens: 1000,
+        max_completion_tokens: 1000,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: execSummaryPrompt },
@@ -210,7 +211,7 @@ Generate a JSON response:
       }),
       openai.chat.completions.create({
         model: 'gpt-5.2',
-        max_tokens: 1500,
+        max_completion_tokens: 1500,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: valueDriverPrompt },
@@ -218,7 +219,7 @@ Generate a JSON response:
       }),
       openai.chat.completions.create({
         model: 'gpt-5.2',
-        max_tokens: 1500,
+        max_completion_tokens: 1500,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: whyNowPrompt },
@@ -226,7 +227,7 @@ Generate a JSON response:
       }),
       openai.chat.completions.create({
         model: 'gpt-5.2',
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: visionPrompt },

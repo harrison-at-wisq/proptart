@@ -32,6 +32,7 @@ VOICE GUIDELINES:
 - If information is uncertain or not in the knowledge base, indicate that clearly
 - Do not make up specific numbers, dates, or claims not supported by the knowledge base
 - Keep responses concise but complete (2-4 sentences for simple questions, up to 2 paragraphs for complex ones)
+- Never use em dashes (—). Use commas, periods, or colons instead.
 
 IMPORTANT: Only answer based on the provided knowledge base context. If the context doesn't contain relevant information, say "This information is not available in our standard documentation. Please contact Wisq directly for details."`;
 

@@ -26,6 +26,11 @@ import {
   ORG_MODEL_LABELS,
 } from '@/lib/benchmarks';
 import { formatCurrency } from '@/lib/pricing-calculator';
+import {
+  DEFAULT_HR_OPERATIONS,
+  DEFAULT_LEGAL_COMPLIANCE,
+  DEFAULT_EMPLOYEE_EXPERIENCE,
+} from '@/types/proposal';
 
 interface ROICalculatorProps {
   hrInputs: HROperationsInputs;
@@ -34,6 +39,8 @@ interface ROICalculatorProps {
   onHRChange: (inputs: Partial<HROperationsInputs>) => void;
   onLegalChange: (inputs: Partial<LegalComplianceInputs>) => void;
   onEmployeeChange: (inputs: Partial<EmployeeExperienceInputs>) => void;
+  estimateGenerated: boolean;
+  onEstimateGeneratedChange: (value: boolean) => void;
 }
 
 type TabType = 'hr-operations' | 'legal-compliance' | 'employee-experience' | 'summary';
@@ -46,9 +53,13 @@ export function ROICalculator({
   onHRChange,
   onLegalChange,
   onEmployeeChange,
+  estimateGenerated,
+  onEstimateGeneratedChange,
 }: ROICalculatorProps) {
   const [activeTab, setActiveTab] = useState<TabType>('hr-operations');
-  const [mode, setMode] = useState<Mode>('quick');
+  const [mode, setMode] = useState<Mode>(estimateGenerated ? 'detailed' : 'quick');
+  const [showStartOverDialog, setShowStartOverDialog] = useState(false);
+  const [startOverInput, setStartOverInput] = useState('');
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
     employeeCount: 5000,
     industry: 'technology',
@@ -116,11 +127,31 @@ export function ROICalculator({
     }
 
     setMode('detailed');
+    onEstimateGeneratedChange(true);
   };
 
   const handleSkipToDetailed = () => {
     setEstimatedFields(new Set());
     setMode('detailed');
+    onEstimateGeneratedChange(true);
+  };
+
+  const handleStartOver = () => {
+    onHRChange(DEFAULT_HR_OPERATIONS);
+    onLegalChange(DEFAULT_LEGAL_COMPLIANCE);
+    onEmployeeChange(DEFAULT_EMPLOYEE_EXPERIENCE);
+    setCompanyProfile({
+      employeeCount: 5000,
+      industry: 'technology',
+      workforceType: 'mixed',
+      orgModel: 'centralized',
+    });
+    setEstimatedFields(new Set());
+    onEstimateGeneratedChange(false);
+    setMode('quick');
+    setActiveTab('hr-operations');
+    setShowStartOverDialog(false);
+    setStartOverInput('');
   };
 
   // Workflow management
@@ -144,8 +175,8 @@ export function ROICalculator({
     });
   };
 
-  // Quick ROI mode
-  if (mode === 'quick') {
+  // Quick ROI mode - only show if estimate hasn't been generated yet
+  if (mode === 'quick' && !estimateGenerated) {
     return (
       <CompanyProfileStep
         profile={companyProfile}
@@ -164,25 +195,59 @@ export function ROICalculator({
       {/* Profile Banner */}
       {estimatedFields.size > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-900">
-                Based on estimates for a {INDUSTRY_LABELS[companyProfile.industry]} company with{' '}
-                {companyProfile.employeeCount.toLocaleString()} employees
-              </p>
-              <p className="text-sm text-blue-700 mt-1">
-                Refine inputs below for a more accurate picture.
-              </p>
+          <div>
+            <p className="text-sm font-medium text-blue-900">
+              Based on estimates for a {INDUSTRY_LABELS[companyProfile.industry]} company with{' '}
+              {companyProfile.employeeCount.toLocaleString()} employees
+            </p>
+            <p className="text-sm text-blue-700 mt-1">
+              Refine inputs below for a more accurate picture.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Start Over Dialog */}
+      {showStartOverDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Start Over?</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              This will discard all ROI inputs and return to the Quick ROI Assessment. All progress will be lost.
+            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              Type <span className="font-bold">Start Over</span> to confirm:
+            </p>
+            <input
+              type="text"
+              value={startOverInput}
+              onChange={(e) => setStartOverInput(e.target.value)}
+              placeholder="Start Over"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 mb-4"
+              autoFocus
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowStartOverDialog(false);
+                  setStartOverInput('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleStartOver}
+                disabled={startOverInput !== 'Start Over'}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
+                  startOverInput === 'Start Over'
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-red-300 cursor-not-allowed'
+                }`}
+              >
+                Reset
+              </button>
             </div>
-            <button
-              onClick={() => {
-                setMode('quick');
-                setEstimatedFields(new Set());
-              }}
-              className="text-sm text-blue-600 hover:text-blue-800 underline"
-            >
-              Change Profile
-            </button>
           </div>
         </div>
       )}
@@ -256,6 +321,16 @@ export function ROICalculator({
           narrative={narrative}
         />
       )}
+
+      {/* Start Over */}
+      <div className="border-t border-gray-200 pt-4 mt-6">
+        <button
+          onClick={() => setShowStartOverDialog(true)}
+          className="text-sm text-red-600 hover:text-red-800 underline"
+        >
+          Start over from scratch
+        </button>
+      </div>
     </div>
   );
 }
@@ -614,7 +689,7 @@ function HROperationsTab({
       {/* Cost Parameters */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h4 className="font-semibold text-[#03143B] mb-4">Cost Parameters</h4>
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-2 gap-4">
           <InputField
             label="Tier 0/1 Handler Salary"
             value={inputs.tier01HandlerSalary}
@@ -625,12 +700,6 @@ function HROperationsTab({
             label="Tier 2+ Handler Salary"
             value={inputs.tier2PlusHandlerSalary}
             onChange={(v) => onChange({ tier2PlusHandlerSalary: v })}
-            type="currency"
-          />
-          <InputField
-            label="Wisq Annual License Cost"
-            value={inputs.wisqLicenseCost}
-            onChange={(v) => onChange({ wisqLicenseCost: v })}
             type="currency"
           />
         </div>

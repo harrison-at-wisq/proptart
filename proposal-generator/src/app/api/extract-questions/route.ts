@@ -45,6 +45,7 @@ IMPORTANT:
 - Look for section headers that provide context for categorization
 - Include ALL questions even if they seem redundant
 - Preserve the original question numbering if present (include it in the question text)
+- Never use em dashes (—) in any output. Use commas, periods, or colons instead.
 
 Respond with a JSON array of objects with this structure:
 {
