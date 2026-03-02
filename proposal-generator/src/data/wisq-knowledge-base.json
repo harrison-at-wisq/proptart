@@ -1,0 +1,2624 @@
+{
+  "metadata": {
+    "lastUpdated": "2026-01-15",
+    "entryCount": 291,
+    "source": "safebase_knowledge"
+  },
+  "entries": [
+    {
+      "id": "kb-001",
+      "question": "What services are provided to Model N?",
+      "answer": "Wisq is an Agentic AI platform for HR and the maker of the world's first AI HR Generalist, Harper. Wisq customers transform their HR operations with an AI teammate that allows them to scale HR impact, deliver a superior employee experience, and save significant time and resources",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-002",
+      "question": "Is training for the model used in the AI system conducted under the same conditions that would be found at deployment?",
+      "answer": "N/A - Wisq currently does not develop, train, nor deploy our own models",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-003",
+      "question": "What services are offered by your Organization to Model N?",
+      "answer": "Wisq is an Agentic AI platform for HR and the maker of the world's first AI HR Generalist, Harper. Wisq customers transform their HR operations with an AI teammate that allows them to scale HR impact, deliver a superior employee experience, and save significant time and resources",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-004",
+      "question": "Are you currently Privacy Shield certified? If so, please link to your certification. If no, Do you plan on being Privacy Shield certified within the next 12 months?",
+      "answer": "No, we are not Privacy Shield certified as it no longer exists. We are not currently certified under the EU-U.S. Data Privacy Framework. For EU data transfers, we rely on Standard Contractual Clauses as outlined in our Data Processing Addendum at www.wisq.com/legal/data-processing-addendum.\n\nThe Privacy Shield has been deprecated since July 2020.",
+      "category": "compliance",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-005",
+      "question": "What measures do you take to assess the robustness and reliability of your AI systems, particularly in the presence of edge cases, adversarial inputs, or distribution shifts?",
+      "answer": "Wisq AI system validation includes edge case testing and guardrail verification to ensure robust performance across boundary conditions and adversarial scenarios.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-006",
+      "question": "Provide us the architecture diagram of the tool including the components and its connectivity. Please also specify if the tool connects to third party components like OpenAI for solving the prompts using OpenAI LLMs.",
+      "answer": "The Wisq Network Diagram is attached.",
+      "category": "ai",
+      "tags": [
+        "openai",
+        "llm"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-007",
+      "question": "Do you have a formal vulnerability management process? If yes, please a copy of the document.",
+      "answer": "The Wisq Vulnerability Management Policy is attached.",
+      "category": "security",
+      "tags": [
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-008",
+      "question": "Does your services to Model N process any Model N confidential / PII Data?",
+      "answer": "Yes - Model N employee data",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-009",
+      "question": "Does the organization have processes to secure AI systems before deployment?",
+      "answer": "N/A - Wisq currently does not develop, train, nor deploy our own models",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-010",
+      "question": "What privacy-preserving techniques do you employ to protect sensitive or personal data used in your AI systems?",
+      "answer": "Wisq data transmitted between the Wisq Platform and AI systems are encrypted at rest and encrypted in transit. Wisq has configured zero data retention (ZDR) with the AI systems used as part of the Wisq Platform.",
+      "category": "compliance",
+      "tags": [
+        "encryption",
+        "data-retention",
+        "zdr"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-011",
+      "question": "How do you protect against malicious software? Describe where you run anti-virus software (e.g. mail gateways, Windows machines, mobile devices, etc.).",
+      "answer": "Antivirus software is run on user endpoints workstations, laptops, and servers.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-012",
+      "question": "Explain how your networks are segregated. Please provide a diagram depicting your network environment.",
+      "answer": "Wisq networks are segmented into multiple security zones based on data classification and system criticality. Production and development clusters are on separate networks. The public-facing AWS load balancers are isolated from internal networks. Segmentation is enforced through firewalls, VLANs, and security groups. The Wisq Network Diagram is attached.",
+      "category": "security",
+      "tags": [
+        "aws"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-013",
+      "question": "What information is collected in your security event logs? How are the logs monitored? Describe your log management solution if you have one.",
+      "answer": "Wisq's security event logs collect detailed information such as the type of action performed, who performed the action, what the action was performed on, and when the action occurred. Logs are sent to a central location and alerted on if there are anomalies.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-014",
+      "question": "Are data processing pipelines secured?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-015",
+      "question": "Who is the legal data owner of all the prompts, context, uploaded data, and any responses?",
+      "answer": "Aurora owns all uploaded data, employee inputs, conversation history, and responses generated from Aurora's data.  Wisq owns system-level prompts, algorithms, and the technical framework.  Any content that identifies Aurora or individual employees is Aurora data.",
+      "category": "company",
+      "tags": [],
+      "access": "private"
+    },
+    {
+      "id": "kb-016",
+      "question": "What tools do you use for vulnerability managment?",
+      "answer": "We use Jira as our primary vulnerability tracking system to create, assign, prioritize, and track remediation of security findings.",
+      "category": "security",
+      "tags": [
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-017",
+      "question": "Any additional information to add?",
+      "answer": "No comment",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-018",
+      "question": "Which model are they using?",
+      "answer": "Wisq uses OpenAI and Anthropic LLMs.",
+      "category": "ai",
+      "tags": [
+        "openai",
+        "anthropic",
+        "llm"
+      ],
+      "access": "private"
+    },
+    {
+      "id": "kb-019",
+      "question": "Is it possible that the tool produces insecure code ?",
+      "answer": "The Wisq Platform does not generate code.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-020",
+      "question": "Are environmental conditions (such as temperature and humidity) controlled and monitored within computer rooms or data centers?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-021",
+      "question": "How do you ensure physical access is regularly reviewed, updated, and revoked when necessary?",
+      "answer": "Wisq audits and maintains a current list of employees who are permitted physical access.",
+      "category": "compliance",
+      "tags": [
+        "audit"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-022",
+      "question": "Is there a person at the company who is responsible for information security? If yes, please provide the name, title and contact information.",
+      "answer": "The Chief Technology Officer (CTO) is primarily responsible for information security governance at Wisq, overseeing the security program, establishing policies, and ensuring compliance. The CTO is Chih-Po Wen, wen@wisq.com",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-023",
+      "question": "How does the integration work with Atlassian products? Is it using API token? How securely can the tokens get stored and rotated?",
+      "answer": "A ticketing system integration with Atlassian would be explored during integration, if desired.",
+      "category": "integration",
+      "tags": [
+        "api"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-024",
+      "question": "How do you ensure the integrity of the audit logs and how long do you retain them?",
+      "answer": "Audit logs are protected through the following: secure backup to centralized log servers, monitoring of administrative activities through intrusion detection systems, and clock synchronization using network time protocol. All security documentation and audit trails are retained per our data retention requirements.",
+      "category": "security",
+      "tags": [
+        "backup",
+        "data-retention",
+        "audit"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-027",
+      "question": "Did the tool got developed using Secure SDLC?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-029",
+      "question": "Is data collected for the AI system(s) from trusted sources?",
+      "answer": "Yes",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-030",
+      "question": "How can the users of the tool control use of their data?",
+      "answer": "Check the Data Retention Policy for information on how users can delete their data.",
+      "category": "data_protection",
+      "tags": [
+        "data-retention"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-031",
+      "question": "Does your company allow the use of personally owned systems (e.g. phones, laptops, etc.)? If yes, which ones and describe your security controls around their use.",
+      "answer": "Personal devices are permitted for work, but not permitted to access customer data. The Wisq Acceptable Use Policy is attached.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-033",
+      "question": "What personal data / Model N IP data does the tool / module collects?",
+      "answer": "Wisq uses employee first name, last name, and email address. Other data may be collected, if there are integrations with Google Suite, Paylocity, PHI HR systems, and beyond.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-034",
+      "question": "How does the organization ensure data integrity remains throughout an AI system lifecycle?",
+      "answer": "Data are encrypted at rest and in transit. Wisq has configured zero data retention (ZDR) with the AI systems used as part of the Wisq Platform.",
+      "category": "ai",
+      "tags": [
+        "encryption",
+        "data-retention",
+        "zdr"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-035",
+      "question": "Have you appointed a Data Protection Officer (DPO)?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-036",
+      "question": "Do internal applications leverage SSO for authentication?",
+      "answer": "Yes",
+      "category": "integration",
+      "tags": [
+        "sso"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-038",
+      "question": "How often is the application tested for buffer overruns/overflow, malicious code, SQL injection attacks, etc.? How often is the code tested for vulnerabilities (e.g. static code analysis)? Please describe your security testing processes.",
+      "answer": "We conduct quarterly OWASP ZAP scans for common vulnerabilities. Annual third-party penetration testing includes comprehensive application security assessment. Our SDLC requires secure coding practices, peer code reviews, and developer security training on OWASP principles. All findings are tracked with defined remediation SLAs.",
+      "category": "security",
+      "tags": [
+        "penetration-testing"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-039",
+      "question": "What are your company password complexity, length, expiration, and reuse requirements?",
+      "answer": "Complex passwords are required where possible with at least 8 characters, 1+ uppercase letter(s), 1+ lowercase letter(s), and 1+ non-alphanumeric character(s). Do not reuse previously used passwords or their variants. Do not use commonly used passwords or dictionary words.",
+      "category": "company",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-040",
+      "question": "Does the tool have a chat feature?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-041",
+      "question": "Are test restorations performed of backups?",
+      "answer": "Yes",
+      "category": "data_protection",
+      "tags": [
+        "backup"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-042",
+      "question": "Which cloud providers do you rely on?",
+      "answer": "AWS",
+      "category": "other",
+      "tags": [
+        "aws"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-043",
+      "question": "How do you test and validate the performance and behavior of your AI models in various scenarios, including failure cases?",
+      "answer": "Wisq AI system validation includes edge case testing and guardrail verification to ensure robust performance across boundary conditions and adversarial scenarios.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-045",
+      "question": "How is your network security testing performed? Internal, third parties or both? If so, what is the cadence? Explain your methodology",
+      "answer": "Network security testing is performed through annual third-party penetration testing. The methodology includes comprehensive network infrastructure assessment, port scanning, service enumeration, and vulnerability identification. All findings are tracked through our vulnerability management process with defined remediation SLAs.",
+      "category": "security",
+      "tags": [
+        "penetration-testing",
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-047",
+      "question": "Please describe the architecture or data flow from an Aurora user providing content to the LLM and the path back for the response.",
+      "answer": "Users send messages in the Wisq system. The messages pass through prompt injection prevention, get enriched with relevant content from the data store, and are sent via API to the third-party LLM for processing. The LLM's response is then post-processed, moderated against safety guardrails, and returned to the user as a reply from Wisq.",
+      "category": "ai",
+      "tags": [
+        "api",
+        "llm"
+      ],
+      "access": "private"
+    },
+    {
+      "id": "kb-048",
+      "question": "What is the retention policy of the prompts, context, uploaded data, and any responses?",
+      "answer": "Wisq has Zero Data Retention (ZDR) configured with both OpenAI and Anthropic. This means data is processed in real-time but not stored at the AI provider level. Customer data within Wisq's systems is retained for as long as the account is in active status and is deleted within 60 days after contract termination.",
+      "category": "ai",
+      "tags": [
+        "data-retention",
+        "openai",
+        "anthropic",
+        "zdr"
+      ],
+      "access": "private"
+    },
+    {
+      "id": "kb-049",
+      "question": "Where is the model hosted and who is responsible for maintaining and configuring that infrastructure?",
+      "answer": "The models are hosted at datacenters for OpenAI and Anthropic. Those vendors are responsible for maintaining and configuring their infrastructure.",
+      "category": "ai",
+      "tags": [
+        "openai",
+        "anthropic"
+      ],
+      "access": "private"
+    },
+    {
+      "id": "kb-050",
+      "question": "Will our data be used to train or improve their model?",
+      "answer": "Wisq utilizes company data to continually update and improve our algorithms, but do not use company data for training generative AI models.",
+      "category": "ai",
+      "tags": [],
+      "access": "private"
+    },
+    {
+      "id": "kb-051",
+      "question": "For LLMs, will the context buffer or prompts be considered Aurora data along with all other information from Aurora?",
+      "answer": "Partially. The context buffer contains both Aurora-owned data (employee inputs, conversation history, uploaded documents, and responses) and Wisq-owned components (system prompts and algorithms). Any content that identifies Aurora or individual employees is Aurora data.",
+      "category": "ai",
+      "tags": [
+        "llm"
+      ],
+      "access": "private"
+    },
+    {
+      "id": "kb-052",
+      "question": "Provide your standard implementation methodology and estimated timeline.",
+      "answer": "Implementation Phases \n\nPhase 1 - First 60 days:\n\nDiscovery & Planning \n- Kickoff meeting with key stakeholders\n- Current state assessment of HR operations\n- Integration requirements gathering\n- Policy documentation collection and audit\n- Success criteria definition\n\nConfiguration & Integration \n- SCIM/SSO setup for user provisioning\n- HRIS integration (Workday) configuration\n- Microsoft Teams or Slack and email integration setup\n- Content ingestion (policies, procedures, org structure)\n- Admin portal configuration and permissions\n- Q&A capabilities\n- Intelligent Routing and triage\n- Ondemand coaching\n\nPhase 2 - Timing dependent on number of workflows\n\nAgentic Workflows:\n- scope high value agentic workflows\n- simple workflows can take just a couple days to build\n- complex workflows can take a couple of weeks to build\n- build additional workflows as needed\n\nCustomer Responsibilities:\n- Provide policy documentation and org structure data\n- Designate implementation team (HR Ops, HR Tech, HRBP leaders)\n- Complete integration prerequisites (API access, credentials)\n- Participate in weekly checkpoint meetings\n- Conduct internal change management and communications\n- Review and approve AI responses during certification phase\n\nVariables Affecting Timeline:\n- Number of workflows and integrations (simple vs. complex)\n- State of policy documentation (organized vs. requires cleanup)\n- Organizational readiness and stakeholder availability",
+      "category": "compliance",
+      "tags": [
+        "sso",
+        "api",
+        "audit",
+        "workday",
+        "slack",
+        "teams"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-053",
+      "question": "Provide examples of how your solution supports AI-powered Employee and Manager self-service workflows through integrations with Workday.",
+      "answer": "Harper supports comprehensive self-service capabilities with personalized responses:\n\nPolicy Questions & Guidance:\n- Instant answers to policy questions grounded in your company's documentation\n- Guidance through complex multi-step processes (e.g., requesting LOA, international work requests)\n- Interpretation of benefits, compensation, time-off policies\n\nRequest Workflows (sample use cases):\n- Job status change requests (part-time to full-time, relocation, title changes)\n- Time-off requests\n- Personal information updates in Workday\n- Travel verification and visa letter requests\n\nTransactions:\n- Benefits allocation changes (when integrated with benefits provider API)\n- Address and emergency contact updates\n- Direct deposit modifications\n\n\nHarper can gather information from users via natural language, structured forms, help produce stylized documents, and initiate actions in Workday on the user's behalf.",
+      "category": "ai",
+      "tags": [
+        "api",
+        "workday"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-054",
+      "question": "What measures do you use to mitigate AI hallucinations or bias?",
+      "answer": "Multi-Layered Hallucination Prevention:\n1. Grounding in Fact Database: Every response grounded in customer-specific policy library, precedent database, and verified HR knowledge base using\nadvanced RAG (Retrieval-Augmented Generation)\n\n2. Self-Validation Step: Harper includes validation layer where one model evaluates another's output for consistency, accuracy, and policy alignment\nbefore responding\n\n3. Human Guardrails: Harper escalates rather than invents when:\n- Policy is unclear, conflicting, or missing\n- Situation requires subjective judgment\n- Risk level is elevated\n- Legal interpretation needed\n\nThis involves techniques to suppress LLMs natural tendency toward sycophancy and to know what not to say. \n\n4. HRLM: Proprietary fine-tuned reasoning model generates HR-specific reasoning steps for given inquiries, acting as a checklist to ensure that important risk considerations are taken into account.\n\n5. Domain-Specific Algorithms: Proprietary algorithms ensure that all safety checks are followed deterministically on every user interaction.\n\n\nBias Mitigation:\n- Regular bias audits of model outputs across protected categories\n- Testing against diverse employee scenarios during implementation\n- Feedback loops identifying potential biased responses\n- HR advisor network reviews edge cases and policy interpretations\n- Transparent sourcing - Harper cites specific policies rather than making unsourced claims\n\nQuality Assurance Process:\n- Implementation includes simulation of hundreds of employee scenarios\n- Responses reviewed and certified before go-live\n- Continuous monitoring of response quality post-launch",
+      "category": "compliance",
+      "tags": [
+        "audit",
+        "llm"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-055",
+      "question": "Explain your monitoring and observability tools.",
+      "answer": "Infrastructure Monitoring:\n- Real-time system health monitoring\n- Application performance monitoring (APM)\n- Database performance tracking\n- API endpoint monitoring\n\nOperational Dashboards:\n- System uptime and availability metrics\n- Error rate tracking and alerting\n- Latency monitoring across services\n- Resource utilization metrics\n\nCustomer-Facing Analytics:\n- Interaction volume trends\n- Deflection and escalation rates\n- Response time metrics\n- Employee satisfaction scores\n- Topic analysis and trending issues\n- Time savings calculations\n\nAlerting:\n- Automated alerting for system anomalies\n- On-call engineering rotation for critical issues\n- Proactive notification to customers of any service impacts\n- Status page for real-time service status\n\nLogging and Audit Trails:\n- Comprehensive logging of all interactions\n- Audit trails for admin actions\n- Security event logging\n- Exportable logs for customer compliance needs\n\nQuality Monitoring:\n- AI response quality metrics\n- Bias monitoring across conversations\n- Continuous accuracy benchmarking",
+      "category": "security",
+      "tags": [
+        "api",
+        "audit"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-056",
+      "question": "Describe your hosting environment (e.g., cloud provider, single vs. multi-tenant).",
+      "answer": "Cloud Infrastructure:\n- Hosted on Amazon Web Services (AWS)\n- Multi-region availability with geographic redundancy\n- Single-tenant logical isolation per customer (multi-tenant infrastructure with strict data separation)\n\nArchitecture:\n- Microservices-based architecture for scalability and resilience\n- Containerized deployment using industry-standard orchestration\n- Auto-scaling capabilities to handle usage spikes\n\nSecurity:\n- SOC 2 Type I certified for infrastructure\n- SOC 2 Type II delivery scheduled for December 2025\n- Data encrypted at rest (AES-256) and in transit (TLS 1.2+)\n- Regular penetration testing and vulnerability assessments\n- DDoS protection and WAF (Web Application Firewall)\n\nCompliance:\n- GDPR compliant with data residency options\n- SOC 2 Type I audit report available",
+      "category": "security",
+      "tags": [
+        "encryption",
+        "soc2",
+        "gdpr",
+        "aws",
+        "penetration-testing",
+        "vulnerability",
+        "audit"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-057",
+      "question": "Outline your support model, SLAs, and escalation process.",
+      "answer": "Standard Support\n- Business hours support (9 AM - 6 PM ET, Monday-Friday)\n- Support via ticketing system or email\n- Response times by severity level \n\nEscalation Process:\n- 24/7 automated monitoring ensures platform availability and triggers immediate alerts for critical issues\n-  Customers can report issues by contacting their CSM or submitting a ticket \n-  Triage by Customer Success team based on severity\n-  Engineering escalation for technical issues\n-  Product team engagement for feature-related issues\n-  Executive escalation path for unresolved critical issues\n\nCustomer Success Model:\n- CSM assigned to each account\n- Proactive monitoring of usage and satisfaction metrics\n- Regular check-ins to review performance and optimization opportunities\n- Escalation management and advocacy",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-058",
+      "question": "Describe how your platform delivers a conversational, AI-driven experience across desktop, mobile, and Slack.",
+      "answer": "Harper delivers conversational AI-driven HR support through:\n\n\n- Natural Language Interaction: Employees interact with Harper using natural, unstructured language via multiple channels (Slack, Microsoft Teams, email, iOS/Android apps, and web application)\n\n- Always-On Availability: Harper provides 24/7 HR support with response times under 1 minute, eliminating wait times for employees\n\n- Context-Aware Conversations: Harper maintains conversation context throughout multi-turn interactions, remembering previous exchanges and building upon them naturally\n\n- Coaching-Based Approach: Harper is a professional class AI teammate for HR, who knows how to be the voice of HR whether it's a coaching conversation (ICF-modeled training), policy administration, or a complex HR process.\n\n- Multi-Channel Consistency: Employees receive the same high-quality, personalized experience regardless of which platform they use to interact with Harper\n\nKey Differentiators:\n- 94% accuracy on SHRM certification-style exam questions\n- Harper acts as a teammate and communicates with empathic tone while providing personalized responses, not just policy documents\n- Purpose-built Proprietary  HRLM (HR Language Model) trained specifically for HR domain expertise\n- Harper has an HRLM with deep HR expertise, the only one of it's kind for Agentic HR \n- Reasoning capabilities within Harper doesn't require programing keyword and decision tree programing for workflows like other platforms require",
+      "category": "compliance",
+      "tags": [
+        "slack",
+        "teams"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-059",
+      "question": "Explain how your system ensures data privacy and separation between customers.",
+      "answer": "Strict Data Isolation:\n- Zero data sharing or cross-contamination between customers\n\nPrivacy Architecture:\n- Customer data processed in logically separated environments\n- Data encrypted in transit (TLS 1.2+) and at rest (AES-256)\n- Role-based access controls ensure HR admins only see appropriate data\n\nModel Training Separation:\n- Foundation models (Anthropic, OpenAI) are used via API - customer data not used for training\n- Wisq has configured zero data retention (ZDR) with the AI systems used as part of the Wisq Platform\n- Any customer-specific tuning occurs in isolated environment\n\nCompliance:\n- SOC 2 Type I certified (2024)\n- SOC 2 Type II report delivery scheduled for December 2025\n- GDPR compliant with data sovereignty requirements\n\nData Retention:\n- Complete data deletion upon contract termination\n- Audit logs of all data access and processing",
+      "category": "security",
+      "tags": [
+        "encryption",
+        "soc2",
+        "gdpr",
+        "api",
+        "data-retention",
+        "audit",
+        "openai",
+        "anthropic",
+        "zdr"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-060",
+      "question": "Describe your approach to creating intuitive, accessible user experiences for global employee populations.",
+      "answer": "We design Harper to feel like a member of the HR team who works in the channels where employees are already asking questions and for support (e.g. shared inboxes, Slack, or Teams). Because of this, employees don't need to learn about a new system or change their existing behavior - Harper simply jumps in to help like member of the HR team would. Employees can just start chatting about whatever they need assistance with. Harper's underlying architecture is highly flexible unlike legacy chatbot products, enabling users to speak fluidly, using shorthand, partial sentences, and indirect language, and doesn't rely on pre-configured key phrases. In addition, users can use their voice to speak with Harper in Wisq's web and mobile apps.\n\nEvery employee interaction with Harper is personalized. Harper will always identify the particular user and pull in relevant context from your identity and HCM systems and memory of prior interactions, to ensure that her responses align with your policies and honor differences (e.g. by region, level, employee type, etc.).\n\nHarper understands 80+ languages and can respond in non-English languages if employees speak to her in non-English languages. \nToday, Harper supports employee bases in Asia, South America, North America, and Europe.",
+      "category": "integration",
+      "tags": [
+        "slack",
+        "teams"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-061",
+      "question": "Provide examples of how your solution supports AI-powered self-service and automation for HR Centers of Excellence (COEs) / functions, like Performance & Goals, Compensation & Total Rewards, Learning & Development, Talent Acquisition, People Analytics, etc.",
+      "answer": "Harper acts as an AI Generalist for HR, built on Wisq's HR-specific LLM and integrated with the organization's HCM, policy corpus, and knowledge base.\n\nHarper serves as both a frontline employee assistant and a COE operations enabler who immediately offloads a significant share of day-to-day questions from COEs, acting as the default responder and triaging to specific teams or team members when needed. This frees COEs from having to passively monitor intake channels such as shared inboxes.\n\nExamples of specific examples of further automation per COE include:\n\n- Performance & Goals: assisting employees in setting and updating goals, assisting employees in writing performance review feedback, and coaching leaders through performance concerns\n- Compensation & Total Rewards: answering benefits questions and helping employees change elections, helping managers work on role requisitions, spot bonuses, compensation change requests, and promotions\n- Learning & Development: offering always-on ICF-grade coaching to employees for everyday work concerns, linking to and referencing internal training materials and programs where appropriate\n- Talent Acquisition: assisting with onboarding, both for the employee and for the manager, delivering content, answering onboarding questions, and helping managers set up employees for success with routines like creating 30/60/90 day plans. \n- People Analytics: giving insight into top questions asked, time spent administering various HR programs, handoff and escalation rates, etc. Note that Harper is not designed to be do arbitrary data anlysis over 3rd-party data sources such as spreadsheets.\n\nHarper can also support customers with Employee Relations topics such as conduct issues.",
+      "category": "ai",
+      "tags": [
+        "teams",
+        "llm"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-062",
+      "question": "Describe the AI or LLM models that power your platform. Are they proprietary, open-source, or from third parties?",
+      "answer": "Model Architecture:\n- Wisq uses a constellation of best-in-class models from multiple providers including Anthropic (Claude), OpenAI (GPT models), Cohere, and fine-tuned open-source\nmodels\n- A single interaction with Harper could make 10-15 distinct AI model calls, each optimized for specific tasks\n- We continuously evaluate new models and upgrade when superior performance is demonstrated\n\nProprietary HRLM (HR Language Model):\n- Purpose-built HR reasoning layer trained specifically on HR domain knowledge\n- Proprietary model which resulted in a 94% score on the SHRM exam in just 18 minutes \n\nNot a Single Generic LLM:\n- Unlike vendors relying on single frontier models, Wisq orchestrates multiple specialized models\n- Different models enhanced with Wisq's proprietary HR reasoning algorithms handle different tasks: retrieval, risk assessment, HR policy analysis, coaching, and synthesis\n- This approach dramatically reduces hallucinations and improves domain accuracy",
+      "category": "ai",
+      "tags": [
+        "openai",
+        "anthropic",
+        "llm"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-063",
+      "question": "Describe your training approach for both administrators and end users.",
+      "answer": "Administrator Training:\nDuring Implementation:\n- Configuration and implementation sessions with Customer Success team\n- Content ingestion and admin portal walkthrough\n- Testing to ensure Harper's answers meet quality standards\n- Monitoring and analytics overview\n- Workflow-specific support and validation\nOngoing Support:\n- Quarterly business reviews\n- Release training for new features\n- Access to Customer Success team\n\nEnd User Training:\nPhilosophy: Harper's conversational interface requires minimal training - employees simply ask questions naturally.\nLaunch Support:\n- Employee communication launch templates\n- FAQ document for common questions",
+      "category": "implementation",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-064",
+      "question": "How does your company ensure ongoing innovation and customer success?",
+      "answer": "Product Development Process:\n- Active HR Advisory Network of sitting and former CHROs who review all features\n- Customer feedback directly influences roadmap priorities\n- Quarterly customer advisory board meetings\n- Continuous evaluation and integration of latest AI models and techniques\n\n\nCustomer Success Framework:\n\nProactive Engagement:\n- Regular business reviews analyzing usage, satisfaction, and ROI\n- Benchmarking against peer organizations\n- Feature adoption guidance and optimization recommendations\n- Early access to beta features for interested customers\n\nFeedback Integration:\n- Every employee interaction can be rated and commented on\n- Direct feedback reviewed by Product and CS teams\n- Documented feature requests tracked and prioritized\n- Transparency on roadmap status for customer requests\n\nContinuous Improvement:\n- Harper analytics surfaces opportunites for continued workflow automation\n- Regular policy assessment to identify gaps or conflicts\n- Quarterly accuracy benchmarking against HR certification standards\n- A/B testing of response strategies for optimization\n\nPartnership Approach:\n- Customers viewed as partners in product evolution\n- Co-development opportunities for strategic accounts\n- Case study participation highlighting success stories\n- Customer community for peer learning and best practice sharing\n\nInvestment in R&D:\n- Significant engineering resources dedicated to AI advancement\n- Partnerships with leading AI research organizations\n- Participation in HR technology industry groups\n- Commitment to responsible AI development and ethics",
+      "category": "compliance",
+      "tags": [
+        "teams"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-065",
+      "question": "Provide details on scalability and uptime guarantees (include metrics).",
+      "answer": "Scalability:\n\n- Cloud-native architecture that scales to meet demand\n- Regular capacity planning to proactively address anticipated needs\n\nUptime:\n\n- 99% uptime target\n- Proactive monitoring and alerting systems to identify and resolve issues quickly\n\nPerformance:\n\n- Designed to maintain reliable performance during peak usage periods\n- Consistent experience for employees",
+      "category": "company",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-066",
+      "question": "Describe how your AI roadmap aligns with enterprise-grade responsible AI standards.",
+      "answer": "Wisq's AI roadmap is anchored in enterprise-grade Responsible AI standards emphasizing fairness, accountability, transparency, and privacy. Our north star is to ensure Harper's actions are both effective and appropriate in enterprise HR contexts.\n\nTransparency:\n- Clear disclosure that Harper is AI-powered \n- Harper always cites the specific policies and sources used in her responses\n- Explains reasoning behind escalations and handoffs\n\nAccountability:\n- Human-in-the-loop for all consequential decisions\n- Clear escalation paths when AI should not decide\n- Audit trails of all AI recommendations and outcomes\n\nFairness:\n- Regular testing for bias across protected categories\n- Diverse HR advisor network reviews edge cases\n- Consistent policy application regardless of employee characteristics\n\nPrivacy:\n- Minimal data collection principle\n- Clear data usage policies\n- Employee control over personal information\n\nRoadmap (next 12 months):\n- Enhanced explainability features showing Harper's reasoning process\n- Improved transparency in model performance metrics, including development of an HR-specific evaluation framework",
+      "category": "compliance",
+      "tags": [
+        "audit"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-067",
+      "question": "Provide examples of how your solution supports AI-powered escalation to case management tool, escalation to human, and augmentation for HR specialists workflows (HR Operations supports).",
+      "answer": "Harper attempts to help employeees and deflect cases from reaching your team, or do as much pre-work as possible before handing off to your team. Broadly speaking, she hands off in 3 scenarios:\n\n1. Scenarios where you don't want her to help - we call these escalations. When one is triggered, a message is automatically triggered to the pre-configured escalation recipient.\n2. Scenarios where she can't help, either due to lack of knowledge or lack of system access, or believes that the user would like to be put in contact with a human - we call these hand offs. In these scenarios, Harper offers to hand off to the appropriate contact, and the user has a choice of accepting or rejecting.\n3. Scenarios where you have indicated that you would like humans to review Harper's work (\"human-in-the-loop\"). In these cases, Harper will work the case as she has been taught to do, then elevate them to your team to final review before completing the case and taking downstream actions, such as taking action in your HCM system. These steps are commonly added to specialist cases, especially during Harper's ramp phase, as we build trust that Harper is faithfully handling cases as you would expect. Over time and as we accrue repetitions, these human review steps may be taken out so that Harper acts fully autonomously.\n\nHandoffs and escalations can take place via whatever mechanism you would prefer, such as filing a ticket for a specific team/person, sending a private email, CC'ing the recipient, sending a Slack/Teams message, etc. This is all fully configurable.",
+      "category": "ai",
+      "tags": [
+        "slack",
+        "teams"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-068",
+      "question": "Describe your information security organization structure.",
+      "answer": "Chief Technology Officer (CTO): Responsible for the security program, policies, and compliance at Wisq. The CTO is also responsible for reviewing and approving Wisq's security policies on at least an annual basis and ensuring the policies are communicated throughout the organization.\n\nOperations and Security: Responsible for maintaining the availability of production infrastructure, and managing default. Members of the operations and security team may also be members of the engineering team. Also responsible for incident management, vulnerability management, and identification and evaluation of communication of its policies and procedures.",
+      "category": "security",
+      "tags": [
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-069",
+      "question": "Is there a person at the company who is responsible for data privacy? If yes, please provide the name, title and contact information.",
+      "answer": "Marc Pappalardo, Chief Data Protection Officer,  mpappalardo@wisq.com",
+      "category": "compliance",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-070",
+      "question": "Do you review your Information Security Policies at least once a year? How often they are updated and reviewed?",
+      "answer": "Yes, the Information Security Policy is reviewed at least once a year.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-071",
+      "question": "Do you have a formal Information Security Program (InfoSec SP) in place?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-072",
+      "question": "Is a formal disciplinary or sanction policy established for employees who have violated security policies and procedures?",
+      "answer": "Yes. The disciplinary policy is documented in the Employee Code of Conduct handbook.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-073",
+      "question": "Do you have a policy exception process?",
+      "answer": "Yes, Wisq has a formal exception process documented in our Vulnerability Management Policy. Exceptions require compensating controls to mitigate risk and must be approved by both the Security Team and impacted asset owner, with all exceptions tracked through our ticketing system.",
+      "category": "security",
+      "tags": [
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-074",
+      "question": "Have you signed Non-Disclosure Agreement with Model N for Model N data to be shared?",
+      "answer": "Yes",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-075",
+      "question": "List the business functions or units within the company that will have access to the Personal Data being collected.",
+      "answer": "The Wisq Customer Success team will have access. The Wisq Infrastructure team will have access if necessary.",
+      "category": "support",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-076",
+      "question": "Describe your information security training program for application developers.",
+      "answer": "Wisq developers are trained on the OWASP Top Ten and the SANS Top 25.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-077",
+      "question": "How do you ensure the return of all company assets (badge, keys, computer, phone, etc.) upon worker termination?",
+      "answer": "Wisq IT disables all system access upon exit and schedule asset return within 24-48 hours. For remote employees, we provide prepaid shipping labels. We perform remote data wipes on company devices and revoke all digital access.",
+      "category": "company",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-078",
+      "question": "Are new workforce members required to take the training prior to obtaining access credentials?",
+      "answer": "Yes",
+      "category": "support",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-079",
+      "question": "How do you keep aware of potential security vulnerabilities and threats that may affect your service?",
+      "answer": "Wisq follows government and industry notifications of security vulnerabilities and threats.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-080",
+      "question": "Do you have a formal change control process? If yes, please provide a copy of the document.",
+      "answer": "Yes - the change control process is documented in the Software Development Life Cycle policy.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-081",
+      "question": "Do you have the ability to remotely wipe or lock lost or stolen workstations and mobile devices?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-082",
+      "question": "Where and how have you implemented encryption of data at rest (i.e. laptops, desktops, servers, customer data, other systems)?",
+      "answer": "Wisq data are encrypted on all systems that use them. Data are encrypted at rest and in transit.",
+      "category": "implementation",
+      "tags": [
+        "encryption"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-083",
+      "question": "Do you encrypt all passwords in transit and storage? How?",
+      "answer": "Passwords are encrypted at rest and in transit. Password managers are used, as well as encrypted email, if necessary.",
+      "category": "data_protection",
+      "tags": [
+        "encryption"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-084",
+      "question": "Do you have a formal patch management process? If so please provide a copy of the document.",
+      "answer": "The Software Development Life Cycle policy describes patch management.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-085",
+      "question": "Do workstations lock automatically after a period of inactivity? If so, how long until they lock?",
+      "answer": "Wisq workstations and laptops are locked after an organizationally-enforced time period.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-086",
+      "question": "What systems are in the scope for vulnerability scans? How often do you run the scans?",
+      "answer": "All product systems are in scope for vulnerability scanning. We perform quarterly OWASP ZAP scans on the Wisq platform, AWS Inspector and GuardDuty monitoring on production infrastructure, and automated Drata security agent scanning on all employee machines.",
+      "category": "security",
+      "tags": [
+        "aws",
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-088",
+      "question": "Are all endpoint laptops that connect directly to production networks centrally managed?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-089",
+      "question": "Describe standard employee issued device security configuration/features. (Login Password, antimalware, Full Disk Encryption, Administrative Privileges, Firewall, Auto-lock, etc.)",
+      "answer": "Login Password, antivirus software, Full Disk Encryption, Firewall, Auto-lock, VPN",
+      "category": "security",
+      "tags": [
+        "encryption"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-090",
+      "question": "Do you allow direct access from the Internet to any backend systems (i.e. non-DMZ systems)? If yes, please explain.",
+      "answer": "Yes - access to backend systems requires VPN with authentication.",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-091",
+      "question": "Do you perform periodic review of firewall rules? If yes, how often?",
+      "answer": "Yes - at least annually",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-092",
+      "question": "Where have you implemented wireless networks? How do you segregate and secure wireless networks?",
+      "answer": "WPA and VPN are used on wireless networks.",
+      "category": "implementation",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-093",
+      "question": "Describe the type of remote access provided to your network and authentication required.",
+      "answer": "The Wisq Platform is cloud-based and access is provided with username, password, and 2FA or SSO.",
+      "category": "integration",
+      "tags": [
+        "sso"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-094",
+      "question": "How is your application security testing performed? Internal, third parties or both? If so, what is the cadence? Explain your methodology",
+      "answer": "Application security testing uses both internal and third-party methods. Internally, we conduct quarterly ZAP scans to identify web application vulnerabilities. Annual third-party penetration testing includes application-level security assessment. Our methodology covers common web application vulnerabilities including OWASP Top 10. All findings are tracked through our vulnerability management process with defined remediation SLAs.",
+      "category": "security",
+      "tags": [
+        "penetration-testing",
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-095",
+      "question": "Please summarise or attach your network vulnerability management processes and procedures?",
+      "answer": "The Vulnerability Management Policy is attached",
+      "category": "security",
+      "tags": [
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-096",
+      "question": "What is your timeframe for patching critical vulnerabilities on network infrastructure and devices?",
+      "answer": "Critical vulnerabilities must be remediated within 7 days, High within 14 days",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-097",
+      "question": "Do you segregate access management roles (e.g. access request, access authorization, and implementation)?",
+      "answer": "Yes",
+      "category": "implementation",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-098",
+      "question": "How do you regularly evaluate patches and updates for your infrastructure?",
+      "answer": "At least quarterly",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-099",
+      "question": "Do you publish a path for responisble disclosure of security vulnerabilities (ie security@ or /security)?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-100",
+      "question": "Do you have an established bug bounty program?",
+      "answer": "No, we do not have an established bug bounty program, but we have a responsible disclosure program.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-101",
+      "question": "How are built-in administrator accounts protected?",
+      "answer": "Default administrator accounts on all production systems are disabled. Users authenticate with individual user accounts and use sudo/elevation mechanisms to gain administrative (root) access when needed.",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-102",
+      "question": "Describe your process for removing logical access for users that have been terminated.",
+      "answer": "The HR and IT teams revoke access for terminated users.",
+      "category": "integration",
+      "tags": [
+        "teams"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-103",
+      "question": "How often do you review both accounts and access to systems and applications?",
+      "answer": "At least quarterly",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-104",
+      "question": "Are access rights reviewed and updated when a user changes roles within the company? How?",
+      "answer": "Yes - the HR and IT teams change access.",
+      "category": "integration",
+      "tags": [
+        "teams"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-105",
+      "question": "Does your organization have a Disaster Recovery and Business Continuity Plan that encompasses recovery plans for individual business processes and systems as well as facilities and infrastructure components?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [
+        "disaster-recovery"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-106",
+      "question": "Describe your backup solution. Do you encrypt backup media and are backups stored in a remote location?",
+      "answer": "Backups are managed via AWS Backup and stored in a separate region.",
+      "category": "data_protection",
+      "tags": [
+        "encryption",
+        "aws",
+        "backup"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-108",
+      "question": "Describe where your production and non-production systems that process or store our data are located (i.e. Cloud, 3rd party data center, server room in an office building, etc.).",
+      "answer": "Cloud - AWS",
+      "category": "other",
+      "tags": [
+        "aws"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-109",
+      "question": "When was the last time you tested your incident management plan?",
+      "answer": "September 2024",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-110",
+      "question": "Are alarms installed and regularly tested at all external doors and windows?",
+      "answer": "Our physical office does not have alarms installed. However, our infrastructure is hosted in Amazon Web Services cloud data centers, not in our physical office locations. Physical security including alarms, monitoring, and access controls for our data centers is managed by AWS as our cloud infrastructure provider.",
+      "category": "security",
+      "tags": [
+        "aws"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-111",
+      "question": "What kind of fire detection and suppression equipment is in place?",
+      "answer": "Fire extinguishers are maintained and tested twice annually.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-112",
+      "question": "Are office visitors verified, logged, and escorted while on the premises?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-113",
+      "question": "Is your service run from your own (a) data center, (b) the cloud, or (c) deployed-on premise only",
+      "answer": "(b) the cloud",
+      "category": "implementation",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-114",
+      "question": "Which data centers/countries/geographies are you deployed in?",
+      "answer": "US Oregon and North Virginia",
+      "category": "implementation",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-115",
+      "question": "Define the services that are outsourced or subcontracted in your service delivery supply chain.",
+      "answer": "The list of Wisq subprocessors is here: https://www.wisq.com/legal/subprocessors",
+      "category": "integration",
+      "tags": [
+        "sso"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-116",
+      "question": "Do you assess your third parties with? How do you ensure background checks are performed on third parties working on customer data?",
+      "answer": "Wisq reviews vendor security postures, such as SOC2 reports.",
+      "category": "security",
+      "tags": [
+        "soc2"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-117",
+      "question": "Do you have a formal secure software development life cycle process? Please provide a copy of the document.",
+      "answer": "Yes - the Software Development Life Cycle policy is attached.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-118",
+      "question": "How do you ensure security requirements are included in the systems development life cycle and software acquisition process?",
+      "answer": "Software development follows OWASP guidelines and regular penetration tests identify vulnerabilities, which are remediated according to severity.",
+      "category": "security",
+      "tags": [
+        "penetration-testing"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-119",
+      "question": "Describe all the components of the system and application that are shared with other customers (multi-tenanted).",
+      "answer": "The Wisq Platform is a SaaS product, therefore all components are shared with other tenants.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-120",
+      "question": "Has the software been fully tested by application security experts? If so, who performed the test and when?",
+      "answer": "A penetration test is run at least annually.  The last pentation test was performed in September 2024.",
+      "category": "security",
+      "tags": [
+        "penetration-testing"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-121",
+      "question": "Provide a description of the containment and isolation measures you provide in the case of multi-tenanted applications.",
+      "answer": "Tenant segregation is achieved based on tenant identification, such as with separate encryption keys and API requests routing based on tenant identification.",
+      "category": "integration",
+      "tags": [
+        "encryption",
+        "api"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-122",
+      "question": "Are there network based restrictions on who may access the application or system?",
+      "answer": "Yes",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-123",
+      "question": "Is there an administrator role and interface for the customer to add or remove users or manage the application? Please describe.",
+      "answer": "Yes, there is an admin role. Wisq also provides SCIM for automatic provisioning and deprovisioning of users.",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-124",
+      "question": "Do you have Web Application Firewalls (WAF) deployed on your externalized web interfaces?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-125",
+      "question": "What are the password complexity (e.g. alphabetic, numeric and special characters), minimum length, and re-use requirements for the application administrators? Users?",
+      "answer": "The Wisq application does not use traditional password authentication. Most customers use Single Sign-On (SSO) through their identity providers. As an alternative to SSO, we also offer email-based authentication where users receive a passcode via email to sign in.",
+      "category": "integration",
+      "tags": [
+        "sso"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-126",
+      "question": "Do employees/contractors have ability to remotely connect to your production systems? (i.e. VPN)",
+      "answer": "Yes - if an employee or contractor's job role requires access.",
+      "category": "company",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-127",
+      "question": "Are users forced to change their temporary passwords at first logon?",
+      "answer": "Wisq does not utilize passwords.",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-128",
+      "question": "Do the audit logs capture data access and system changes and include the access type, user ID, source IP and time/date in log files?",
+      "answer": "Yes",
+      "category": "compliance",
+      "tags": [
+        "audit"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-129",
+      "question": "Is a staging/pre-production system used to validate build artifacts before promotion to production?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-130",
+      "question": "Describe how threat modelling is incorporated in the design phase of development?",
+      "answer": "Our SDLC policy requires that security considerations be addressed when transforming product specifications into technical architecture, ensuring that functional, physical, interface, data, and security requirements are met as part of the system design process.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-131",
+      "question": "How do you monitor vulnerabilities in dependencies?",
+      "answer": "We use GitHub Dependabot for automated monitoring of vulnerabilities in our code dependencies. This tool continuously scans our repositories and alerts us to known security vulnerabilities in third-party libraries and packages, allowing us to update or remediate vulnerable dependencies as part of our vulnerability management process.",
+      "category": "security",
+      "tags": [
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-133",
+      "question": "List any current 3rd party security certifications, audits, or assessments including privacy certifications (e.g. HITRUST, ISO 27001, SOC2 Type 2, GDPR, CCPA, Privacy Shield etc.).",
+      "answer": "SOC2 Type 1, Wisq will be working on our SOC2 Type 2 in Q3 and Q4.",
+      "category": "security",
+      "tags": [
+        "soc2",
+        "gdpr",
+        "ccpa",
+        "audit"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-134",
+      "question": "What regulatory compliance and Privacy requirements is your company subject to (e.g. HIPAA, GDPR, PCI, etc.)?",
+      "answer": "GDPR, CCPA",
+      "category": "compliance",
+      "tags": [
+        "gdpr",
+        "ccpa",
+        "hipaa"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-135",
+      "question": "Do you have an internal compliance or audit function? Please describe.",
+      "answer": "The Wisq Security team handles compliance tasks.",
+      "category": "security",
+      "tags": [
+        "audit"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-136",
+      "question": "Does the organization have processes to ensure data integrity throughout the AI system lifecycle?",
+      "answer": "Yes",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-137",
+      "question": "Are datasets appropriately tracked and verified via cryptographic hash before use?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-138",
+      "question": "Has a data policy been developed that includes the privacy and protection of sensitive data types?",
+      "answer": "Yes",
+      "category": "compliance",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-139",
+      "question": "Does the organization review its model training code within an appropriate environment?",
+      "answer": "N/A - Wisq currently does not develop, train, nor deploy our own models",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-140",
+      "question": "How does the organization secure its AI systems prior to deployment?",
+      "answer": "N/A - Wisq currently does not develop, train, nor deploy our own models",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-141",
+      "question": "How does the organization secure and manage the underlying network where the AI system resides?",
+      "answer": "N/A - Wisq currently does not develop, train, nor deploy our own models",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-142",
+      "question": "How does the organization log and monitor its AI systems and supporting infrastructure?",
+      "answer": "N/A - Wisq currently does not develop, train, nor deploy our own models",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-143",
+      "question": "Does the organization have processes to ensure that AI systems can be remediated and recovered after an incident?",
+      "answer": "N/A - Wisq currently does not develop, train, nor deploy our own models",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-144",
+      "question": "How do you manage and control access to your AI systems, models, and related data?",
+      "answer": "Wisq has conducted due diligence on the AI systems used as part of the Wisq Platform.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-145",
+      "question": "What processes do you have in place for ongoing risk assessment, management, and compliance with relevant regulations?",
+      "answer": "Wisq's AI guardrails are outlined in the AI Governance Policy, which ensures that all use of AI is responsible, ethical, and compliant with legal and regulatory standards.",
+      "category": "compliance",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-146",
+      "question": "What processing role does the tool play with respect to collection of this data?",
+      "answer": "Wisq utilizes employee data to provide contextually relevant responses to HR Generalist questions.",
+      "category": "company",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-147",
+      "question": "Can a user or admin communicate with the AI feature using prompts?",
+      "answer": "Users can communicate with Wisq's AI feature by asking questions through the platform's conversational interface.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-148",
+      "question": "Can it be prompted with creation of python exploits?",
+      "answer": "The Wisq Platform follows secure programming practices that ameliorates Python injection attacks.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-149",
+      "question": "Can the tool work well with a cloud proxy?",
+      "answer": "Wisq does not offer cloud proxy services. Wisq is a SaaS platform that customers access directly through standard web connectivity.",
+      "category": "company",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-150",
+      "question": "How does the integration work with Microsoft SharePoint? Provide us the security features available to ensure strong authentication and authorization in place.",
+      "answer": "Yes. Our SharePoint integration uses Microsoft OAuth authentication with user-based access control. Access is strictly limited to only what the connecting SharePoint user can view.",
+      "category": "security",
+      "tags": [
+        "sharepoint"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-151",
+      "question": "Provide us the architecture diagram of the tool including the components and its connectivity.",
+      "answer": "The Wisq Network Diagram is attached.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-152",
+      "question": "Does the organization have processes to log and monitor AI systems and infrastructure?",
+      "answer": "N/A - Wisq currently does not develop, train, nor deploy our own models",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-153",
+      "question": "Are APIs used and exposed over internet for interacting with application data?",
+      "answer": "Yes",
+      "category": "integration",
+      "tags": [
+        "api"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-154",
+      "question": "What percentage of your production code is covered by automated tests?",
+      "answer": "Over 80% of the code is covered by automated tests",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-155",
+      "question": "Do developers ever have access to production environments or sensitive data? If so, why and what is your process for managing that access?",
+      "answer": "Developers have access to production environments for debugging purposes only. Developers request access for a specific purpose, it must be approved by management, and the access is revoked when the purpose is complete.",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-156",
+      "question": "Who owns the code that the tool generates, if any and used in our product. Do we need to contribute back to any open source community?",
+      "answer": "The Wisq Platform does not generate code.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-157",
+      "question": "How do users and systems authenticate to the system or application? Distinguish between systems, end users, and administrators.",
+      "answer": "Authentication can be done with SSO or username and passcodes.",
+      "category": "integration",
+      "tags": [
+        "sso"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-159",
+      "question": "Do you have a formal access management process? If yes, please provide a copy.",
+      "answer": "The Wisq System Access Control Policy is attached.",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-160",
+      "question": "How do you train developers in SSDLC / Secure Coding Practices?",
+      "answer": "Individuals responsible for supporting or writing code for internet-facing applications or internal applications handling customer information must complete annual security training specific to secure coding practices. The training includes OWASP secure development principles and OWASP Top 10 vulnerability awareness.",
+      "category": "security",
+      "tags": [
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-161",
+      "question": "What techniques do you use to enhance the interpretability and explainability of your AI models?",
+      "answer": "N/A - Wisq currently does not develop, train, nor deploy our own models",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-162",
+      "question": "Did the AI tool(s) undergo any third party penetration testing and attestations?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [
+        "penetration-testing"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-163",
+      "question": "Are security personnel on duty and monitoring the environment 24 hours a day and 7 days a week?",
+      "answer": "Wisq does not have dedicated 24/7 security personnel. However, our production systems are hosted on Amazon Web Services, which provides 24/7 physical security monitoring and personnel at their data centers where our infrastructure is located.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-164",
+      "question": "Do you have a procedure defined for encryption key management, including methods to deal with the protection of the keys, recovery of keys or information, and revocation of keys?",
+      "answer": "Yes",
+      "category": "data_protection",
+      "tags": [
+        "encryption"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-165",
+      "question": "Is the system configured not to provide help messages during a failed log-on attempt that would specify part of the logon credentials?",
+      "answer": "Yes",
+      "category": "support",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-166",
+      "question": "Do you perform periodic assessments to identify and areas information security risks? If yes, how often do you perform the assessments and what type of assessments?",
+      "answer": "Wisq performs an annual risk assessment.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-167",
+      "question": "Are models continuously retrained as new training data flows into training pipelines?",
+      "answer": "N/A - Wisq currently does not develop, train, nor deploy our own models",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-168",
+      "question": "How often are disaster recovery and business continuity plans tested?",
+      "answer": "At least annually",
+      "category": "other",
+      "tags": [
+        "disaster-recovery"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-169",
+      "question": "Describe how access is controlled to the facility and IT equipment.",
+      "answer": "Access to the facility is via office key. Only IT personnel have access to IT equipment.",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-170",
+      "question": "Do you have a Information security risk management program (InfoSec RMP)?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-171",
+      "question": "Do you and/or a third party perform periodic penetration testing of your infrastructure? If yes, when was the last test performed?",
+      "answer": "The most recent penetration test was September 2024.",
+      "category": "security",
+      "tags": [
+        "penetration-testing"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-172",
+      "question": "Specify if the tool connects to third party components like OpenAI for solving the prompts using OpenAI LLMs.",
+      "answer": "Yes",
+      "category": "ai",
+      "tags": [
+        "openai",
+        "llm"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-173",
+      "question": "Do you have management support or a security management forum to evaluate and take action on security risks?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-174",
+      "question": "Describe your security incident management process. Please provide a copy of the incident management plan and table top exercise.",
+      "answer": "The Wisq Security Team meets to discuss incident scenarios. The table top exercise is attached.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-175",
+      "question": "For Providing services to Model N, does any of your organization employees require access to Model N environments / Systems Physically or logically?",
+      "answer": "If integration with HRIS systems is required, then Wisq will need access to some Model N environments.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-176",
+      "question": "How do you log and alert on relevant security events? (this includes the network and application layer)?",
+      "answer": "Wisq uses both AWS Inspector (Vulnerability management for the EC2 workloads) and AWS Guardduty (intelligent threat detection service and protects the Wisq AWS account).",
+      "category": "security",
+      "tags": [
+        "aws",
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-177",
+      "question": "What ethical principles, frameworks, and governance processes guide your AI development and deployment?",
+      "answer": "Wisq's AI guardrails are outlined in the AI Governance Policy, which ensures that all use of AI is responsible, ethical, and compliant with legal and regulatory standards. The policy emphasizes transparency, accountability, and data privacy, requiring employees to use AI systems in ways that avoid harm, respect privacy, and mitigate bias.",
+      "category": "compliance",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-178",
+      "question": "How do you ensure outsourcers and subcontractors meet your security requirements? Please describe your third-party risk management process.",
+      "answer": "Wisq reviews vendor security postures, such as SOC2 reports.",
+      "category": "security",
+      "tags": [
+        "soc2"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-179",
+      "question": "If APIs are used, explain how API calls are authenticated? Which type of authentication mechanism is used? (Ex: OAuth & OpenID connect, JWT, Certificates etc.)",
+      "answer": "APIs require tokens for authentication.",
+      "category": "compliance",
+      "tags": [
+        "api"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-180",
+      "question": "How do you ensure transparency, accountability, and fairness in your AI systems, particularly in critical decision-making scenarios?",
+      "answer": "Wisq's AI guardrails are outlined in the AI Governance Policy, which ensures that all use of AI is responsible, ethical, and compliant with legal and regulatory standards.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-181",
+      "question": "Do you employ a firewall to segregate your corporate network form the Internet?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-184",
+      "question": "Are your systems inventoried? Do you keep track of which systems store, transmit, or process sensitive information?",
+      "answer": "Yes - Wisq systems are inventoried.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-185",
+      "question": "How does the organization identify and manage security incidents related to, or impacting AI systems?",
+      "answer": "Wisq subscribes to status updates from the AI systems used as part of the Wisq Platform.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-186",
+      "question": "What tools do you use for application vulnerability management?",
+      "answer": "We use Jira as our primary vulnerability tracking system to create, assign, prioritize, and track remediation of security findings.",
+      "category": "security",
+      "tags": [
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-187",
+      "question": "Describe the interfaces into the application or system (i.e. FTP to the system, HTTPS web access to the application, SSH to the system, etc.).",
+      "answer": "HTTPS for web access, SSH to servers, various clients for data stores",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-188",
+      "question": "What data is required to be shared as part of delivering services to Model N? If any data needs to be shared, what is the mode of data transfer?",
+      "answer": "Wisq needs Model N user first name, last name, and email address. The data will be provided via enterprise-standard user licensing provisioning methods. Users are provisioned via HRIS integration or SCIM protocol (preferred methods), or SSO with JIT (Just-In-Time) auto-provisioning.  All user access is managed through role-based permissions.",
+      "category": "ai",
+      "tags": [
+        "sso"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-189",
+      "question": "Do you maintain Intrusion Detection Systems, Intrusion Prevention Systems, web application firewalls, or database firewalls? If so, which ones and what coverage do they provide? Do they cover the systems or applications that apply to our account?",
+      "answer": "Yes - The Wisq Platform uses IDS, IPS, and web application firewalls.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-190",
+      "question": "How do you control and detect unauthorized software?",
+      "answer": "Antivirus software is run on user endpoints workstations, laptops, and servers.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-191",
+      "question": "Does the tool look at other files in the same organization to solve prompts?",
+      "answer": "Yes, Wisq leverages the customer's knowledge base, documents, and organizational content to deliver contextually relevant and accurate answers that are specific to the organization's policies, procedures, and information.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-192",
+      "question": "What security controls and practices do you have in place to protect your AI systems from unauthorized access, tampering, or misuse?",
+      "answer": "Wisq has conducted due diligence on the AI systems used as part of the Wisq Platform.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-193",
+      "question": "If APIs are used, explain whether APIs calls are logged and monitored",
+      "answer": "Yes",
+      "category": "integration",
+      "tags": [
+        "api"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-194",
+      "question": "How do you ensure code is being developed securely?",
+      "answer": "Software development follows OWASP guidelines and regular penetration tests identify vulnerabilities, which are remediated according to severity.",
+      "category": "security",
+      "tags": [
+        "penetration-testing"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-195",
+      "question": "Explain how the user prompts are applied only on the custom data that we have on Confluence and Sharepoint but not on the entire data on the internet",
+      "answer": "Wisq's AI system prioritizes and leverages the customer's data from your organization's sources to provide organization-specific responses. However, the system also draws upon the broader knowledge contained within the underlying large language models (LLMs) when necessary to provide comprehensive and accurate answers. This hybrid approach ensures responses are both contextually relevant to the organization while maintaining access to general knowledge and best practices when customer-specific information is insufficient.",
+      "category": "ai",
+      "tags": [
+        "aws",
+        "sharepoint",
+        "llm"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-197",
+      "question": "Does the organization ensure the secure storage of data based on its classification?",
+      "answer": "Yes",
+      "category": "data_protection",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-209",
+      "question": "How do you involve relevant stakeholders, including customers, in your AI governance processes?",
+      "answer": "The Wisq AI Governance Board oversees all AI initiatives, conducts regular reviews, and manages incident reporting to maintain high standards of fairness and security.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-210",
+      "question": "How long does the tool / module retain the data which is collected?",
+      "answer": "The Wisq Data Retention Policy is attached.",
+      "category": "data_protection",
+      "tags": [
+        "data-retention"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-213",
+      "question": "Where is the tool hosted? How it treats customer data?",
+      "answer": "The Wisq Platform is hosted in AWS.",
+      "category": "other",
+      "tags": [
+        "aws"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-214",
+      "question": "Can a user or admin communicate with the AI feature using prompts? If yes, How the prompts are securely transmitted?",
+      "answer": "Yes. A user communicates with AI via the Wisq Platform. The prompts are encrypted in transit.",
+      "category": "ai",
+      "tags": [
+        "encryption"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-215",
+      "question": "Did it undergo any third party penetration testing and attestations?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [
+        "penetration-testing"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-228",
+      "question": "How does the tool use and share the collected data?",
+      "answer": "Wisq uses the data to help Model N employees get help from HR",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-229",
+      "question": "Does the model design and training algorithm include explicit or implicit model regularization?",
+      "answer": "N/A - Wisq currently does not develop, train, nor deploy our own models",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-230",
+      "question": "Describe the types of background checks performed for employees. Describe the types of background checks performed for contractors. Are there regional differences?",
+      "answer": "Wisq requires background checks for employees upon hire.  Wisq completes the background check which includes County Criminal Search, Global Watchlist Search, National Criminal Search, Sex Offender Search, and Ssn Trace.",
+      "category": "company",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-231",
+      "question": "Are privileges assigned on a need-to-know and least privilege basis? Please describe.",
+      "answer": "Yes, access is granted based on minimum necessary job functions with default role-based permissions. Additional access requires formal justification and approval through our ticketing system. We conduct quarterly access reviews to ensure continued alignment with least privilege principles and modify access as needed.",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-232",
+      "question": "Are all external transmissions of sensitive data encrypted? Internal transmissions? If so how? If not, what are the exceptions?",
+      "answer": "External transmissions of data, including data stores, are encrypted at rest and in transit. Internal transmissions are encrypted at rest.",
+      "category": "data_protection",
+      "tags": [
+        "encryption"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-233",
+      "question": "Have you researched your cloud providers best security practices?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-234",
+      "question": "How do you notify us of security incidents? Will we be notified within 24 hours of a confirmed breach of our data?",
+      "answer": "The Wisq Incident Response Plan is attached which includes these details.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-235",
+      "question": "Do you have a formal security and privacy awareness and training program? If yes, describe your end user information security and privacy training and awareness program.",
+      "answer": "Yes  - Wisq's annual security training is required for all employees and covers security and privacy requirements.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-236",
+      "question": "Are production and non-production environments running on separate hardware? Are production and non-production environments segregated at the network level?",
+      "answer": "Yes - separate hardware. Yes - segregated at the network level.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-237",
+      "question": "Are the workforce members required to retake the training annually?",
+      "answer": "Yes",
+      "category": "support",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-238",
+      "question": "Does the tool provides any copy righted code?",
+      "answer": "The Wisq Platform does not generate code.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-239",
+      "question": "Do you maintain a bill of materials for third party libraries or code in your service?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-240",
+      "question": "Do you have a formal information security policy? If yes, describe your information security policy and standard development process and provide a copy of the document (s).",
+      "answer": "Wisq's Information Security Policy is a comprehensive framework designed to protect the company's information assets, maintain data confidentiality, integrity, and availability, and establish clear security guidelines for all personnel. Key objectives include protecting information from internal and external threats, enabling secure information sharing, ensuring consistent professional use of information, minimizing business damage, and protecting the company from legal liability. Please download the policy at the trust center \nhttps://app.drata.com/trust/9cb93956-0c38-11ee-865f-029d78a187d9.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-241",
+      "question": "How are the prompts are securely transmitted?",
+      "answer": "All communication is encrypted in transit.",
+      "category": "data_protection",
+      "tags": [
+        "encryption"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-242",
+      "question": "Please summarise or attach your application vulnerability management processes and procedures.",
+      "answer": "The Vulnerability Management Policy is attached",
+      "category": "security",
+      "tags": [
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-243",
+      "question": "Describe your controls for preventing unauthorized devices from connecting to your network.",
+      "answer": "Physical access to Wisq facilities is restricted and controlled. Network access requires authorized user credentials with MFA where supported. All company devices are managed through our asset management system, and we maintain an inventory of authorized devices. Firewalls are enabled on all workstations, and our network monitoring tools (AWS GuardDuty, CloudWatch) detect and alert on suspicious network activity.",
+      "category": "security",
+      "tags": [
+        "aws",
+        "mfa"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-245",
+      "question": "Describe the controls you have in place to mitigate denial of service attacks.",
+      "answer": "The Wisq Platform uses AWS Cloudfront, which provides protection against Layer 3 and 4 DDOS attacks. In addition, Wisq uses rate limiting on the WAF to provide some application-layer protection against DDOS attacks.",
+      "category": "other",
+      "tags": [
+        "aws"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-248",
+      "question": "Do you have formal security committee or counsel? Who is included on these Council and how often the meetings are conducted?",
+      "answer": "The security council consisting of the CTO and the Operations and Security team meets at least annually.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-249",
+      "question": "Data Centre Location(s) (relative to services provided)",
+      "answer": "US Oregon and North Virginia",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-250",
+      "question": "Does the organization have processes to identify and manage security incidents involving AI systems?",
+      "answer": "N/A - Wisq currently does not develop, train, nor deploy our own models",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-252",
+      "question": "Does the organization have processes to secure the network hosting the AI system?",
+      "answer": "N/A - We do not operate our own AI systems or host AI infrastructure.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-253",
+      "question": "What types of security reviews do you perform on custom-built software?",
+      "answer": "Our security reviews include: peer code reviews by individuals other than the original author who are knowledgeable in secure coding practices, pre-deployment end-to-end testing in non-production environments, quarterly ZAP vulnerability scans, annual third-party penetration testing, and security risk assessments during the technical design phase to identify applicable security requirements and controls.",
+      "category": "security",
+      "tags": [
+        "penetration-testing",
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-254",
+      "question": "Explain how your system personalizes knowledge and task responses based on user data such as role, location, and department.",
+      "answer": "Harper personalizes responses through:\n\n- Employee Profile Integration: Harper pulls relevant, predefined data from your identity magement system via the SCIM protocol, and your HRIS (Workday integration available) including role, location, tenure, manager, and\nemployment status to provide contextually relevant answers \n\n- Role-Based Content: Responses are tailored based on whether the user is an IC, manager, or HR team member, with appropriate information and action\nitems for each\n\n- Policy Relevance and Access Control: Wisq can support both company policy architectures in which some policies are only visible to certain groups of employees (e.g. \"Policy A is only visible to Director+\"), or those in which policies are globally visible but locally relevant.  Harper applies your company-specific policies and procedures to every interaction rather than generic HR guidance\n\n- Geographic Awareness: Harper understands and responds with awareness of location-specific regulations, leave policies, and compliance requirements (supports 50 US states' labor laws)\n\n- Memory & Historical Context: Harper remembers past interactions and open cases with the employee to provide continuity\n\nLearning Mechanisms:\n- During implementation, Harper is trained on your specific policies, workflows, and organizational structure\n- Post-deployment, Harper learns from admin and employee feedback on every interaction\n- Customer Success team reviews feedback and tunes Harper's behavior continuously",
+      "category": "compliance",
+      "tags": [
+        "aws",
+        "workday"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-255",
+      "question": "Can administrators review, correct, and audit AI-generated outputs?",
+      "answer": "Real-Time Oversight:\n- Admin dashboard provides live view of all Harper interactions, highlighting metrics like deflection/handoff rate, escalation rate, along with breakdowns by particular topic/COE\n- Admins are also given access to a real-time case activity log where they can review activities, conversation transcripts, documents created, etc. for every case\n- Full data can be exported at any time for fine-grained analysis\n\nProactive Case Reporting:\n- Wisq's CS and Agent Engineering teams proactively identify cases that Harper is handing off due to lack of knowledge, ambiguity, etc. and elevate them to you as potential training opportunities\n\nAlways-on feedback loop:\n- Users are asked for feedback on their interactions with Harper. All feedback is made available in reporting to you.\n\nRegular Automated Evaluation:\n- As part of implementation, we work with your team on creating a test set of interactions that you expect between your employees and Harper, along with your own annotation of what \"good\" looks like. We then use that to continually test and monitor Harper's performance, ensuring no degradation as we improve the product and enabling you to easily observe Harper's performance across a wide data set. \n\nIf a particular sample is identified where Harper's response doesn't align with your standards, we modify Harper's knowledge via policy update or directly \"teaching\" Harper a particular fact, or modifying Harper's configuration and guardrails to proactively hand off inquiries like this one moving forward.",
+      "category": "compliance",
+      "tags": [
+        "audit",
+        "teams"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-256",
+      "question": "Outline your system's integration approach with Workday, ServiceNow, and Slack.",
+      "answer": "Workday\n\nHarper connects to Workday through secure REST and SOAP APIs, as well as RaaS reports, allowing her to read employee data, submit requests, and initiate workflows on behalf of your employees-all while respecting your configured business processes and security policies.\n*        We can integrate with any Workday endpoint that's publicly exposed (API, web service, file interface, orchestration entry point), as long as security / permissions allow.\n*        The depth (read vs write, real-time vs batch) depends heavily on how your Workday tenant has been configured and which integration channels you have enabled.\n*        We take a scoped approach: first focus on highest-value use cases, then validate available endpoints, then build.\nIntegration Method Summary:\n*        Secure API connection via Integration System User (ISU)\n*        Works with any Workday module that has API access\n*        Respects all Workday security policies and business process configurations\n\nFuture Integration Path:\nWorkday has recently announced the Agent Gateway and Agent System of Record (ASOR). Full technical details of this are not public yet, with GA expected in 2026, but this may afford Wisq/Harper an alternative means of integrating with Workday via agent-to-agent protocols such as MCP and A2A. As details become available, we will update our customers on new opportunities this may afford.\n\nSandbox-First Development\nOur team develops and tests exclusively in your sandbox environment, fully managing authentication, endpoint configuration, and data mapping. Your IT team only needs to provision the required API credentials and role permissions-after that, we handle the rest.\n\n\nSlack \n- Harper available via direct message\n- Can be added to public #AskHR channels (responds via DM to preserve privacy)\n- Harper appears as an app, not a person\n\nServiceNow:\n- Harper can create tickets in ServiceNow via email forwarding\n- Harper can be configured to route specific inquiry types to ServiceNow queues\n\nIntegration Approach:\n- RESTful APIs for system integrations\n- OAuth 2.0 authentication where supported\n- Webhook support for real-time updates\n- Rate limiting and error handling built-in\n- Comprehensive logging for troubleshooting",
+      "category": "security",
+      "tags": [
+        "api",
+        "workday",
+        "slack"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-257",
+      "question": "Attach a high-level architecture diagram or data flow overview.",
+      "answer": "Attached in section 1 due to no attachment option in this section",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-258",
+      "question": "Specify your guaranteed uptime percentage and maintenance windows.",
+      "answer": "Target Uptime Percentage: 99%.  Wisq will provide at least 72 hours prior notice if downtime maintenance is required.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-259",
+      "question": "How are your systems or virtual images hardened? Do you have configuration or build standards that specify which operating systems components and services should be disabled or configured during or after an installation?",
+      "answer": "Wisq Platform servers are hardened using manufacturer-provided hardening guides, CIS benchmarks, disabling unnecessary protocols, regular patching, and malware protection.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-261",
+      "question": "Where is the tool hosted?",
+      "answer": "The Wisq Platform is hosted in AWS.",
+      "category": "other",
+      "tags": [
+        "aws"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-262",
+      "question": "Do you do static code analysis?",
+      "answer": "We use GitHub Dependabot for automated dependency vulnerability scanning to identify known security issues in our code dependencies. Our security testing also includes peer code reviews, quarterly OWASP ZAP scans, and annual penetration testing.",
+      "category": "security",
+      "tags": [
+        "penetration-testing",
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-265",
+      "question": "Are the workforce members required to sign acceptable use agreement?",
+      "answer": "Wisq workforce members acknowledge the Acceptable Use Policy, but do not need to sign it.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-266",
+      "question": "(Only applicable if your company/data centers are based in the US) For the provision of services, do you process EU citizens' personal data?",
+      "answer": "Yes",
+      "category": "company",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-267",
+      "question": "Does sensitive or private data ever reside on endpoint devices? How do you protect endpoint assets?",
+      "answer": "Sensitive data are sometimes temporarily used on endpoint devices for specific tasks - they are deleted as soon as the task is complete. Endpoint assets are managed centrally.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-268",
+      "question": "Does the organization collect, process, create or use Artificial Intelligence or Large Language Models (LLM) in its products and/or services?",
+      "answer": "Yes",
+      "category": "ai",
+      "tags": [
+        "llm"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-269",
+      "question": "Do you have redundant network infrastructure and Internet routes through different ISPs to fail over in case of denial of service attacks or link unavailability?",
+      "answer": "The Wisq Platform is cloud-based and the company is remote-first, so there is a built-in distribution of different ISPs.",
+      "category": "company",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-270",
+      "question": "Do the tool have a chat feature? can it be prompted with creation of python exploits?",
+      "answer": "Yes, there is a chat feature. The Wisq Platform follows secure programming practices that ameliorates Python injection attacks.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-271",
+      "question": "After how many consecutive unsuccessful logon attempts will accounts be locked?",
+      "answer": "The Wisq application does not implement account lockout functionality. Most customers authenticate through their SSO providers, where account lockout policies would be managed by their own identity systems (Active Directory, Okta, etc.). For customers using our email-based passcode authentication, we do not lock accounts after unsuccessful attempts.",
+      "category": "integration",
+      "tags": [
+        "sso"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-273",
+      "question": "If yes, are you connecting to Model N network through Model N provided laptop?",
+      "answer": "No - the connection will be made via the Wisq Platform",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-274",
+      "question": "Describe the use of encryption within the application to protect data (including data at rest, in transit, in processor or memory, etc.).",
+      "answer": "Data are encrypted at rest and in transit. Wisq utilizes multiple layers of protection. The PII data is doubly encrypted (disk-level, and app-level) at rest, using a randomly generated key that's unique to the user. The user encryption keys themselves are encrypted using a per-client key, which is in turn encrypted by the AWS Key Management service.",
+      "category": "integration",
+      "tags": [
+        "encryption",
+        "aws",
+        "sso"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-275",
+      "question": "Is multi-factor authentication (MFA) enabled for the application access and production environmet access for all employees/contractors and third parties?",
+      "answer": "Wisq recommends all customers implement SSO for sign-in to the Wisq platform.",
+      "category": "integration",
+      "tags": [
+        "sso",
+        "mfa"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-278",
+      "question": "Do your information security and privacy policies align with industry standards (ISO-27001, NIST Cyber Security Framework, ISO-22307, CoBIT, etc.)?",
+      "answer": "Wisq complies with the SOC2, GDPR, and CCPA industry standards.",
+      "category": "security",
+      "tags": [
+        "soc2",
+        "gdpr",
+        "ccpa"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-281",
+      "question": "Do regular users have administrative access to their workstations?",
+      "answer": "Yes",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-283",
+      "question": "When no longer needed, are drives and tapes containing sensitive information physically destroyed or sanitized? Describe how.",
+      "answer": "Drives may be destroyed by incineration or shredding, or the data may be securely erased if the drive will be reused within the company. Whole-disk encryption is used to further protect data before disposal.",
+      "category": "company",
+      "tags": [
+        "encryption"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-285",
+      "question": "Do you have a policy prohibiting the use of shared user accounts? If you allow shared accounts, please explain.",
+      "answer": "Shared accounts are prohibited.",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-286",
+      "question": "Do you have a due diligence policy and process to review third-party service providers?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-287",
+      "question": "Do you complete pre-employment criminal background checks for all employees?",
+      "answer": "Yes",
+      "category": "company",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-288",
+      "question": "Do you enforce minimum password length and complexity rules?",
+      "answer": "Yes",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-289",
+      "question": "Is strong cryptography used to protect Sensitive Data (e.g., personal data, card data, financial data, and other business data) when at rest and during transmission?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-290",
+      "question": "Please provide name and address of backup data center",
+      "answer": "The backup data center is located in US North Virginia (us-east-1).",
+      "category": "data_protection",
+      "tags": [
+        "backup"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-291",
+      "question": "Do employees with administrative/elevated user roles require multi-factor authentication for network/system access?",
+      "answer": "Yes",
+      "category": "company",
+      "tags": [
+        "mfa"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-292",
+      "question": "Are all production systems updated within 30 days of the latest critical security releases?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-293",
+      "question": "Are industry-accepted internal and external vulnerability tests performed on a quarterly basis?",
+      "answer": "Quarterly Internal and Annually External",
+      "category": "security",
+      "tags": [
+        "vulnerability"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-294",
+      "question": "Do you use adversarial training techniques to enhance model resilience?",
+      "answer": "Yes, the Wisq platform protects against prompt injections and the AI vendors protect their models against adversarial attacks.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-295",
+      "question": "Are training datasets validated for accuracy and security?",
+      "answer": "Yes, the Wisq AI model is still experimental and not released yet.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-296",
+      "question": "Do you test AI models for bias and fairness?",
+      "answer": "Yes, Wisq conducts bias and fairness testing.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-297",
+      "question": "Do you have a documented Incident Response Plan (IRP) that would outline how your company detects, responds, and reduces the effects of an information security event?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-298",
+      "question": "Are vendor default settings and passwords reviewed and changed before new systems are promoted into production?",
+      "answer": "Yes",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-299",
+      "question": "Do all desktops and/or laptops have personal firewalls installed?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-300",
+      "question": "Do you ensure that AI models do not use customer prompt and response data to train/re-train the model?",
+      "answer": "Yes, Wisq has set up Zero Data Retention with AI model vendors.",
+      "category": "ai",
+      "tags": [
+        "data-retention",
+        "zdr"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-301",
+      "question": "Are version controls and logs maintained for AI models?",
+      "answer": "Yes, Wisq maintains model version configurations.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-302",
+      "question": "Does the vendor provide mechanisms for explaining AI decisions (e.g., through model interpretability or transparency).",
+      "answer": "Yes, the Wisq platform logs its chains of thoughts.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-303",
+      "question": "Has your company established policies for AI system incident response, or confirmed that existing incident response policies apply to AI systems?",
+      "answer": "Yes, Wisq has a general incident response plan, which covers the AI elements.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-304",
+      "question": "Are your AI risk management practices aligned with applicable legal and regulatory standards and requirements?",
+      "answer": "Yes, Wisq AI risk management is described in the Wisq AI Governance Policy.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-305",
+      "question": "Does your company monitor and perform a periodic review of the risk management process and its outcomes that are planned, and organizational roles & responsibilities pertaining to AI?",
+      "answer": "Yes, Wisq AI risk management is described in the Wisq AI Governance Policy.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-306",
+      "question": "Has your company established policies and procedures for monitoring and addressing AI system performance and trustworthiness, including bias and security problems across the lifecycle of the system?",
+      "answer": "Yes, Wisq conducts bias and fairness testing.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-307",
+      "question": "Does your AI Policy establish a frequency of and detail for monitoring, auditing, and review processes?",
+      "answer": "Yes, Wisq AI procedures are described in the Wisq AI Governance Policy.",
+      "category": "compliance",
+      "tags": [
+        "audit"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-308",
+      "question": "Does your company test the quality of system explanations with end-users and other groups?",
+      "answer": "Yes, the Wisq platform logs its chains of thoughts. Please contact Wisq if there is need to provide explanations to end users.",
+      "category": "company",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-309",
+      "question": "Does your company verify systems are developed to produce explainable models, post-hoc explanations and audit logs?",
+      "answer": "Yes, the Wisq platform logs its chains of thoughts.",
+      "category": "compliance",
+      "tags": [
+        "audit"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-310",
+      "question": "Do your organizational policies, processes, and procedures include the characteristics of trustworthy AI? Please attach your company AI policy.",
+      "answer": "Yes, Wisq follows ethical AI principles. These are described in the Wisq AI Governance Policy.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-311",
+      "question": "Is your AI Policy aligned to broader data governance policies and practices particularly the use of sensitive or otherwise risky data, such as NPI?",
+      "answer": "Yes, Wisq does not send senstitive data to AI models.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-312",
+      "question": "Does your company use transparency tools such as data statements and model cards to document explanatory and validation information?",
+      "answer": "Yes, the Wisq platform logs its chains of thoughts.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-313",
+      "question": "Is there any additional information or documents that support your company's AI initiatives? Please describe and/or attach below.",
+      "answer": "No additional information.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-314",
+      "question": "Does the organization establish policies to define mechanisms for measuring or understanding an AI system's potential impacts, e.g., via regular impact assessments at key stages in the AI lifecycle, connected to system impacts and frequency of system updates?",
+      "answer": "Yes, Wisq AI procedures are described in the Wisq AI Governance Policy.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-316",
+      "question": "Has your company established policies that require inclusion of oversight functions (legal, compliance, risk management) from the outset of the system design process?",
+      "answer": "Yes, Wisq AI procedures are described in the Wisq AI Governance Policy.",
+      "category": "compliance",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-317",
+      "question": "Does your company establish policies and procedures that define and differentiate the various human roles and responsibilities when using, interacting with, or monitoring AI systems?",
+      "answer": "Yes, Wisq AI training is described in the Wisq AI Governance Policy.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-318",
+      "question": "Threat hunting - Confirm the vendor actively engages in threat hunting, monitoring for unusual behavior, and detecting potential exploits related to AI systems",
+      "answer": "Yes, the AI vendor manages threat hunting. When they inform Wisq, Wisq will inform customers.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-319",
+      "question": "Are AI models protected against adversarial attacks?",
+      "answer": "Yes, the Wisq platform protects against prompt injections and the AI vendors protect their models against adversarial attacks.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-320",
+      "question": "Does the vendor have continuous monitoring in place to detect any anomalous behavior, data exfiltration, or security breaches related to AI models",
+      "answer": "Yes, Wisq continuously monitors the overall state of the Wisq platform and the AI vendors monitor their models. Wisq will alert Wisq customers if AI vendors have issues.",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-321",
+      "question": "Is model decision-making explainable and auditable?",
+      "answer": "Yes, the Wisq platform logs its chains of thoughts.",
+      "category": "compliance",
+      "tags": [
+        "audit"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-322",
+      "question": "Does your company verify that information about errors and attack patterns is shared with incident databases, other organizations with similar systems, and system users and stakeholders?",
+      "answer": "Yes, if AI vendors disclose errors and attack patterns to Wisq, then Wisq will inform customers",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-323",
+      "question": "Do you ensure that AI models do not store customer data?",
+      "answer": "Yes, Wisq has set up Zero Data Retention with AI model vendors.",
+      "category": "ai",
+      "tags": [
+        "data-retention",
+        "zdr"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-325",
+      "question": "Are AI models secured against unauthorized access or tampering?",
+      "answer": "Yes, the AI vendors protect their models against adversarial attacks.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-326",
+      "question": "Has your company established policies that define the creation and maintenance of AI system inventories?",
+      "answer": "Yes, Wisq maintains the AI system inventories.",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-342",
+      "question": "Are AI models tested for integrity to prevent model tampering (e.g., using hash verification or other mechanisms) ?",
+      "answer": "Yes",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-344",
+      "question": "Ensure the vendor follows ethical AI principles, such as fairness, accountability, transparency, and non-discrimination",
+      "answer": "Yes",
+      "category": "ai",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-349",
+      "question": "Do you have a centrally managed anti-virus application installed and updated on servers and workstations?",
+      "answer": "Yes",
+      "category": "implementation",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-350",
+      "question": "Are production system and application modifications formally planned and authorized by management?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-351",
+      "question": "Do you have an Information Security/Cybersecurity Policy?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-352",
+      "question": "Are all firewall changes logged?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-353",
+      "question": "Do you have any third parties or subcontractors that can access customer Confidential Data or will directly or indirectly support the services you will be providing the customer?",
+      "answer": "Yes",
+      "category": "support",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-354",
+      "question": "Please provide name and address of your production data center",
+      "answer": "Wisq hosts on Amazon Web Services (AWS) in the US Oregon region (us-west-2).",
+      "category": "other",
+      "tags": [
+        "aws"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-356",
+      "question": "Are industry-accepted internal and external penetration tests performed at the network and application layer on an annual basis or after major network/system changes?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [
+        "penetration-testing"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-357",
+      "question": "Are there physical security controls (security officer, employee proximity badges, visitor logs, visitor badges, visitor escorts, etc.) in place that would discourage/prevent unauthorized individuals from gaining entry/access to business systems?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-358",
+      "question": "Do you use any third-party open-source libraries in your services to BHN? (Examples include: Open SSL, GLIBC, Node.js, and Restsharp).",
+      "answer": "Yes (e.g., Node.js)",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-359",
+      "question": "Is a network intrusion detection system (IDS) or intrusion prevention system (IPS) used on your network and is it capable/configured to send alerts to security personnel?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-360",
+      "question": "Do you have any current, valid, signed network information security certifications (e.g., SOC 2 Type 2, ISO27001) for your company and/or the company that hosts customer production data?",
+      "answer": "Wisq has SOC 2 Type I certification. The SOC 2 Type II certification will be available in December 2025.",
+      "category": "security",
+      "tags": [
+        "soc2"
+      ],
+      "access": "internal"
+    },
+    {
+      "id": "kb-361",
+      "question": "Do you review firewall traffic logs?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-362",
+      "question": "Is security awareness training required during employee on-boarding and subsequently on an annual basis for all company employees and designated contractors?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-364",
+      "question": "Do you conduct information security risk assessments?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-365",
+      "question": "Is a stateful firewall used to protect the network?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-366",
+      "question": "Do you have a user access policy?",
+      "answer": "Yes",
+      "category": "access_control",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-367",
+      "question": "Do you have a process for monitoring third-party service providers to ensure they satisfy your internal policies and those of your clients, where applicable?",
+      "answer": "Yes",
+      "category": "other",
+      "tags": [],
+      "access": "internal"
+    },
+    {
+      "id": "kb-368",
+      "question": "Is all firewall traffic logged including traffic that is denied?",
+      "answer": "Yes",
+      "category": "security",
+      "tags": [],
+      "access": "internal"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#03143B">
+  <!-- Toaster body -->
+  <rect x="3" y="8" width="18" height="12" rx="2" />
+  <!-- Toast popping out -->
+  <rect x="7" y="3" width="10" height="7" rx="1" fill="#F59E0B" />
+  <!-- Toaster slots -->
+  <rect x="6" y="10" width="5" height="1" rx="0.5" fill="#1e293b" />
+  <rect x="13" y="10" width="5" height="1" rx="0.5" fill="#1e293b" />
+  <!-- Lever -->
+  <rect x="19" y="12" width="2" height="4" rx="0.5" fill="#94a3b8" />
+</svg>

@@ -1,0 +1,96 @@
+/* Scroll-triggered animations */
+.ms-fade-up {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+
+.ms-fade-up.ms-visible,
+.ms-visible .ms-fade-up {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ms-fade-in {
+  opacity: 0;
+  transition: opacity 0.8s ease-out;
+}
+
+.ms-fade-in.ms-visible,
+.ms-visible .ms-fade-in {
+  opacity: 1;
+}
+
+/* Staggered children */
+.ms-stagger > * {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.ms-stagger.ms-visible > *:nth-child(1), .ms-visible .ms-stagger > *:nth-child(1) { transition-delay: 0.05s; opacity: 1; transform: translateY(0); }
+.ms-stagger.ms-visible > *:nth-child(2), .ms-visible .ms-stagger > *:nth-child(2) { transition-delay: 0.12s; opacity: 1; transform: translateY(0); }
+.ms-stagger.ms-visible > *:nth-child(3), .ms-visible .ms-stagger > *:nth-child(3) { transition-delay: 0.19s; opacity: 1; transform: translateY(0); }
+.ms-stagger.ms-visible > *:nth-child(4), .ms-visible .ms-stagger > *:nth-child(4) { transition-delay: 0.26s; opacity: 1; transform: translateY(0); }
+.ms-stagger.ms-visible > *:nth-child(5), .ms-visible .ms-stagger > *:nth-child(5) { transition-delay: 0.33s; opacity: 1; transform: translateY(0); }
+.ms-stagger.ms-visible > *:nth-child(6), .ms-visible .ms-stagger > *:nth-child(6) { transition-delay: 0.40s; opacity: 1; transform: translateY(0); }
+.ms-stagger.ms-visible > *:nth-child(7), .ms-visible .ms-stagger > *:nth-child(7) { transition-delay: 0.47s; opacity: 1; transform: translateY(0); }
+.ms-stagger.ms-visible > *:nth-child(8), .ms-visible .ms-stagger > *:nth-child(8) { transition-delay: 0.54s; opacity: 1; transform: translateY(0); }
+.ms-stagger.ms-visible > *:nth-child(9), .ms-visible .ms-stagger > *:nth-child(9) { transition-delay: 0.61s; opacity: 1; transform: translateY(0); }
+
+/* Slide in from left */
+.ms-slide-left {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.ms-slide-left.ms-visible,
+.ms-visible .ms-slide-left {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Slide in from right */
+.ms-slide-right {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.ms-slide-right.ms-visible,
+.ms-visible .ms-slide-right {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Scenario toggle transition for numbers */
+.ms-number-transition {
+  transition: all 0.4s ease-out;
+}
+
+/* Savings bar animation */
+.ms-bar {
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Nav transition */
+.ms-nav {
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.ms-nav-hidden {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ms-nav-visible {
+  transform: translateY(0);
+  opacity: 1;
+}
