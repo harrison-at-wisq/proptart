@@ -440,6 +440,8 @@ export interface ProposalInputs {
   faqSections?: FAQSection[];
   // Customer Quotes
   selectedQuotes?: string[];  // Array of quote IDs
+  // ROI quick estimate completed
+  roiEstimateGenerated?: boolean;
   // AI Personalization
   aiPersonalization?: AIPersonalizationInputs;
   // Content overrides from inline editing

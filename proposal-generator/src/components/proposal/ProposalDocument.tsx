@@ -152,6 +152,26 @@ export function ProposalDocument({ inputs, proposalId, onClose, onContentChange 
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
 
+  // Microsite management state
+  const [micrositeSlug, setMicrositeSlug] = useState<string | null>(null);
+  const [micrositeArchived, setMicrositeArchived] = useState(false);
+  const [micrositeAction, setMicrositeAction] = useState<'archiving' | 'deleting' | 'republishing' | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Fetch microsite status on mount
+  useEffect(() => {
+    if (!proposalId) return;
+    fetch(`/api/microsites?proposalId=${proposalId}&includeArchived=true`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.slug) {
+          setMicrositeSlug(data.slug);
+          setMicrositeArchived(!!data.unpublishedAt);
+        }
+      })
+      .catch(() => {});
+  }, [proposalId]);
+
   const handlePrint = () => {
     window.print();
   };
@@ -217,11 +237,72 @@ export function ProposalDocument({ inputs, proposalId, onClose, onContentChange 
       const { microsite } = await response.json();
       const url = `${window.location.origin}/m/${microsite.slug}`;
       setPublishedUrl(url);
+      setMicrositeSlug(microsite.slug);
+      setMicrositeArchived(false);
     } catch (error) {
       console.error('Publish error:', error);
       setPublishError(error instanceof Error ? error.message : 'Failed to publish');
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  const handleArchiveMicrosite = async () => {
+    if (!micrositeSlug) return;
+    setMicrositeAction('archiving');
+    try {
+      const res = await fetch(`/api/microsites/${micrositeSlug}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unpublish: true }),
+      });
+      if (!res.ok) throw new Error('Failed to archive');
+      setMicrositeArchived(true);
+    } catch (error) {
+      console.error('Archive error:', error);
+      setPublishError(error instanceof Error ? error.message : 'Failed to archive microsite');
+    } finally {
+      setMicrositeAction(null);
+    }
+  };
+
+  const handleDeleteMicrosite = async () => {
+    if (!micrositeSlug) return;
+    setMicrositeAction('deleting');
+    try {
+      const res = await fetch(`/api/microsites/${micrositeSlug}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete');
+      setMicrositeSlug(null);
+      setMicrositeArchived(false);
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.error('Delete error:', error);
+      setPublishError(error instanceof Error ? error.message : 'Failed to delete microsite');
+    } finally {
+      setMicrositeAction(null);
+    }
+  };
+
+  const handleRepublishMicrosite = async () => {
+    if (!micrositeSlug || !proposalId) return;
+    setMicrositeAction('republishing');
+    try {
+      const res = await fetch('/api/microsites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proposalId, data: inputs }),
+      });
+      if (!res.ok) throw new Error('Failed to republish');
+      const { microsite } = await res.json();
+      setMicrositeSlug(microsite.slug);
+      setMicrositeArchived(false);
+      const url = `${window.location.origin}/m/${microsite.slug}`;
+      setPublishedUrl(url);
+    } catch (error) {
+      console.error('Republish error:', error);
+      setPublishError(error instanceof Error ? error.message : 'Failed to republish microsite');
+    } finally {
+      setMicrositeAction(null);
     }
   };
 
@@ -263,7 +344,7 @@ export function ProposalDocument({ inputs, proposalId, onClose, onContentChange 
         >
           Export PDF
         </button>
-        {proposalId && (
+        {proposalId && !micrositeSlug && (
           <button
             onClick={handlePublishMicrosite}
             disabled={isPublishing}
@@ -283,6 +364,54 @@ export function ProposalDocument({ inputs, proposalId, onClose, onContentChange 
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
                 </svg>
                 Publish Microsite
+              </>
+            )}
+          </button>
+        )}
+        {proposalId && micrositeSlug && !micrositeArchived && (
+          <button
+            onClick={handlePublishMicrosite}
+            disabled={isPublishing}
+            className="px-4 py-2 bg-[#4d65ff] text-white rounded-lg shadow-lg hover:bg-[#4d65ff]/90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isPublishing ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Updating...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                </svg>
+                Update Microsite
+              </>
+            )}
+          </button>
+        )}
+        {proposalId && micrositeSlug && micrositeArchived && (
+          <button
+            onClick={handleRepublishMicrosite}
+            disabled={micrositeAction === 'republishing'}
+            className="px-4 py-2 bg-[#4d65ff] text-white rounded-lg shadow-lg hover:bg-[#4d65ff]/90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {micrositeAction === 'republishing' ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Republishing...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                </svg>
+                Republish Microsite
               </>
             )}
           </button>
@@ -380,6 +509,89 @@ export function ProposalDocument({ inputs, proposalId, onClose, onContentChange 
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Microsite Status Banner */}
+      {micrositeSlug && !micrositeArchived && (
+        <div className="fixed top-16 right-4 z-40 bg-white border border-gray-200 rounded-lg shadow-lg px-4 py-3 print:hidden max-w-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" />
+              <span className="text-sm font-medium text-gray-700 truncate">Microsite live</span>
+              <a
+                href={`/m/${micrositeSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-[#4d65ff] hover:underline truncate"
+              >
+                /m/{micrositeSlug}
+              </a>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={handleArchiveMicrosite}
+                disabled={micrositeAction === 'archiving'}
+                className="px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded hover:bg-amber-100 disabled:opacity-50"
+                title="Archive microsite (visitors will see a 'no longer available' message)"
+              >
+                {micrositeAction === 'archiving' ? 'Archiving...' : 'Archive'}
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="px-2.5 py-1 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100"
+                title="Permanently delete microsite"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {micrositeSlug && micrositeArchived && (
+        <div className="fixed top-16 right-4 z-40 bg-white border border-amber-200 rounded-lg shadow-lg px-4 py-3 print:hidden max-w-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="w-2 h-2 bg-amber-500 rounded-full flex-shrink-0" />
+              <span className="text-sm font-medium text-amber-700">Microsite archived</span>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="px-2.5 py-1 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100"
+                title="Permanently delete microsite"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Microsite Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 print:hidden">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Microsite</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              This will permanently delete the microsite. Anyone with the link will no longer be able to access it. This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteMicrosite}
+                disabled={micrositeAction === 'deleting'}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {micrositeAction === 'deleting' ? 'Deleting...' : 'Delete Permanently'}
               </button>
             </div>
           </div>

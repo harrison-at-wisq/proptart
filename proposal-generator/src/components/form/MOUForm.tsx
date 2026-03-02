@@ -1,17 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { MOUInputs, MOUGeneratedContent, DEFAULT_MOU_INPUTS } from '@/types/mou';
 import { useProposal } from '@/lib/proposal-hooks';
 
 interface MOUFormProps {
-  proposalId: string | null;
-  onSubmit: (inputs: MOUInputs) => void;
-  onBack: () => void;
-  isGenerating: boolean;
+  proposalId: string;
 }
 
-export function MOUForm({ proposalId, onSubmit, onBack, isGenerating }: MOUFormProps) {
+export function MOUForm({ proposalId }: MOUFormProps) {
+  const router = useRouter();
   const { proposal, loading, updateProposal } = useProposal(proposalId);
   const [inputs, setInputs] = useState<MOUInputs>(DEFAULT_MOU_INPUTS);
   const [generating, setGenerating] = useState(false);
@@ -34,7 +33,7 @@ export function MOUForm({ proposalId, onSubmit, onBack, isGenerating }: MOUFormP
   const scheduleAutoSave = (newInputs: MOUInputs) => {
     if (autoSaveTimer) clearTimeout(autoSaveTimer);
     const timer = setTimeout(() => {
-      if (proposalId && proposal?.isOwner) {
+      if (proposal?.isOwner) {
         updateProposal({ data: newInputs });
       }
     }, 1500);
@@ -44,7 +43,7 @@ export function MOUForm({ proposalId, onSubmit, onBack, isGenerating }: MOUFormP
   // Save on browser close/refresh and tab switch
   useEffect(() => {
     const flushSave = () => {
-      if (proposalId && proposal?.isOwner) {
+      if (proposal?.isOwner) {
         fetch(`/api/proposals/${proposalId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -68,7 +67,7 @@ export function MOUForm({ proposalId, onSubmit, onBack, isGenerating }: MOUFormP
   // Explicit save for navigation
   const saveNow = async () => {
     if (autoSaveTimer) clearTimeout(autoSaveTimer);
-    if (proposalId && proposal?.isOwner) {
+    if (proposal?.isOwner) {
       await updateProposal({ data: inputsRef.current });
     }
   };
@@ -112,11 +111,11 @@ export function MOUForm({ proposalId, onSubmit, onBack, isGenerating }: MOUFormP
       setInputs(updatedInputs);
 
       // Save and advance to preview
-      if (proposalId && proposal?.isOwner) {
+      if (proposal?.isOwner) {
         await updateProposal({ data: updatedInputs });
       }
 
-      onSubmit(updatedInputs);
+      router.push(`/mou/${proposalId}/assets`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate MOU content');
     } finally {
@@ -126,7 +125,7 @@ export function MOUForm({ proposalId, onSubmit, onBack, isGenerating }: MOUFormP
 
   // If there's already generated content, allow going straight to preview
   const handleViewPreview = () => {
-    onSubmit(inputs);
+    router.push(`/mou/${proposalId}/assets`);
   };
 
   if (loading) {
@@ -147,7 +146,7 @@ export function MOUForm({ proposalId, onSubmit, onBack, isGenerating }: MOUFormP
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={async () => { await saveNow(); onBack(); }}
+              onClick={async () => { await saveNow(); router.push('/'); }}
               className="text-gray-500 hover:text-gray-700 flex items-center gap-1"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -287,7 +286,7 @@ export function MOUForm({ proposalId, onSubmit, onBack, isGenerating }: MOUFormP
             </div>
             <button
               onClick={handleGenerate}
-              disabled={generating || isGenerating || !inputs.callTranscripts.trim()}
+              disabled={generating || !inputs.callTranscripts.trim()}
               className="px-6 py-3 bg-[#4d65ff] text-white rounded-lg hover:bg-[#3d52cc] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               {generating ? (

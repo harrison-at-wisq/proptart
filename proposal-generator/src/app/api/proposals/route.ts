@@ -33,10 +33,26 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Fetch all microsites for these proposals (for quick-access links)
+  const proposalIds = (data || []).map((p) => p.id);
+  const { data: microsites } = await supabase
+    .from('microsites')
+    .select('proposal_id, slug, unpublished_at')
+    .in('proposal_id', proposalIds);
+
+  const micrositeMap = new Map<string, { slug: string; archived: boolean }>();
+  for (const m of microsites || []) {
+    micrositeMap.set(m.proposal_id, { slug: m.slug, archived: !!m.unpublished_at });
+  }
+
   // Transform to list items with ownership info
   const proposals = (data || []).map((p) => {
     const docType = (p.document_type as DocumentType) || 'proposal';
     const pData = p.data as ProposalInputs | MOUInputs;
+    const microsite = micrositeMap.get(p.id);
+    const hasGenerated = docType === 'mou'
+      ? !!(pData as MOUInputs)?.generatedContent
+      : !!(pData as ProposalInputs)?.generatedContent;
     return {
       id: p.id,
       name: p.name,
@@ -44,11 +60,18 @@ export async function GET() {
       industry: 'industry' in (pData?.company || {})
         ? (pData?.company as ProposalInputs['company'] | MOUInputs['company'])?.industry || 'Unknown'
         : 'Unknown',
+      aeName: (() => {
+        const email = (pData?.company as ProposalInputs['company'])?.contactEmail || '';
+        const name = email.split('|')[0]?.trim();
+        return name || '';
+      })(),
       updatedAt: p.updated_at,
       createdAt: p.created_at,
       ownerEmail: p.owner_email,
       isOwner: p.owner_email === user?.email,
       documentType: docType,
+      hasGeneratedContent: hasGenerated,
+      micrositeSlug: microsite && !microsite.archived ? microsite.slug : null,
     };
   });
 

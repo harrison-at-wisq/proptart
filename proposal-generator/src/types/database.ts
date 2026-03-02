@@ -42,9 +42,12 @@ export interface ProposalListItemWithOwnership {
   name: string;
   companyName: string;
   industry: string;
+  aeName: string;
   updatedAt: string;
   createdAt: string;
   ownerEmail: string;
   isOwner: boolean;
   documentType: DocumentType;
+  hasGeneratedContent: boolean;
+  micrositeSlug: string | null;
 }

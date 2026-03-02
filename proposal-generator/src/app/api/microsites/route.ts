@@ -6,6 +6,40 @@ import { ProposalInputs } from '@/types/proposal';
 
 export const dynamic = 'force-dynamic';
 
+// GET - Look up microsite by proposal ID
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const proposalId = searchParams.get('proposalId');
+  const includeArchived = searchParams.get('includeArchived') === 'true';
+
+  if (!proposalId) {
+    return NextResponse.json({ error: 'proposalId query param required' }, { status: 400 });
+  }
+
+  const supabase = createServerSupabaseClient();
+
+  let query = supabase
+    .from('microsites')
+    .select('slug, published_at, unpublished_at')
+    .eq('proposal_id', proposalId);
+
+  if (!includeArchived) {
+    query = query.is('unpublished_at', null);
+  }
+
+  const { data, error } = await query.single();
+
+  if (error || !data) {
+    return NextResponse.json({ slug: null });
+  }
+
+  return NextResponse.json({
+    slug: data.slug,
+    publishedAt: data.published_at,
+    unpublishedAt: data.unpublished_at,
+  });
+}
+
 // POST - Publish a proposal as a microsite
 export async function POST(request: Request) {
   const user = await getAuthUser();

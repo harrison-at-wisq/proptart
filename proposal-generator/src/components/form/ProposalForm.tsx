@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ProposalInputs,
   CompanyInfo,
@@ -170,17 +171,20 @@ function DraggableOrderList({
 }
 
 interface ProposalFormProps {
-  proposalId: string | null;
-  onSubmit: (inputs: ProposalInputs) => Promise<void>;
-  onBack: () => void;
-  isGenerating: boolean;
+  proposalId: string;
 }
 
-export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: ProposalFormProps) {
+export function ProposalForm({ proposalId }: ProposalFormProps) {
+  const router = useRouter();
   const [activeSection, setActiveSection] = useState<FormSection>('deal-info');
-  const [isLoading, setIsLoading] = useState(!!proposalId);
+  const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [hasBeenGenerated, setHasBeenGenerated] = useState(false);
+  const [micrositeSlug, setMicrositeSlug] = useState<string | null>(null);
+  const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
+  const [regenerateInput, setRegenerateInput] = useState('');
 
   // Form state
   const [company, setCompany] = useState<CompanyInfo>({
@@ -266,10 +270,11 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
     nextStepOrder: nextStepOrder.length > 0 ? nextStepOrder : undefined,
     selectedQuotes: selectedQuotes.length > 0 ? selectedQuotes : undefined,
     faqSections: faqSections.length > 0 ? faqSections : undefined,
+    roiEstimateGenerated: roiEstimateGenerated || undefined,
     aiPersonalization,
     generatedContent: generatedContent || undefined,
     rfpAppendix: rfpAppendix.enabled ? rfpAppendix : undefined,
-  }), [company, pricing, hrOperations, legalCompliance, employeeExperience, primaryValueDriver, painPoints, integrations, nextSteps, coverQuote, customNotes, customPainPoints, customNextSteps, painPointOrder, nextStepOrder, selectedQuotes, faqSections, aiPersonalization, generatedContent, rfpAppendix]);
+  }), [company, pricing, hrOperations, legalCompliance, employeeExperience, primaryValueDriver, painPoints, integrations, nextSteps, coverQuote, customNotes, customPainPoints, customNextSteps, painPointOrder, nextStepOrder, selectedQuotes, faqSections, roiEstimateGenerated, aiPersonalization, generatedContent, rfpAppendix]);
 
   // Explicit save function
   const saveNow = useCallback(async () => {
@@ -300,12 +305,6 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
 
   // Load saved form data on mount or when proposalId changes
   useEffect(() => {
-    if (!proposalId) {
-      hasLoadedRef.current = true;
-      setIsLoading(false);
-      return;
-    }
-
     // Reset load state
     setIsLoading(true);
     setLoadError(null);
@@ -335,6 +334,11 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
       if (data.nextStepOrder) setNextStepOrder(data.nextStepOrder);
       if (data.faqSections) setFAQSections(data.faqSections);
       if (data.selectedQuotes) setSelectedQuotes(data.selectedQuotes);
+      if (data.roiEstimateGenerated) setRoiEstimateGenerated(true);
+      // Detect if proposal has been generated before
+      if (data.generatedContent || data.contentOverrides) {
+        setHasBeenGenerated(true);
+      }
     }
 
     // Fetch from API (Supabase is the source of truth)
@@ -366,6 +370,16 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
       });
 
     return () => { abortController.abort(); };
+  }, [proposalId]);
+
+  // Fetch microsite slug
+  useEffect(() => {
+    fetch(`/api/microsites?proposalId=${proposalId}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.slug) setMicrositeSlug(data.slug);
+      })
+      .catch(() => {});
   }, [proposalId]);
 
   // Auto-save form data to API (debounced) when it changes
@@ -477,9 +491,12 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
   ];
 
   const handleSubmit = async () => {
-    // Save to Supabase before generating
+    setIsGenerating(true);
+    // Save to Supabase before navigating to assets
     await saveNow();
-    onSubmit(buildFormData());
+    setIsGenerating(false);
+    setHasBeenGenerated(true);
+    router.push(`/p/${proposalId}/assets`);
   };
 
   const canProceed = () => {
@@ -521,7 +538,7 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
-                onClick={async () => { await saveNow(); onBack(); }}
+                onClick={async () => { await saveNow(); router.push('/'); }}
                 className="p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Back to Dashboard"
               >
@@ -543,11 +560,31 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
                 </svg>
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">Prop Tart</h1>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  {company.companyName ? `${company.companyName} Proposal` : 'New Proposal'}
+                </h1>
                 <p className="text-sm text-gray-500">Create personalized sales proposals</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {hasBeenGenerated && (
+                <button
+                  onClick={() => router.push(`/p/${proposalId}/assets`)}
+                  className="px-3 py-1.5 text-sm font-medium text-[#03143B] bg-white border border-[#03143B] rounded-md hover:bg-[#03143B]/5 transition-colors"
+                >
+                  View Assets
+                </button>
+              )}
+              {micrositeSlug && (
+                <a
+                  href={`/m/${micrositeSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md hover:bg-emerald-100 transition-colors"
+                >
+                  View Microsite
+                </a>
+              )}
               {saveStatus === 'saving' && (
                 <span className="text-sm text-gray-400 flex items-center gap-1.5">
                   <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -631,6 +668,8 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
                       if (data.nextStepOrder) setNextStepOrder(data.nextStepOrder);
                       if (data.faqSections) setFAQSections(data.faqSections);
                       if (data.selectedQuotes) setSelectedQuotes(data.selectedQuotes);
+                      if (data.roiEstimateGenerated) setRoiEstimateGenerated(true);
+                      if (data.generatedContent || data.contentOverrides) setHasBeenGenerated(true);
                       currentProposalIdRef.current = proposalId;
                       hasLoadedRef.current = true;
                       setIsLoading(false);
@@ -1703,40 +1742,131 @@ export function ProposalForm({ proposalId, onSubmit, onBack, isGenerating }: Pro
             </div>
 
             <div className="bg-gradient-to-br from-[#03143B] to-[#020e29] rounded-lg p-8 text-white text-center">
-              <h3 className="text-xl font-semibold mb-2">Ready to Generate</h3>
-              <p className="text-white/80 mb-6">
-                Click the button below to generate your personalized Wisq proposal.
-              </p>
-              <button
-                onClick={handleSubmit}
-                disabled={isGenerating}
-                className="px-8 py-3 bg-white text-[#03143B] font-semibold rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isGenerating ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Generating Proposal...
-                  </span>
-                ) : (
-                  'Generate Proposal'
-                )}
-              </button>
+              {hasBeenGenerated ? (
+                <>
+                  <h3 className="text-xl font-semibold mb-2">Proposal Generated</h3>
+                  <p className="text-white/80 mb-6">
+                    This proposal has already been generated. You can regenerate from scratch if needed.
+                  </p>
+                  <button
+                    onClick={() => setShowRegenerateDialog(true)}
+                    disabled={isGenerating}
+                    className="px-8 py-3 bg-white/10 border border-white/30 text-white font-semibold rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Regenerate Proposal
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-xl font-semibold mb-2">Ready to Generate</h3>
+                  <p className="text-white/80 mb-6">
+                    Click the button below to generate your personalized Wisq proposal.
+                  </p>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isGenerating}
+                    className="px-8 py-3 bg-white text-[#03143B] font-semibold rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isGenerating ? (
+                      <span className="flex items-center gap-2">
+                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                        Generating Proposal...
+                      </span>
+                    ) : (
+                      'Generate Proposal'
+                    )}
+                  </button>
+                </>
+              )}
             </div>
+
+            {/* Regenerate Confirmation Dialog */}
+            {showRegenerateDialog && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Regenerate Proposal</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    This will regenerate the proposal from scratch. All inline editing progress on the current proposal will be lost.
+                  </p>
+                  {micrositeSlug && (
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <p className="text-sm text-amber-800">
+                          The published microsite will be <strong>permanently deleted</strong>. Anyone with the link will no longer be able to access it.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-700 mb-3">
+                    Type <span className="font-semibold">I acknowledge</span> to confirm:
+                  </p>
+                  <input
+                    type="text"
+                    value={regenerateInput}
+                    onChange={(e) => setRegenerateInput(e.target.value)}
+                    placeholder="I acknowledge"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#03143B] mb-4"
+                  />
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => { setShowRegenerateDialog(false); setRegenerateInput(''); }}
+                      className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setShowRegenerateDialog(false);
+                        setRegenerateInput('');
+                        // Delete the microsite if one exists
+                        if (micrositeSlug) {
+                          try {
+                            await fetch(`/api/microsites/${micrositeSlug}`, { method: 'DELETE' });
+                            setMicrositeSlug(null);
+                          } catch {
+                            // Continue even if delete fails
+                          }
+                        }
+                        // Clear generated content and reset state
+                        setGeneratedContent(null);
+                        setHasBeenGenerated(false);
+                        // Save cleared state to API
+                        const clearedData = { ...buildFormData(), generatedContent: undefined, contentOverrides: undefined };
+                        await fetch(`/api/proposals/${proposalId}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ data: clearedData }),
+                        }).catch(() => {});
+                        // Go back to enhancements tab to re-generate
+                        setActiveSection('enhancements');
+                      }}
+                      disabled={regenerateInput !== 'I acknowledge'}
+                      className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Regenerate
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

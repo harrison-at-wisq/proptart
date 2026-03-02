@@ -1,22 +1,23 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-hooks';
 import { useProposals } from '@/lib/proposal-hooks';
 import { hasLegacyProposals, getLegacyProposalCount, migrateProposals } from '@/lib/migration';
 import { DocumentType } from '@/types/database';
 
-interface ProposalDashboardProps {
-  onOpenProposal: (id: string, documentType?: DocumentType) => void;
-}
-
-export function ProposalDashboard({ onOpenProposal }: ProposalDashboardProps) {
+export function ProposalDashboard() {
+  const router = useRouter();
   const { email, signOut } = useAuth();
   const { proposals, loading, error, createProposal, deleteProposal, duplicateProposal, refresh } = useProposals();
-  const [editingNameId, setEditingNameId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Filters
+  const [ownerFilter, setOwnerFilter] = useState<'all' | 'mine'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'proposal' | 'mou'>('all');
+  const [sortBy, setSortBy] = useState<'last-modified' | 'first-created'>('last-modified');
 
   // Migration state
   const [showMigration, setShowMigration] = useState(false);
@@ -36,7 +37,8 @@ export function ProposalDashboard({ onOpenProposal }: ProposalDashboardProps) {
     try {
       setActionLoading(true);
       const newProposal = await createProposal(undefined, docType);
-      onOpenProposal(newProposal.id, docType);
+      const route = docType === 'mou' ? `/mou/${newProposal.id}` : `/p/${newProposal.id}`;
+      router.push(route);
     } catch (err) {
       console.error('Failed to create:', err);
     } finally {
@@ -67,27 +69,6 @@ export function ProposalDashboard({ onOpenProposal }: ProposalDashboardProps) {
     }
   };
 
-  const handleStartEditName = (id: string, currentName: string) => {
-    setEditingNameId(id);
-    setEditingName(currentName);
-  };
-
-  const handleSaveName = async () => {
-    if (editingNameId && editingName.trim()) {
-      try {
-        await fetch(`/api/proposals/${editingNameId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: editingName.trim() }),
-        });
-        await refresh();
-      } catch (err) {
-        console.error('Failed to update name:', err);
-      }
-    }
-    setEditingNameId(null);
-    setEditingName('');
-  };
 
   const handleMigrate = async () => {
     setMigrating(true);
@@ -274,9 +255,70 @@ export function ProposalDashboard({ onOpenProposal }: ProposalDashboardProps) {
             </div>
           </div>
         ) : (
-          /* Proposal Grid */
+          <>
+          {/* Filters */}
+          <div className="flex items-center gap-3 mb-6 flex-wrap">
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+              {([
+                { id: 'all' as const, label: 'All' },
+                { id: 'mine' as const, label: 'My Proposals' },
+              ]).map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setOwnerFilter(opt.id)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    ownerFilter === opt.id
+                      ? 'bg-white text-[#03143B] shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+              {([
+                { id: 'all' as const, label: 'All Types' },
+                { id: 'proposal' as const, label: 'Proposals' },
+                { id: 'mou' as const, label: 'MOUs' },
+              ]).map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setTypeFilter(opt.id)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    typeFilter === opt.id
+                      ? 'bg-white text-[#03143B] shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="px-3 py-1.5 bg-gray-100 border-0 rounded-lg text-sm font-medium text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#03143B]"
+            >
+              <option value="last-modified">Last Modified</option>
+              <option value="first-created">First Created</option>
+            </select>
+          </div>
+
+          {/* Proposal Grid */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {proposals.map((proposal) => (
+            {proposals
+              .filter((p) => ownerFilter === 'all' || p.isOwner)
+              .filter((p) => typeFilter === 'all' || p.documentType === typeFilter)
+              .sort((a, b) => {
+                if (sortBy === 'last-modified') {
+                  return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+                }
+                return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+              })
+              .map((proposal) => (
               <div
                 key={proposal.id}
                 className={`bg-white rounded-lg border p-4 transition-colors ${
@@ -305,46 +347,69 @@ export function ProposalDashboard({ onOpenProposal }: ProposalDashboardProps) {
                   )}
                 </div>
 
-                {/* Name (editable only for owner) */}
-                <div className="mb-2">
-                  {editingNameId === proposal.id && proposal.isOwner ? (
-                    <input
-                      type="text"
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      onBlur={handleSaveName}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
-                      autoFocus
-                      className="w-full px-2 py-1 text-lg font-semibold border border-[#03143B] rounded focus:outline-none focus:ring-2 focus:ring-[#03143B]"
-                    />
-                  ) : (
-                    <h3
-                      onClick={() => proposal.isOwner && handleStartEditName(proposal.id, proposal.name)}
-                      className={`text-lg font-semibold text-gray-900 truncate ${
-                        proposal.isOwner ? 'cursor-pointer hover:text-[#03143B]' : ''
-                      }`}
-                      title={proposal.isOwner ? 'Click to edit name' : proposal.name}
-                    >
-                      {proposal.name}
-                    </h3>
-                  )}
-                </div>
+                {/* Company Name as Title */}
+                <h3 className="text-lg font-semibold text-gray-900 truncate mb-1">
+                  {proposal.companyName || 'Unnamed Company'}
+                </h3>
 
-                {/* Company & Industry */}
-                <div className="text-sm text-gray-500 mb-1">
-                  {proposal.companyName || 'No company'}
-                  {proposal.industry && <span className="text-gray-400"> &bull; {proposal.industry}</span>}
-                </div>
+                {/* AE Name */}
+                {proposal.aeName && (
+                  <div className="text-sm text-gray-500">
+                    {proposal.aeName}
+                  </div>
+                )}
 
                 {/* Last Modified */}
-                <div className="text-xs text-gray-400 mb-4">
+                <div className="text-xs text-gray-400 mb-3">
                   Last modified: {formatDate(proposal.updatedAt)}
                 </div>
+
+                {/* Quick Access Links */}
+                {(proposal.hasGeneratedContent || proposal.micrositeSlug) && (
+                  <div className="flex items-center gap-2 mb-3">
+                    {proposal.hasGeneratedContent && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const route = proposal.documentType === 'mou'
+                            ? `/mou/${proposal.id}/assets`
+                            : `/p/${proposal.id}/assets`;
+                          router.push(route);
+                        }}
+                        className="inline-flex items-center gap-1 text-xs text-[#03143B] bg-blue-50 border border-blue-200 px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Assets
+                      </button>
+                    )}
+                    {proposal.micrositeSlug && (
+                      <a
+                        href={`/m/${proposal.micrositeSlug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded hover:bg-emerald-100 transition-colors"
+                      >
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                        </svg>
+                        Microsite
+                      </a>
+                    )}
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex gap-2">
                   <button
-                    onClick={() => onOpenProposal(proposal.id, proposal.documentType)}
+                    onClick={() => {
+                      const route = proposal.documentType === 'mou'
+                        ? `/mou/${proposal.id}`
+                        : `/p/${proposal.id}`;
+                      router.push(route);
+                    }}
                     className={`flex-1 px-3 py-2 text-sm rounded transition-colors ${
                       proposal.isOwner
                         ? 'bg-[#03143B] text-white hover:bg-[#03143B]/90'
@@ -398,6 +463,7 @@ export function ProposalDashboard({ onOpenProposal }: ProposalDashboardProps) {
               </div>
             ))}
           </div>
+          </>
         )}
       </main>
     </div>
