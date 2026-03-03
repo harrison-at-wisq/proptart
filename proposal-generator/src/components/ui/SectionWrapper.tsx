@@ -21,7 +21,7 @@ export function SectionWrapper({
   if (!visible) return null;
 
   return (
-    <div className={`relative group/section ${className}`}>
+    <div className={`relative group/section ${className}`} data-section-key={sectionKey}>
       {/* Hide section button */}
       <button
         onClick={() => onToggleVisibility(sectionKey)}

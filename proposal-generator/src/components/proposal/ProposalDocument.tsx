@@ -11,6 +11,7 @@ import { LayoutModeToggle } from '@/components/ui/LayoutModeToggle';
 import { LayoutSection } from '@/components/ui/LayoutSection';
 import type { BlockDef } from '@/components/ui/LayoutSection';
 import { CustomBlockRenderer } from '@/components/ui/CustomBlockRenderer';
+import { SectionNavBar } from '@/components/ui/SectionNavBar';
 import { calculatePricing, formatCurrency, formatCompactCurrency } from '@/lib/pricing-calculator';
 import {
   calculateHROperationsROI,
@@ -291,6 +292,18 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
     return docContent.faqSections?.find(s => s.pageId === pageId);
   };
 
+  const updateFAQ = (pageId: string, faqIndex: number, field: 'question' | 'answer', value: string) => {
+    setDocContent(prev => {
+      const sections = [...(prev.faqSections || [])];
+      const sIdx = sections.findIndex(s => s.pageId === pageId);
+      if (sIdx === -1) return prev;
+      const newFaqs = [...sections[sIdx].faqs];
+      newFaqs[faqIndex] = { ...newFaqs[faqIndex], [field]: value };
+      sections[sIdx] = { ...sections[sIdx], faqs: newFaqs };
+      return { ...prev, faqSections: sections };
+    });
+  };
+
   const renderFAQBlock = (pageId: string, dark = false) => {
     const section = getFAQsForPage(pageId);
     if (!section || section.faqs.length === 0) return null;
@@ -300,8 +313,19 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
         <div className="space-y-3">
           {section.faqs.map((faq, i) => (
             <div key={i} className={`pl-4 border-l-2 ${dark ? 'border-white/30' : 'border-gray-200'}`}>
-              <p className={`font-medium text-sm ${dark ? 'text-white' : 'text-gray-900'}`}>{faq.question}</p>
-              <p className={`text-sm mt-1 ${dark ? 'text-white/70' : 'text-gray-600'}`}>{faq.answer}</p>
+              <DirectEditableText
+                value={faq.question}
+                onChange={(value) => updateFAQ(pageId, i, 'question', value)}
+                as="p"
+                className={`font-medium text-sm ${dark ? 'text-white' : 'text-gray-900'}`}
+              />
+              <DirectEditableText
+                value={faq.answer}
+                onChange={(value) => updateFAQ(pageId, i, 'answer', value)}
+                as="p"
+                className={`text-sm mt-1 ${dark ? 'text-white/70' : 'text-gray-600'}`}
+                multiline
+              />
             </div>
           ))}
         </div>
@@ -806,6 +830,12 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
         </div>
       )}
 
+      {/* Section Navigation Bar */}
+      <SectionNavBar
+        sectionVisibility={docContent.sectionVisibility}
+        documentRef={documentRef}
+      />
+
       {/* Document Container */}
       <div
         ref={documentRef}
@@ -867,50 +897,67 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
                   ),
                 },
                 {
-                  blockId: 'execContent',
-                  label: 'Summary Content',
+                  blockId: 'execInsight',
+                  label: 'Executive Insight',
                   defaultColSpan: 7,
                   render: () => (
-                    <>
+                    <DirectEditableText
+                      value={docContent.execSummaryInsight}
+                      onChange={(value) => updateContent('execSummaryInsight', value)}
+                      as="p"
+                      className="text-gray-700"
+                      multiline
+                    />
+                  ),
+                },
+                {
+                  blockId: 'execVision',
+                  label: 'Vision Callout',
+                  defaultColSpan: 7,
+                  render: () => (
+                    <div className="text-lg font-semibold text-[#03143B] italic border-l-4 border-[#03143B] pl-4">
                       <DirectEditableText
-                        value={docContent.execSummaryInsight}
-                        onChange={(value) => updateContent('execSummaryInsight', value)}
-                        as="p"
-                        className="text-gray-700 mb-4"
-                        multiline
+                        value={docContent.execSummaryVision}
+                        onChange={(value) => updateContent('execSummaryVision', value)}
+                        as="span"
                       />
-                      <div className="text-lg font-semibold text-[#03143B] italic border-l-4 border-[#03143B] pl-4 mb-4">
-                        <DirectEditableText
-                          value={docContent.execSummaryVision}
-                          onChange={(value) => updateContent('execSummaryVision', value)}
-                          as="span"
-                        />
-                      </div>
-                      {renderQuoteBlock('executive-summary')}
-                      <WidgetGroup
-                        items={docContent.execSummaryBullets}
-                        onChange={(items) => updateContent('execSummaryBullets', items)}
-                        layout="list"
-                        minItems={1}
-                        addLabel="Add bullet"
-                        createNewItem={() => ({ id: crypto.randomUUID(), text: 'New insight...' })}
-                        renderItem={(item) => (
-                          <li className="flex items-start gap-2 text-gray-600 text-sm">
-                            <span className="w-1.5 h-1.5 bg-[#03143B] rounded-full mt-2 flex-shrink-0"></span>
-                            <DirectEditableText
-                              value={item.text as string}
-                              onChange={(value) => {
-                                const updated = docContent.execSummaryBullets.map(b =>
-                                  b.id === item.id ? { ...b, text: value } : b
-                                );
-                                updateContent('execSummaryBullets', updated);
-                              }}
-                              as="span"
-                            />
-                          </li>
-                        )}
-                      />
-                    </>
+                    </div>
+                  ),
+                },
+                {
+                  blockId: 'execQuote',
+                  label: 'Quote',
+                  defaultColSpan: 7,
+                  render: () => renderQuoteBlock('executive-summary'),
+                },
+                {
+                  blockId: 'execBullets',
+                  label: 'Key Bullets',
+                  defaultColSpan: 7,
+                  render: () => (
+                    <WidgetGroup
+                      items={docContent.execSummaryBullets}
+                      onChange={(items) => updateContent('execSummaryBullets', items)}
+                      layout="list"
+                      minItems={1}
+                      addLabel="Add bullet"
+                      createNewItem={() => ({ id: crypto.randomUUID(), text: 'New insight...' })}
+                      renderItem={(item) => (
+                        <li className="flex items-start gap-2 text-gray-600 text-sm">
+                          <span className="w-1.5 h-1.5 bg-[#03143B] rounded-full mt-2 flex-shrink-0"></span>
+                          <DirectEditableText
+                            value={item.text as string}
+                            onChange={(value) => {
+                              const updated = docContent.execSummaryBullets.map(b =>
+                                b.id === item.id ? { ...b, text: value } : b
+                              );
+                              updateContent('execSummaryBullets', updated);
+                            }}
+                            as="span"
+                          />
+                        </li>
+                      )}
+                    />
                   ),
                 },
                 {
@@ -1366,48 +1413,53 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
                   ),
                 },
                 {
+                  blockId: 'securityFeaturesHeading',
+                  label: 'Security Heading',
+                  defaultColSpan: 12,
+                  render: () => (
+                    <h3 className="text-lg font-semibold text-[#03143B]">Enterprise Security</h3>
+                  ),
+                },
+                {
                   blockId: 'securityFeatures',
                   label: 'Security Features',
                   defaultColSpan: 12,
                   render: () => (
-                    <>
-                      <h3 className="text-lg font-semibold text-[#03143B] mb-4">Enterprise Security</h3>
-                      <WidgetGroup
-                        items={docContent.securityFeatures}
-                        onChange={(items) => updateContent('securityFeatures', items)}
-                        layout="grid-3"
-                        minItems={1}
-                        addLabel="Add security feature"
-                        createNewItem={() => ({ id: crypto.randomUUID(), title: 'New Feature', description: 'Describe the security capability...' })}
-                        renderItem={(item) => (
-                          <div className="p-3 bg-white border border-gray-200 rounded-lg">
-                            <DirectEditableText
-                              value={item.title as string}
-                              onChange={(value) => {
-                                const updated = docContent.securityFeatures.map(f =>
-                                  f.id === item.id ? { ...f, title: value } : f
-                                );
-                                updateContent('securityFeatures', updated);
-                              }}
-                              as="h4"
-                              className="font-semibold text-[#03143B] mb-1 text-sm"
-                            />
-                            <DirectEditableText
-                              value={item.description as string}
-                              onChange={(value) => {
-                                const updated = docContent.securityFeatures.map(f =>
-                                  f.id === item.id ? { ...f, description: value } : f
-                                );
-                                updateContent('securityFeatures', updated);
-                              }}
-                              as="p"
-                              className="text-gray-600 text-xs"
-                              multiline
-                            />
-                          </div>
-                        )}
-                      />
-                    </>
+                    <WidgetGroup
+                      items={docContent.securityFeatures}
+                      onChange={(items) => updateContent('securityFeatures', items)}
+                      layout="grid-3"
+                      minItems={1}
+                      addLabel="Add security feature"
+                      createNewItem={() => ({ id: crypto.randomUUID(), title: 'New Feature', description: 'Describe the security capability...' })}
+                      renderItem={(item) => (
+                        <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                          <DirectEditableText
+                            value={item.title as string}
+                            onChange={(value) => {
+                              const updated = docContent.securityFeatures.map(f =>
+                                f.id === item.id ? { ...f, title: value } : f
+                              );
+                              updateContent('securityFeatures', updated);
+                            }}
+                            as="h4"
+                            className="font-semibold text-[#03143B] mb-1 text-sm"
+                          />
+                          <DirectEditableText
+                            value={item.description as string}
+                            onChange={(value) => {
+                              const updated = docContent.securityFeatures.map(f =>
+                                f.id === item.id ? { ...f, description: value } : f
+                              );
+                              updateContent('securityFeatures', updated);
+                            }}
+                            as="p"
+                            className="text-gray-600 text-xs"
+                            multiline
+                          />
+                        </div>
+                      )}
+                    />
                   ),
                 },
                 {
@@ -1442,59 +1494,64 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
                   render: () => renderQuoteBlock('security'),
                 },
                 {
+                  blockId: 'implementationTimelineHeading',
+                  label: 'Timeline Heading',
+                  defaultColSpan: 12,
+                  render: () => (
+                    <h3 className="text-lg font-semibold text-[#03143B]">Implementation Timeline (12 weeks)</h3>
+                  ),
+                },
+                {
                   blockId: 'implementationTimeline',
                   label: 'Timeline',
                   defaultColSpan: 12,
                   render: () => (
-                    <>
-                      <h3 className="text-lg font-semibold text-[#03143B] mb-4">Implementation Timeline (12 weeks)</h3>
-                      <WidgetGroup
-                        items={docContent.implementationTimeline}
-                        onChange={(items) => updateContent('implementationTimeline', items)}
-                        layout="grid-4"
-                        minItems={1}
-                        addLabel="Add phase"
-                        createNewItem={() => ({ id: crypto.randomUUID(), week: 'Week X-Y', title: 'New Phase', description: 'Phase activities...' })}
-                        renderItem={(item) => (
-                          <div className="p-4 bg-gray-50 rounded-lg border-t-4 border-[#03143B]">
-                            <DirectEditableText
-                              value={item.week as string}
-                              onChange={(value) => {
-                                const updated = docContent.implementationTimeline.map(p =>
-                                  p.id === item.id ? { ...p, week: value } : p
-                                );
-                                updateContent('implementationTimeline', updated);
-                              }}
-                              as="div"
-                              className="text-xs font-semibold text-[#03143B] mb-1"
-                            />
-                            <DirectEditableText
-                              value={item.title as string}
-                              onChange={(value) => {
-                                const updated = docContent.implementationTimeline.map(p =>
-                                  p.id === item.id ? { ...p, title: value } : p
-                                );
-                                updateContent('implementationTimeline', updated);
-                              }}
-                              as="h4"
-                              className="font-bold text-gray-900 text-sm mb-1"
-                            />
-                            <DirectEditableText
-                              value={item.description as string}
-                              onChange={(value) => {
-                                const updated = docContent.implementationTimeline.map(p =>
-                                  p.id === item.id ? { ...p, description: value } : p
-                                );
-                                updateContent('implementationTimeline', updated);
-                              }}
-                              as="p"
-                              className="text-gray-600 text-xs"
-                              multiline
-                            />
-                          </div>
-                        )}
-                      />
-                    </>
+                    <WidgetGroup
+                      items={docContent.implementationTimeline}
+                      onChange={(items) => updateContent('implementationTimeline', items)}
+                      layout="grid-4"
+                      minItems={1}
+                      addLabel="Add phase"
+                      createNewItem={() => ({ id: crypto.randomUUID(), week: 'Week X-Y', title: 'New Phase', description: 'Phase activities...' })}
+                      renderItem={(item) => (
+                        <div className="p-4 bg-gray-50 rounded-lg border-t-4 border-[#03143B]">
+                          <DirectEditableText
+                            value={item.week as string}
+                            onChange={(value) => {
+                              const updated = docContent.implementationTimeline.map(p =>
+                                p.id === item.id ? { ...p, week: value } : p
+                              );
+                              updateContent('implementationTimeline', updated);
+                            }}
+                            as="div"
+                            className="text-xs font-semibold text-[#03143B] mb-1"
+                          />
+                          <DirectEditableText
+                            value={item.title as string}
+                            onChange={(value) => {
+                              const updated = docContent.implementationTimeline.map(p =>
+                                p.id === item.id ? { ...p, title: value } : p
+                              );
+                              updateContent('implementationTimeline', updated);
+                            }}
+                            as="h4"
+                            className="font-bold text-gray-900 text-sm mb-1"
+                          />
+                          <DirectEditableText
+                            value={item.description as string}
+                            onChange={(value) => {
+                              const updated = docContent.implementationTimeline.map(p =>
+                                p.id === item.id ? { ...p, description: value } : p
+                              );
+                              updateContent('implementationTimeline', updated);
+                            }}
+                            as="p"
+                            className="text-gray-600 text-xs"
+                            multiline
+                          />
+                        </div>
+                      )}
+                    />
                   ),
                 },
                 {

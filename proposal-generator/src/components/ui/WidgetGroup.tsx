@@ -98,12 +98,14 @@ export function WidgetGroup<T extends WidgetItem>({
         {items.map((item, index) => (
           <div
             key={item.id}
-            draggable={!layoutMode}
-            onDragStart={layoutMode ? undefined : handleDragStart(index)}
-            onDragOver={layoutMode ? undefined : handleDragOver(index)}
-            onDrop={layoutMode ? undefined : handleDrop(index)}
-            onDragEnd={layoutMode ? undefined : handleDragEnd}
+            draggable={layoutMode}
+            onDragStart={!layoutMode ? undefined : handleDragStart(index)}
+            onDragOver={!layoutMode ? undefined : handleDragOver(index)}
+            onDrop={!layoutMode ? undefined : handleDrop(index)}
+            onDragEnd={!layoutMode ? undefined : handleDragEnd}
             className={`relative group transition-all duration-150 flex flex-col ${
+              layoutMode ? 'pointer-events-auto' : ''
+            } ${
               dragIndex === index
                 ? 'opacity-40 scale-95'
                 : overIndex === index && dragIndex !== null
@@ -111,9 +113,9 @@ export function WidgetGroup<T extends WidgetItem>({
                 : ''
             }`}
           >
-            {/* Drag handle + remove button — hidden in layout mode */}
-            {!layoutMode && (
-            <div className="absolute -top-2 -right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity print:hidden">
+            {/* Drag handle + remove button — shown in layout mode */}
+            {layoutMode && (
+            <div className="absolute -top-2 -right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity print:hidden pointer-events-auto">
               <span
                 className="w-6 h-6 bg-gray-100 border border-gray-300 rounded flex items-center justify-center cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 text-xs"
                 title="Drag to reorder"
@@ -144,11 +146,11 @@ export function WidgetGroup<T extends WidgetItem>({
         ))}
       </div>
 
-      {/* Add button — hidden in layout mode */}
-      {!layoutMode && (!maxItems || items.length < maxItems) && (
+      {/* Add button — shown in layout mode */}
+      {layoutMode && (!maxItems || items.length < maxItems) && (
         <button
           onClick={handleAdd}
-          className="mt-3 flex items-center gap-2 text-sm text-[#03143B]/50 hover:text-[#03143B] transition-colors print:hidden"
+          className="mt-3 flex items-center gap-2 text-sm text-[#03143B]/50 hover:text-[#03143B] transition-colors print:hidden pointer-events-auto"
         >
           <span className="w-6 h-6 border border-dashed border-current rounded flex items-center justify-center text-lg leading-none">
             +

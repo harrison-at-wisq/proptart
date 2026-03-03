@@ -4,6 +4,7 @@ import React from 'react';
 import { CustomBlock, WidgetItem } from '@/types/proposal';
 import { DirectEditableText } from './DirectEditableText';
 import { WidgetGroup } from './WidgetGroup';
+import { useLayoutMode } from './LayoutModeContext';
 
 interface CustomBlockRendererProps {
   block: CustomBlock;
@@ -12,6 +13,7 @@ interface CustomBlockRendererProps {
 }
 
 export function CustomBlockRenderer({ block, onUpdate, onRemove }: CustomBlockRendererProps) {
+  const { layoutMode } = useLayoutMode();
   const { type, data } = block;
 
   const updateItems = (items: WidgetItem[]) => {
@@ -30,17 +32,19 @@ export function CustomBlockRenderer({ block, onUpdate, onRemove }: CustomBlockRe
   };
 
   return (
-    <div className="relative group/custom">
-      {/* Remove button */}
-      <button
-        onClick={() => onRemove(block.id)}
-        className="absolute -top-2 -right-2 z-10 w-6 h-6 bg-red-50 border border-red-200 rounded flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-100 opacity-0 group-hover/custom:opacity-100 transition-opacity print:hidden"
-        title="Remove block"
-      >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+    <div className={`relative group/custom ${layoutMode ? 'pointer-events-auto' : ''}`}>
+      {/* Remove button — only in layout mode */}
+      {layoutMode && (
+        <button
+          onClick={() => onRemove(block.id)}
+          className="absolute -top-2 -right-2 z-10 w-6 h-6 bg-red-50 border border-red-200 rounded flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-100 opacity-0 group-hover/custom:opacity-100 transition-opacity print:hidden pointer-events-auto"
+          title="Remove block"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      )}
 
       {type === 'text' && (
         <DirectEditableText

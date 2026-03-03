@@ -90,7 +90,7 @@ export function BlockInserter({ sectionKey, insertAtOrder, onInsert }: BlockInse
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  if (layoutMode) return null;
+  if (!layoutMode) return null;
 
   const handleSelect = (type: CustomBlockType) => {
     onInsert(sectionKey, type, insertAtOrder);

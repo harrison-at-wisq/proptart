@@ -280,7 +280,8 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
   // Current state quote
   children.push(...createQuoteBlock(inputs, 'current-state'));
 
-  children.push(new Paragraph({ spacing: { after: 400 } }));
+  // Page break before Meet Harper
+  children.push(new Paragraph({ children: [new PageBreak()] }));
 
   // ===== MEET HARPER =====
 
@@ -461,7 +462,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
 
   // ===== NEXT STEPS =====
 
-  children.push(new Paragraph({ spacing: { after: 200 } }));
+  children.push(new Paragraph({ children: [new PageBreak()] }));
   children.push(createSectionHeader('Recommended Next Steps'));
 
   // Build ordered next steps
