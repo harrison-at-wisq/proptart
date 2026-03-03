@@ -523,6 +523,9 @@ export interface ProposalDocumentContent {
   // Custom blocks added by the user
   customBlocks?: CustomBlock[];
 
+  // Custom sections added by the user at runtime
+  customSections?: CustomSectionConfig[];
+
   // Metadata
   materializedAt: string;
 }
@@ -553,6 +556,71 @@ export interface BlockLayout {
 /** Layout configuration for an entire section */
 export interface SectionLayout {
   blocks: BlockLayout[];
+}
+
+/** A single element within a custom (user-created) section */
+export interface CustomSectionElement {
+  id: string;
+  elementType: ProposalElementType;
+  label: string;
+  colSpan: number;
+  data: Record<string, unknown>;
+}
+
+/** Configuration for a user-created custom section */
+export interface CustomSectionConfig {
+  id: string;
+  name: string;
+  layoutPreset: SectionLayoutPreset;
+  darkTheme?: boolean;
+  elements: CustomSectionElement[];
+  layout?: SectionLayout;
+}
+
+// ============================================================
+// Template-based proposal builder types
+// ============================================================
+
+/** Element type identifiers for the proposal builder */
+export type ProposalElementType =
+  | 'section-heading' | 'sub-heading' | 'body-text' | 'vision-callout' | 'eyebrow-label'
+  | 'metric-table' | 'kpi-tiles' | 'stat-cards' | 'projection-panel'
+  | 'accent-card-grid' | 'feature-card-grid' | 'timeline-card-grid' | 'value-driver-cards'
+  | 'bullet-list' | 'numbered-steps'
+  | 'customer-quote' | 'divider-line' | 'faq-section'
+  | 'integration-pills' | 'contact-card' | 'page-footer' | 'cover-title-block'
+  | 'spacer';
+
+/** Section layout preset identifiers */
+export type SectionLayoutPreset =
+  | 'single-column'
+  | 'content-sidebar'
+  | 'equal-split'
+  | 'hero-grid'
+  | 'two-col-bottom-banner';
+
+/** A single element placement within a section */
+export interface ElementPlacement {
+  elementType: ProposalElementType;
+  blockId: string;
+  label: string;
+  defaultColSpan: number;
+  props?: Record<string, unknown>;
+}
+
+/** A section definition within a template */
+export interface SectionTemplateConfig {
+  sectionKey: keyof SectionVisibility;
+  layoutPreset: SectionLayoutPreset;
+  darkTheme?: boolean;
+  className?: string;
+  elements: ElementPlacement[];
+}
+
+/** Full proposal template */
+export interface ProposalTemplate {
+  name: string;
+  sections: SectionTemplateConfig[];
 }
 
 // Content overrides from inline editing

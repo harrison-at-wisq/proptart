@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react';
 import { useLayoutMode } from './LayoutModeContext';
 import { LayoutBlock } from './LayoutBlock';
 import { BlockInserter } from './BlockInserter';
-import { BlockLayout, SectionLayout, SectionVisibility, CustomBlockType } from '@/types/proposal';
+import { BlockLayout, SectionLayout, CustomBlockType } from '@/types/proposal';
 
 /** Default block definition for a section */
 export interface BlockDef {
@@ -15,13 +15,13 @@ export interface BlockDef {
 }
 
 interface LayoutSectionProps {
-  sectionKey: keyof SectionVisibility;
+  sectionKey: string;
   blocks: BlockDef[];
   blockRegistry?: Record<string, BlockDef>;
   layout?: SectionLayout;
-  onLayoutChange: (sectionKey: keyof SectionVisibility, layout: SectionLayout) => void;
+  onLayoutChange: (sectionKey: string, layout: SectionLayout) => void;
   onCrossSectionDrop?: (
-    targetSection: keyof SectionVisibility,
+    targetSection: string,
     fromSection: string,
     blockIds: string[],
     targetIndex: number

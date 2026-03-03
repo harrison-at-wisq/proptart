@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { ProposalInputs, ProposalDocumentContent, WidgetItem, SectionVisibility, SectionLayout, BlockLayout, CustomBlockType, CustomBlock, resolveOtherValue, FAQSection, FAQ_PAGE_LABELS } from '@/types/proposal';
-import { DirectEditableText } from '@/components/ui/DirectEditableText';
-import { WidgetGroup } from '@/components/ui/WidgetGroup';
+import { ProposalInputs, ProposalDocumentContent, SectionVisibility, SectionLayout, BlockLayout, CustomBlockType, CustomBlock, resolveOtherValue, FAQSection, CustomSectionConfig, ProposalElementType, SectionLayoutPreset } from '@/types/proposal';
 import { SectionWrapper } from '@/components/ui/SectionWrapper';
 import { HiddenSectionsPanel } from '@/components/ui/HiddenSectionsPanel';
 import { LayoutModeProvider } from '@/components/ui/LayoutModeContext';
@@ -12,7 +10,15 @@ import { LayoutSection } from '@/components/ui/LayoutSection';
 import type { BlockDef } from '@/components/ui/LayoutSection';
 import { CustomBlockRenderer } from '@/components/ui/CustomBlockRenderer';
 import { SectionNavBar } from '@/components/ui/SectionNavBar';
-import { calculatePricing, formatCurrency, formatCompactCurrency } from '@/lib/pricing-calculator';
+import { PageFrame } from '@/components/ui/PageFrame';
+import { AddSectionButton } from '@/components/ui/AddSectionButton';
+import { CustomSectionRenderer } from './CustomSectionRenderer';
+import { getDefaultElementData } from './templates/element-defaults';
+import { ELEMENT_CATALOG } from './templates/registry';
+import { DEFAULT_TEMPLATE } from './templates/default-template';
+import { buildBlockDefs } from './buildBlockDefs';
+import type { ProposalRenderContext } from './buildBlockDefs';
+import { calculatePricing } from '@/lib/pricing-calculator';
 import {
   calculateHROperationsROI,
   calculateLegalComplianceROI,
@@ -21,8 +27,6 @@ import {
   calculate3YearProjection,
 } from '@/lib/roi-calculator';
 import { materializeDocumentContent } from '@/lib/materialize-content';
-import { getSelectedQuoteForSection } from '@/lib/customer-quotes';
-import type { QuoteSection } from '@/types/proposal';
 
 interface ProposalDocumentProps {
   inputs: ProposalInputs;
@@ -63,12 +67,13 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
   }, []);
 
   // Helper to toggle section visibility
-  const toggleVisibility = useCallback((key: keyof SectionVisibility) => {
+  const toggleVisibility = useCallback((key: string) => {
+    const visKey = key as keyof SectionVisibility;
     setDocContent(prev => ({
       ...prev,
       sectionVisibility: {
         ...prev.sectionVisibility,
-        [key]: !prev.sectionVisibility[key],
+        [visKey]: !prev.sectionVisibility[visKey],
       },
     }));
   }, []);
@@ -99,7 +104,7 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
   }, []);
 
   // Handle layout changes from LayoutSection
-  const handleLayoutChange = useCallback((sectionKey: keyof SectionVisibility, layout: SectionLayout) => {
+  const handleLayoutChange = useCallback((sectionKey: string, layout: SectionLayout) => {
     setDocContent(prev => ({
       ...prev,
       sectionLayouts: {
@@ -111,7 +116,7 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
 
   // Handle cross-section block moves
   const handleCrossSectionDrop = useCallback((
-    targetSection: keyof SectionVisibility,
+    targetSection: string,
     fromSection: string,
     blockIds: string[],
     targetIndex: number
@@ -135,7 +140,7 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
       };
 
       const sourceBlocks = getBlocks(srcKey);
-      const targetBlocks = getBlocks(targetSection);
+      const targetBlocks = getBlocks(targetSection as keyof SectionVisibility);
 
       // Extract moved blocks from source
       const movedBlocks = sourceBlocks.filter(b => blockIds.includes(b.blockId));
@@ -278,6 +283,89 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
     });
   }, []);
 
+  // ==================== Custom Section Handlers ====================
+
+  const handleAddCustomSection = useCallback((name: string, preset: SectionLayoutPreset, darkTheme: boolean) => {
+    const newSection: CustomSectionConfig = {
+      id: crypto.randomUUID(),
+      name,
+      layoutPreset: preset,
+      darkTheme,
+      elements: [],
+    };
+    setDocContent(prev => ({
+      ...prev,
+      customSections: [...(prev.customSections || []), newSection],
+    }));
+  }, []);
+
+  const handleUpdateCustomSectionElement = useCallback((sectionId: string, elementId: string, data: Record<string, unknown>) => {
+    setDocContent(prev => ({
+      ...prev,
+      customSections: (prev.customSections || []).map(s =>
+        s.id === sectionId
+          ? { ...s, elements: s.elements.map(el => el.id === elementId ? { ...el, data } : el) }
+          : s
+      ),
+    }));
+  }, []);
+
+  const handleRemoveCustomSectionElement = useCallback((sectionId: string, elementId: string) => {
+    setDocContent(prev => ({
+      ...prev,
+      customSections: (prev.customSections || []).map(s =>
+        s.id === sectionId
+          ? { ...s, elements: s.elements.filter(el => el.id !== elementId) }
+          : s
+      ),
+    }));
+  }, []);
+
+  const handleAddCustomSectionElement = useCallback((sectionId: string, elementType: ProposalElementType, colSpan: number, insertAt: number) => {
+    const catalogEntry = ELEMENT_CATALOG.find(e => e.type === elementType);
+    const newElement = {
+      id: crypto.randomUUID(),
+      elementType,
+      label: catalogEntry?.name || elementType,
+      colSpan,
+      data: getDefaultElementData(elementType),
+    };
+    setDocContent(prev => ({
+      ...prev,
+      customSections: (prev.customSections || []).map(s => {
+        if (s.id !== sectionId) return s;
+        const elements = [...s.elements];
+        elements.splice(insertAt, 0, newElement);
+        return { ...s, elements };
+      }),
+    }));
+  }, []);
+
+  const handleCustomSectionLayoutChange = useCallback((sectionId: string, layout: SectionLayout) => {
+    setDocContent(prev => ({
+      ...prev,
+      customSections: (prev.customSections || []).map(s =>
+        s.id === sectionId ? { ...s, layout } : s
+      ),
+    }));
+  }, []);
+
+  const handleRemoveCustomSection = useCallback((sectionId: string) => {
+    setDocContent(prev => ({
+      ...prev,
+      customSections: (prev.customSections || []).filter(s => s.id !== sectionId),
+    }));
+  }, []);
+
+  const handleRenameCustomSection = useCallback((sectionId: string, name: string) => {
+    setDocContent(prev => ({
+      ...prev,
+      customSections: (prev.customSections || []).map(s =>
+        s.id === sectionId ? { ...s, name } : s
+      ),
+    }));
+  }, []);
+
   // Calculate all computed values (not editable — always derived from inputs)
   const pricing = calculatePricing(inputs.pricing);
   const hrOutput = calculateHROperationsROI(inputs.hrOperations);
@@ -302,52 +390,6 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
       sections[sIdx] = { ...sections[sIdx], faqs: newFaqs };
       return { ...prev, faqSections: sections };
     });
-  };
-
-  const renderFAQBlock = (pageId: string, dark = false) => {
-    const section = getFAQsForPage(pageId);
-    if (!section || section.faqs.length === 0) return null;
-    return (
-      <div className={`mt-8 pt-6 border-t ${dark ? 'border-white/20' : 'border-gray-200'}`}>
-        <h4 className={`text-sm font-semibold mb-3 uppercase tracking-wide ${dark ? 'text-white/70' : 'text-[#03143B]'}`}>Anticipated Questions</h4>
-        <div className="space-y-3">
-          {section.faqs.map((faq, i) => (
-            <div key={i} className={`pl-4 border-l-2 ${dark ? 'border-white/30' : 'border-gray-200'}`}>
-              <DirectEditableText
-                value={faq.question}
-                onChange={(value) => updateFAQ(pageId, i, 'question', value)}
-                as="p"
-                className={`font-medium text-sm ${dark ? 'text-white' : 'text-gray-900'}`}
-              />
-              <DirectEditableText
-                value={faq.answer}
-                onChange={(value) => updateFAQ(pageId, i, 'answer', value)}
-                as="p"
-                className={`text-sm mt-1 ${dark ? 'text-white/70' : 'text-gray-600'}`}
-                multiline
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  // Quote render block
-  const renderQuoteBlock = (section: QuoteSection, dark = false) => {
-    if (!docContent.selectedQuotes || docContent.selectedQuotes.length === 0) return null;
-    const quote = getSelectedQuoteForSection(docContent.selectedQuotes, section);
-    if (!quote) return null;
-    return (
-      <div className={`my-6 pl-5 border-l-4 ${dark ? 'border-white/50' : 'border-[#4d65ff]'}`}>
-        <p className={`text-sm italic leading-relaxed ${dark ? 'text-white/90' : 'text-gray-700'}`}>
-          &ldquo;{quote.text}&rdquo;
-        </p>
-        <p className={`text-xs mt-2 ${dark ? 'text-white/60' : 'text-gray-500'}`}>
-          &mdash; {quote.attribution}
-        </p>
-      </div>
-    );
   };
 
   // Build customer integrations list (computed from inputs, not editable text)
@@ -551,6 +593,20 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
     ];
     allBlocks.forEach(b => { blockRegistryRef.current[b.blockId] = b; });
     return allBlocks;
+  };
+
+  // Build render context for template-driven sections
+  const renderCtx: ProposalRenderContext = {
+    docContent,
+    updateContent,
+    pricing,
+    summary,
+    projection,
+    inputs,
+    customerIntegrations,
+    today,
+    getFAQsForPage,
+    updateFAQ,
   };
 
   // Determine microsite button label and action
@@ -839,931 +895,50 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
       {/* Document Container */}
       <div
         ref={documentRef}
-        className="proposal-document bg-white min-h-screen"
+        className="proposal-document min-h-screen"
       >
-        {/* ==================== COVER PAGE ==================== */}
-        <SectionWrapper sectionKey="cover" visible={vis.cover} onToggleVisibility={toggleVisibility}>
-          <section className="page cover-page min-h-screen flex flex-col justify-between p-12 border-l-8 border-[#03143B]">
-            <div>
-              <div className="text-sm font-semibold text-[#03143B] tracking-widest uppercase mb-2">
-                Strategic Proposal
-              </div>
-              <DirectEditableText
-                value={docContent.coverTitle}
-                onChange={(value) => updateContent('coverTitle', value)}
-                as="h1"
-                className="text-5xl font-bold text-[#03143B] leading-tight mb-6"
+        {/* ==================== TEMPLATE-DRIVEN SECTIONS ==================== */}
+        {DEFAULT_TEMPLATE.sections.map((sectionConfig) => {
+          const sectionKey = sectionConfig.sectionKey;
+          const blocks = buildBlockDefs(sectionConfig, renderCtx);
+
+          return (
+            <SectionWrapper key={sectionKey} sectionKey={sectionKey} visible={vis[sectionKey]} onToggleVisibility={toggleVisibility}>
+              <PageFrame darkTheme={sectionConfig.darkTheme} className={sectionConfig.className}>
+                {sectionKey === 'cover' ? (
+                  <>{blocks.map(b => <div key={b.blockId}>{b.render()}</div>)}</>
+                ) : (
+                  <LayoutSection
+                    sectionKey={sectionKey}
+                    blocks={registerBlocks(sectionKey, blocks)}
+                    layout={docContent.sectionLayouts?.[sectionKey]}
+                    onLayoutChange={handleLayoutChange}
+                    blockRegistry={blockRegistryRef.current}
+                    onCrossSectionDrop={handleCrossSectionDrop}
+                    onInsertBlock={handleInsertBlock}
+                  />
+                )}
+              </PageFrame>
+            </SectionWrapper>
+          );
+        })}
+
+        {/* ==================== CUSTOM SECTIONS ==================== */}
+        {(docContent.customSections || []).map((cs) => (
+          <div key={cs.id} data-section-key={cs.id}>
+            <PageFrame darkTheme={cs.darkTheme}>
+              <CustomSectionRenderer
+                section={cs}
+                onUpdateElement={handleUpdateCustomSectionElement}
+                onRemoveElement={handleRemoveCustomSectionElement}
+                onAddElement={handleAddCustomSectionElement}
+                onLayoutChange={handleCustomSectionLayoutChange}
+                onRemoveSection={handleRemoveCustomSection}
+                onRenameSection={handleRenameCustomSection}
               />
-              <div className="w-24 h-1 bg-[#03143B] mb-8"></div>
-              {docContent.coverQuote && (
-                <div className="text-xl text-gray-700 italic border-l-4 border-[#03143B] pl-4 mb-8 max-w-2xl">
-                  <p>&ldquo;<DirectEditableText
-                    value={docContent.coverQuote}
-                    onChange={(value) => updateContent('coverQuote', value)}
-                    as="span"
-                  />&rdquo;</p>
-                </div>
-              )}
-              <div className="text-lg text-gray-600 space-y-1">
-                <p>Prepared for <span className="font-semibold text-gray-900">{inputs.company.contactName}</span>, {resolveOtherValue(inputs.company.contactTitle, inputs.company.customContactTitle)}</p>
-              </div>
-            </div>
-            <div className="flex justify-between items-end">
-              <div className="flex items-center gap-3">
-                <img src="/wisq-logo.svg" alt="Wisq" className="h-12 w-12" />
-                <p className="text-gray-500 text-sm">wisq.com</p>
-              </div>
-              <div className="text-right text-gray-500">
-                <p>{today}</p>
-              </div>
-            </div>
-          </section>
-        </SectionWrapper>
-
-        {/* ==================== EXECUTIVE SUMMARY + CURRENT STATE ==================== */}
-        <SectionWrapper sectionKey="executiveSummary" visible={vis.executiveSummary} onToggleVisibility={toggleVisibility}>
-          <section className="page p-12">
-            <LayoutSection
-              sectionKey="executiveSummary"
-              blocks={registerBlocks('executiveSummary', [
-                {
-                  blockId: 'execHeading',
-                  label: 'Section Heading',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <div className="border-b-2 border-[#03143B] pb-3">
-                      <h2 className="text-3xl font-bold text-[#03143B]">Executive Summary</h2>
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'execInsight',
-                  label: 'Executive Insight',
-                  defaultColSpan: 7,
-                  render: () => (
-                    <DirectEditableText
-                      value={docContent.execSummaryInsight}
-                      onChange={(value) => updateContent('execSummaryInsight', value)}
-                      as="p"
-                      className="text-gray-700"
-                      multiline
-                    />
-                  ),
-                },
-                {
-                  blockId: 'execVision',
-                  label: 'Vision Callout',
-                  defaultColSpan: 7,
-                  render: () => (
-                    <div className="text-lg font-semibold text-[#03143B] italic border-l-4 border-[#03143B] pl-4">
-                      <DirectEditableText
-                        value={docContent.execSummaryVision}
-                        onChange={(value) => updateContent('execSummaryVision', value)}
-                        as="span"
-                      />
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'execQuote',
-                  label: 'Quote',
-                  defaultColSpan: 7,
-                  render: () => renderQuoteBlock('executive-summary'),
-                },
-                {
-                  blockId: 'execBullets',
-                  label: 'Key Bullets',
-                  defaultColSpan: 7,
-                  render: () => (
-                    <WidgetGroup
-                      items={docContent.execSummaryBullets}
-                      onChange={(items) => updateContent('execSummaryBullets', items)}
-                      layout="list"
-                      minItems={1}
-                      addLabel="Add bullet"
-                      createNewItem={() => ({ id: crypto.randomUUID(), text: 'New insight...' })}
-                      renderItem={(item) => (
-                        <li className="flex items-start gap-2 text-gray-600 text-sm">
-                          <span className="w-1.5 h-1.5 bg-[#03143B] rounded-full mt-2 flex-shrink-0"></span>
-                          <DirectEditableText
-                            value={item.text as string}
-                            onChange={(value) => {
-                              const updated = docContent.execSummaryBullets.map(b =>
-                                b.id === item.id ? { ...b, text: value } : b
-                              );
-                              updateContent('execSummaryBullets', updated);
-                            }}
-                            as="span"
-                          />
-                        </li>
-                      )}
-                    />
-                  ),
-                },
-                {
-                  blockId: 'keyMetrics',
-                  label: 'Key Metrics',
-                  defaultColSpan: 5,
-                  render: () => (
-                    <div className="bg-gray-50 p-5 rounded-lg border border-gray-200 h-full">
-                      <h3 className="text-sm font-semibold text-[#03143B] mb-3 uppercase tracking-wide">Key Metrics</h3>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center pb-2 border-b border-gray-200">
-                          <span className="text-gray-600 text-sm">Annual Investment</span>
-                          <span className="text-xl font-bold text-[#03143B]">{formatCompactCurrency(pricing.annualRecurringRevenue)}</span>
-                        </div>
-                        <div className="flex justify-between items-center pb-2 border-b border-gray-200">
-                          <span className="text-gray-600 text-sm">Projected Annual Value</span>
-                          <span className="text-xl font-bold text-[#03143B]">{formatCompactCurrency(summary.grossAnnualValue)}</span>
-                        </div>
-                        <div className="flex justify-between items-center pb-2 border-b border-gray-200">
-                          <span className="text-gray-600 text-sm">Return on Investment</span>
-                          <span className="text-xl font-bold text-[#03143B]">{summary.totalROI.toFixed(0)}%</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600 text-sm">Payback Period</span>
-                          <span className="text-xl font-bold text-[#03143B]">{summary.paybackPeriodMonths.toFixed(1)} mo</span>
-                        </div>
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'currentStateHeading',
-                  label: 'Sub-Heading',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <div className="border-t border-gray-200 pt-4">
-                      <h3 className="text-xl font-semibold text-[#03143B]">Current State Assessment</h3>
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'painPoints',
-                  label: 'Pain Points',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <WidgetGroup
-                      items={docContent.painPoints}
-                      onChange={(items) => updateContent('painPoints', items)}
-                      layout="grid-2"
-                      minItems={1}
-                      addLabel="Add pain point"
-                      createNewItem={() => ({ id: crypto.randomUUID(), headline: 'New challenge...', impact: 'Describe the business impact...' })}
-                      renderItem={(item) => (
-                        <div className="p-4 bg-white border-l-4 border-[#03143B] shadow-sm">
-                          <DirectEditableText
-                            value={item.headline as string}
-                            onChange={(value) => {
-                              const updated = docContent.painPoints.map(p =>
-                                p.id === item.id ? { ...p, headline: value } : p
-                              );
-                              updateContent('painPoints', updated);
-                            }}
-                            as="h4"
-                            className="font-semibold text-gray-900 mb-1"
-                          />
-                          <DirectEditableText
-                            value={item.impact as string}
-                            onChange={(value) => {
-                              const updated = docContent.painPoints.map(p =>
-                                p.id === item.id ? { ...p, impact: value } : p
-                              );
-                              updateContent('painPoints', updated);
-                            }}
-                            as="p"
-                            className="text-gray-600 text-sm"
-                            multiline
-                          />
-                        </div>
-                      )}
-                    />
-                  ),
-                },
-                {
-                  blockId: 'currentStateQuote',
-                  label: 'Quote',
-                  defaultColSpan: 12,
-                  render: () => renderQuoteBlock('current-state'),
-                },
-                {
-                  blockId: 'execFaq',
-                  label: 'FAQ',
-                  defaultColSpan: 12,
-                  render: () => renderFAQBlock('executive-summary'),
-                },
-              ])}
-              layout={docContent.sectionLayouts?.executiveSummary}
-              onLayoutChange={handleLayoutChange}
-              blockRegistry={blockRegistryRef.current}
-              onCrossSectionDrop={handleCrossSectionDrop}
-              onInsertBlock={handleInsertBlock}
-            />
-          </section>
-        </SectionWrapper>
-
-        {/* ==================== THE SOLUTION: MEET HARPER ==================== */}
-        <SectionWrapper sectionKey="meetHarper" visible={vis.meetHarper} onToggleVisibility={toggleVisibility}>
-          <section className="page p-12">
-            <LayoutSection
-              sectionKey="meetHarper"
-              blocks={registerBlocks('meetHarper', [
-                {
-                  blockId: 'harperHeading',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <div className="border-b-2 border-[#03143B] pb-3">
-                      <h2 className="text-3xl font-bold text-[#03143B]">The Solution: Meet Harper</h2>
-                      <p className="text-gray-500 mt-1">Your AI HR Generalist</p>
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'harperIntro',
-                  label: 'Introduction',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <DirectEditableText
-                      value={docContent.harperIntro}
-                      onChange={(value) => updateContent('harperIntro', value)}
-                      as="p"
-                      className="text-gray-700"
-                      multiline
-                    />
-                  ),
-                },
-                {
-                  blockId: 'harperStats',
-                  label: 'Harper Stats',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <WidgetGroup
-                      items={docContent.harperStats}
-                      onChange={(items) => updateContent('harperStats', items)}
-                      layout="grid-3"
-                      minItems={1}
-                      addLabel="Add stat"
-                      createNewItem={() => ({ id: crypto.randomUUID(), stat: '0%', context: 'New metric...' })}
-                      renderItem={(item) => (
-                        <div className="text-center p-4 bg-white border-2 border-[#03143B] rounded-lg">
-                          <DirectEditableText
-                            value={item.stat as string}
-                            onChange={(value) => {
-                              const updated = docContent.harperStats.map(s =>
-                                s.id === item.id ? { ...s, stat: value } : s
-                              );
-                              updateContent('harperStats', updated);
-                            }}
-                            as="div"
-                            className="text-3xl font-bold text-[#03143B] mb-1"
-                          />
-                          <DirectEditableText
-                            value={item.context as string}
-                            onChange={(value) => {
-                              const updated = docContent.harperStats.map(s =>
-                                s.id === item.id ? { ...s, context: value } : s
-                              );
-                              updateContent('harperStats', updated);
-                            }}
-                            as="div"
-                            className="text-xs text-gray-600"
-                          />
-                        </div>
-                      )}
-                    />
-                  ),
-                },
-                {
-                  blockId: 'meetHarperQuote',
-                  label: 'Quote',
-                  defaultColSpan: 12,
-                  render: () => renderQuoteBlock('meet-harper'),
-                },
-                {
-                  blockId: 'valueDriversHeading',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <h3 className="text-lg font-semibold text-[#03143B]">Value Drivers</h3>
-                  ),
-                },
-                {
-                  blockId: 'valueDrivers',
-                  label: 'Value Drivers',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <WidgetGroup
-                      items={docContent.valueDrivers}
-                      onChange={(items) => updateContent('valueDrivers', items)}
-                      layout="grid-3"
-                      minItems={1}
-                      maxItems={4}
-                      addLabel="Add value driver"
-                      createNewItem={() => ({
-                        id: crypto.randomUUID(),
-                        key: `custom-${Date.now()}`,
-                        headline: 'New Value Driver',
-                        description: 'Describe the value...',
-                        proof: 'Supporting evidence...',
-                        isPrimary: false,
-                      })}
-                      renderItem={(item, index) => {
-                        const isPrimary = item.isPrimary as boolean;
-                        return (
-                          <div className={`p-4 rounded-lg ${isPrimary ? 'bg-[#03143B]/10 ring-2 ring-[#03143B]' : 'bg-gray-50'}`}>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className={`text-3xl font-bold ${isPrimary ? 'text-[#03143B]' : 'text-[#03143B]/20'}`}>{index + 1}</div>
-                              {isPrimary && (
-                                <span className="px-2 py-0.5 bg-[#03143B] text-white text-xs font-medium rounded">PRIMARY</span>
-                              )}
-                            </div>
-                            <DirectEditableText
-                              value={item.headline as string}
-                              onChange={(value) => {
-                                const updated = docContent.valueDrivers.map(d =>
-                                  d.id === item.id ? { ...d, headline: value } : d
-                                );
-                                updateContent('valueDrivers', updated);
-                              }}
-                              as="h4"
-                              className="font-bold text-gray-900 mb-2"
-                            />
-                            <DirectEditableText
-                              value={item.description as string}
-                              onChange={(value) => {
-                                const updated = docContent.valueDrivers.map(d =>
-                                  d.id === item.id ? { ...d, description: value } : d
-                                );
-                                updateContent('valueDrivers', updated);
-                              }}
-                              as="p"
-                              className="text-gray-600 text-sm mb-2"
-                              multiline
-                            />
-                            <DirectEditableText
-                              value={(item.proof as string) || ''}
-                              onChange={(value) => {
-                                const updated = docContent.valueDrivers.map(d =>
-                                  d.id === item.id ? { ...d, proof: value } : d
-                                );
-                                updateContent('valueDrivers', updated);
-                              }}
-                              as="p"
-                              className="text-[#03143B] text-sm font-semibold"
-                            />
-                          </div>
-                        );
-                      }}
-                    />
-                  ),
-                },
-                {
-                  blockId: 'valueDriversQuote',
-                  label: 'Quote',
-                  defaultColSpan: 12,
-                  render: () => renderQuoteBlock('value-drivers'),
-                },
-                {
-                  blockId: 'valueDriversFaq',
-                  label: 'FAQ',
-                  defaultColSpan: 12,
-                  render: () => renderFAQBlock('value-drivers'),
-                },
-              ])}
-              layout={docContent.sectionLayouts?.meetHarper}
-              onLayoutChange={handleLayoutChange}
-              blockRegistry={blockRegistryRef.current}
-              onCrossSectionDrop={handleCrossSectionDrop}
-              onInsertBlock={handleInsertBlock}
-            />
-          </section>
-        </SectionWrapper>
-
-        {/* ==================== INVESTMENT CASE ==================== */}
-        <SectionWrapper sectionKey="investmentCase" visible={vis.investmentCase} onToggleVisibility={toggleVisibility}>
-          <section className="page p-12 bg-[#03143B] text-white">
-            <LayoutSection
-              sectionKey="investmentCase"
-              blocks={registerBlocks('investmentCase', [
-                {
-                  blockId: 'investHeading',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <div className="border-b-2 border-white/30 pb-3">
-                      <h2 className="text-3xl font-bold">Investment Case</h2>
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'investmentBreakdown',
-                  label: 'Your Investment',
-                  defaultColSpan: 6,
-                  render: () => (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-4 text-white/80">
-                        Your Investment ({inputs.pricing.contractTermYears}-Year Contract)
-                      </h3>
-                      <div className="space-y-3">
-                        {pricing.yearlyBreakdown.map((year, index) => (
-                          <div key={year.year} className="flex justify-between pb-2 border-b border-white/20">
-                            <span className="text-white/80">
-                              Year {year.year} Software
-                              {inputs.pricing.yearlyConfig[index]?.workflows.included ? ' (Platform + Workflows)' : ' (Platform)'}
-                            </span>
-                            <span className="font-semibold">{formatCompactCurrency(year.softwareNetPrice)}</span>
-                          </div>
-                        ))}
-                        {pricing.implementationNetPrice > 0 && (
-                          <div className="flex justify-between pb-2 border-b border-white/20">
-                            <span className="text-white/80">One-Time Implementation</span>
-                            <span className="font-semibold">{formatCompactCurrency(pricing.implementationNetPrice)}</span>
-                          </div>
-                        )}
-                        {pricing.servicesNetPrice > 0 && (
-                          <div className="flex justify-between pb-2 border-b border-white/20">
-                            <span className="text-white/80">Professional Services</span>
-                            <span className="font-semibold">{formatCompactCurrency(pricing.servicesNetPrice)}</span>
-                          </div>
-                        )}
-                        {pricing.integrationsNetPrice > 0 && (
-                          <div className="flex justify-between pb-2 border-b border-white/20">
-                            <span className="text-white/80">Additional Integrations</span>
-                            <span className="font-semibold">{formatCompactCurrency(pricing.integrationsNetPrice)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between pt-1">
-                          <span className="font-semibold">Total Contract Value</span>
-                          <span className="text-xl font-bold">{formatCompactCurrency(pricing.totalContractValue)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'returnBreakdown',
-                  label: 'Your Return',
-                  defaultColSpan: 6,
-                  render: () => (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-4 text-white/80">Your Return</h3>
-                      <div className="space-y-3">
-                        <div className="flex justify-between pb-2 border-b border-white/20">
-                          <span className="text-white/80">HR Operations Savings</span>
-                          <span className="font-semibold">{formatCompactCurrency(summary.hrOpsSavings)}</span>
-                        </div>
-                        <div className="flex justify-between pb-2 border-b border-white/20">
-                          <span className="text-white/80">Compliance Value</span>
-                          <span className="font-semibold">{formatCompactCurrency(summary.legalSavings)}</span>
-                        </div>
-                        <div className="flex justify-between pb-2 border-b border-white/20">
-                          <span className="text-white/80">Productivity Gains</span>
-                          <span className="font-semibold">{formatCompactCurrency(summary.productivitySavings)}</span>
-                        </div>
-                        <div className="flex justify-between pt-1">
-                          <span className="font-semibold">Net Annual Value</span>
-                          <span className="text-xl font-bold">{formatCompactCurrency(summary.netAnnualBenefit)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'kpiTiles',
-                  label: 'KPI Tiles',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className="bg-white/10 p-4 rounded-lg text-center">
-                        <div className="text-3xl font-bold mb-1">{summary.totalROI.toFixed(0)}%</div>
-                        <div className="text-white/70 text-sm">ROI</div>
-                      </div>
-                      <div className="bg-white/10 p-4 rounded-lg text-center">
-                        <div className="text-3xl font-bold mb-1">{summary.paybackPeriodMonths.toFixed(1)} mo</div>
-                        <div className="text-white/70 text-sm">Payback</div>
-                      </div>
-                      <div className="bg-white/10 p-4 rounded-lg text-center">
-                        <div className="text-3xl font-bold mb-1">{formatCompactCurrency(projection.total)}</div>
-                        <div className="text-white/70 text-sm">3-Year Value</div>
-                      </div>
-                      <div className="bg-white/10 p-4 rounded-lg text-center">
-                        <div className="text-3xl font-bold mb-1">{formatCompactCurrency(projection.netTotal)}</div>
-                        <div className="text-white/70 text-sm">3-Year Net</div>
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'investmentQuote',
-                  label: 'Quote',
-                  defaultColSpan: 12,
-                  render: () => renderQuoteBlock('investment', true),
-                },
-                {
-                  blockId: 'projectionPanel',
-                  label: '3-Year Projection',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <div className="bg-white/5 rounded-lg p-4">
-                      <h4 className="text-sm font-semibold text-white/70 mb-3 uppercase tracking-wide">3-Year Value Projection</h4>
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                        <div>
-                          <div className="text-white/60 text-xs mb-1">Year 1 (50% adoption)</div>
-                          <div className="text-xl font-bold">{formatCompactCurrency(projection.year1)}</div>
-                        </div>
-                        <div>
-                          <div className="text-white/60 text-xs mb-1">Year 2 (75% adoption)</div>
-                          <div className="text-xl font-bold">{formatCompactCurrency(projection.year2)}</div>
-                        </div>
-                        <div>
-                          <div className="text-white/60 text-xs mb-1">Year 3 (100% adoption)</div>
-                          <div className="text-xl font-bold">{formatCompactCurrency(projection.year3)}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'investmentFaq',
-                  label: 'FAQ',
-                  defaultColSpan: 12,
-                  render: () => renderFAQBlock('investment', true),
-                },
-              ])}
-              layout={docContent.sectionLayouts?.investmentCase}
-              onLayoutChange={handleLayoutChange}
-              blockRegistry={blockRegistryRef.current}
-              onCrossSectionDrop={handleCrossSectionDrop}
-              onInsertBlock={handleInsertBlock}
-            />
-          </section>
-        </SectionWrapper>
-
-        {/* ==================== SECURITY & INTEGRATION ==================== */}
-        <SectionWrapper sectionKey="securityIntegration" visible={vis.securityIntegration} onToggleVisibility={toggleVisibility}>
-          <section className="page p-12">
-            <LayoutSection
-              sectionKey="securityIntegration"
-              blocks={registerBlocks('securityIntegration', [
-                {
-                  blockId: 'securityHeading',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <div className="border-b-2 border-[#03143B] pb-3">
-                      <h2 className="text-3xl font-bold text-[#03143B]">Security & Integration</h2>
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'securityFeaturesHeading',
-                  label: 'Security Heading',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <h3 className="text-lg font-semibold text-[#03143B]">Enterprise Security</h3>
-                  ),
-                },
-                {
-                  blockId: 'securityFeatures',
-                  label: 'Security Features',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <WidgetGroup
-                      items={docContent.securityFeatures}
-                      onChange={(items) => updateContent('securityFeatures', items)}
-                      layout="grid-3"
-                      minItems={1}
-                      addLabel="Add security feature"
-                      createNewItem={() => ({ id: crypto.randomUUID(), title: 'New Feature', description: 'Describe the security capability...' })}
-                      renderItem={(item) => (
-                        <div className="p-3 bg-white border border-gray-200 rounded-lg">
-                          <DirectEditableText
-                            value={item.title as string}
-                            onChange={(value) => {
-                              const updated = docContent.securityFeatures.map(f =>
-                                f.id === item.id ? { ...f, title: value } : f
-                              );
-                              updateContent('securityFeatures', updated);
-                            }}
-                            as="h4"
-                            className="font-semibold text-[#03143B] mb-1 text-sm"
-                          />
-                          <DirectEditableText
-                            value={item.description as string}
-                            onChange={(value) => {
-                              const updated = docContent.securityFeatures.map(f =>
-                                f.id === item.id ? { ...f, description: value } : f
-                              );
-                              updateContent('securityFeatures', updated);
-                            }}
-                            as="p"
-                            className="text-gray-600 text-xs"
-                            multiline
-                          />
-                        </div>
-                      )}
-                    />
-                  ),
-                },
-                {
-                  blockId: 'integrationLandscape',
-                  label: 'Integrations',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <>
-                      <h3 className="text-lg font-semibold text-[#03143B] mb-4">Your Integration Landscape</h3>
-                      {customerIntegrations.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {customerIntegrations.map((integration) => (
-                            <div
-                              key={integration.name}
-                              className="px-4 py-2 bg-[#03143B] text-white rounded-full text-sm"
-                            >
-                              <span className="opacity-70 mr-2">{integration.category}</span>
-                              <span className="font-medium">{integration.name}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-gray-500 text-sm italic">Integration requirements to be discussed</p>
-                      )}
-                    </>
-                  ),
-                },
-                {
-                  blockId: 'securityQuote',
-                  label: 'Quote',
-                  defaultColSpan: 12,
-                  render: () => renderQuoteBlock('security'),
-                },
-                {
-                  blockId: 'implementationTimelineHeading',
-                  label: 'Timeline Heading',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <h3 className="text-lg font-semibold text-[#03143B]">Implementation Timeline (12 weeks)</h3>
-                  ),
-                },
-                {
-                  blockId: 'implementationTimeline',
-                  label: 'Timeline',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <WidgetGroup
-                      items={docContent.implementationTimeline}
-                      onChange={(items) => updateContent('implementationTimeline', items)}
-                      layout="grid-4"
-                      minItems={1}
-                      addLabel="Add phase"
-                      createNewItem={() => ({ id: crypto.randomUUID(), week: 'Week X-Y', title: 'New Phase', description: 'Phase activities...' })}
-                      renderItem={(item) => (
-                        <div className="p-4 bg-gray-50 rounded-lg border-t-4 border-[#03143B]">
-                          <DirectEditableText
-                            value={item.week as string}
-                            onChange={(value) => {
-                              const updated = docContent.implementationTimeline.map(p =>
-                                p.id === item.id ? { ...p, week: value } : p
-                              );
-                              updateContent('implementationTimeline', updated);
-                            }}
-                            as="div"
-                            className="text-xs font-semibold text-[#03143B] mb-1"
-                          />
-                          <DirectEditableText
-                            value={item.title as string}
-                            onChange={(value) => {
-                              const updated = docContent.implementationTimeline.map(p =>
-                                p.id === item.id ? { ...p, title: value } : p
-                              );
-                              updateContent('implementationTimeline', updated);
-                            }}
-                            as="h4"
-                            className="font-bold text-gray-900 text-sm mb-1"
-                          />
-                          <DirectEditableText
-                            value={item.description as string}
-                            onChange={(value) => {
-                              const updated = docContent.implementationTimeline.map(p =>
-                                p.id === item.id ? { ...p, description: value } : p
-                              );
-                              updateContent('implementationTimeline', updated);
-                            }}
-                            as="p"
-                            className="text-gray-600 text-xs"
-                            multiline
-                          />
-                        </div>
-                      )}
-                    />
-                  ),
-                },
-                {
-                  blockId: 'securityFaq',
-                  label: 'FAQ',
-                  defaultColSpan: 12,
-                  render: () => renderFAQBlock('security'),
-                },
-              ])}
-              layout={docContent.sectionLayouts?.securityIntegration}
-              onLayoutChange={handleLayoutChange}
-              blockRegistry={blockRegistryRef.current}
-              onCrossSectionDrop={handleCrossSectionDrop}
-              onInsertBlock={handleInsertBlock}
-            />
-          </section>
-        </SectionWrapper>
-
-        {/* ==================== WHY NOW + NEXT STEPS ==================== */}
-        <SectionWrapper sectionKey="whyNow" visible={vis.whyNow} onToggleVisibility={toggleVisibility}>
-          <section className="page p-12">
-            <LayoutSection
-              sectionKey="whyNow"
-              blocks={registerBlocks('whyNow', [
-                {
-                  blockId: 'whyNowHeading',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <div className="border-b-2 border-[#03143B] pb-3">
-                      <h2 className="text-3xl font-bold text-[#03143B]">Why Now?</h2>
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'whyNowItems',
-                  label: 'Why Now',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <WidgetGroup
-                      items={docContent.whyNowItems}
-                      onChange={(items) => updateContent('whyNowItems', items)}
-                      layout="grid-2"
-                      minItems={1}
-                      addLabel="Add reason"
-                      createNewItem={() => ({ id: crypto.randomUUID(), key: `custom-${Date.now()}`, headline: 'New Reason', description: 'Why this matters now...' })}
-                      renderItem={(item, index) => (
-                        <div className="p-4 bg-gray-50 rounded-lg border-l-4 border-[#03143B]">
-                          <DirectEditableText
-                            value={item.headline as string}
-                            onChange={(value) => {
-                              const updated = docContent.whyNowItems.map(w =>
-                                w.id === item.id ? { ...w, headline: value } : w
-                              );
-                              updateContent('whyNowItems', updated);
-                            }}
-                            as="h3"
-                            className="font-semibold text-[#03143B] mb-1"
-                          />
-                          <DirectEditableText
-                            value={item.description as string}
-                            onChange={(value) => {
-                              const updated = docContent.whyNowItems.map(w =>
-                                w.id === item.id ? { ...w, description: value } : w
-                              );
-                              updateContent('whyNowItems', updated);
-                            }}
-                            as="p"
-                            className="text-gray-600 text-sm"
-                            multiline
-                          />
-                          {index === 0 && (
-                            <p className="text-lg font-bold text-[#03143B] mt-2">
-                              {formatCompactCurrency(summary.grossAnnualValue / 12)}/month in potential value
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    />
-                  ),
-                },
-                {
-                  blockId: 'whyNowQuote',
-                  label: 'Quote',
-                  defaultColSpan: 12,
-                  render: () => renderQuoteBlock('why-now'),
-                },
-                {
-                  blockId: 'whyNowFaq',
-                  label: 'FAQ',
-                  defaultColSpan: 12,
-                  render: () => renderFAQBlock('why-now'),
-                },
-              ])}
-              layout={docContent.sectionLayouts?.whyNow}
-              onLayoutChange={handleLayoutChange}
-              blockRegistry={blockRegistryRef.current}
-              onCrossSectionDrop={handleCrossSectionDrop}
-              onInsertBlock={handleInsertBlock}
-            />
-          </section>
-        </SectionWrapper>
-
-        {/* ==================== NEXT STEPS ==================== */}
-        <SectionWrapper sectionKey="nextSteps" visible={vis.nextSteps} onToggleVisibility={toggleVisibility}>
-          <section className="page p-12">
-            <LayoutSection
-              sectionKey="nextSteps"
-              blocks={registerBlocks('nextSteps', [
-                {
-                  blockId: 'nextStepsHeading',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <div className="border-t-2 border-[#03143B] pt-4">
-                      <h2 className="text-2xl font-bold text-[#03143B]">Next Steps</h2>
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'nextStepsItems',
-                  label: 'Next Steps',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <WidgetGroup
-                      items={docContent.nextStepsItems}
-                      onChange={(items) => updateContent('nextStepsItems', items)}
-                      layout="list"
-                      minItems={1}
-                      addLabel="Add next step"
-                      createNewItem={() => ({ id: crypto.randomUUID(), title: 'New Step', description: 'Describe the next step...' })}
-                      renderItem={(item, index) => (
-                        <div className="flex items-start gap-4">
-                          <div className="w-8 h-8 bg-[#03143B] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 text-sm">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <DirectEditableText
-                              value={item.title as string}
-                              onChange={(value) => {
-                                const updated = docContent.nextStepsItems.map(s =>
-                                  s.id === item.id ? { ...s, title: value } : s
-                                );
-                                updateContent('nextStepsItems', updated);
-                              }}
-                              as="h3"
-                              className="font-semibold text-gray-900"
-                            />
-                            <DirectEditableText
-                              value={item.description as string}
-                              onChange={(value) => {
-                                const updated = docContent.nextStepsItems.map(s =>
-                                  s.id === item.id ? { ...s, description: value } : s
-                                );
-                                updateContent('nextStepsItems', updated);
-                              }}
-                              as="p"
-                              className="text-gray-600 text-sm"
-                              multiline
-                            />
-                          </div>
-                        </div>
-                      )}
-                    />
-                  ),
-                },
-                {
-                  blockId: 'contactCard',
-                  label: 'Contact',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-                      <p className="text-gray-600 mb-1">Questions? Let&apos;s talk.</p>
-                      {inputs.company.contactEmail.includes('|') ? (
-                        <>
-                          <p className="text-xl font-semibold text-[#03143B]">
-                            {inputs.company.contactEmail.split('|')[0].trim()}
-                          </p>
-                          <p className="text-lg text-[#03143B]">
-                            {inputs.company.contactEmail.split('|')[1].trim()}
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-xl font-semibold text-[#03143B]">{inputs.company.contactEmail}</p>
-                      )}
-                    </div>
-                  ),
-                },
-                {
-                  blockId: 'footer',
-                  label: 'Footer',
-                  defaultColSpan: 12,
-                  render: () => (
-                    <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-                      <div className="flex items-center gap-3">
-                        <img src="/wisq-logo.svg" alt="Wisq" className="h-10 w-10" />
-                        <p className="text-gray-500 text-sm">wisq.com</p>
-                      </div>
-                      <div className="text-right text-gray-500 text-sm">
-                        <p>Confidential</p>
-                        <p>{today}</p>
-                      </div>
-                    </div>
-                  ),
-                },
-              ])}
-              layout={docContent.sectionLayouts?.nextSteps}
-              onLayoutChange={handleLayoutChange}
-              blockRegistry={blockRegistryRef.current}
-              onCrossSectionDrop={handleCrossSectionDrop}
-              onInsertBlock={handleInsertBlock}
-            />
-          </section>
-        </SectionWrapper>
+            </PageFrame>
+          </div>
+        ))}
 
         {/* Hidden Sections Restore Panel */}
         <div className="px-12">
@@ -1794,6 +969,7 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
 
           .proposal-document {
             background: white !important;
+            padding: 0 !important;
           }
 
           .page {
@@ -1805,6 +981,12 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
 
           .page:last-child {
             page-break-after: auto;
+          }
+
+          .page-frame {
+            margin-bottom: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
           }
 
           /* Ensure backgrounds print */
@@ -1840,11 +1022,23 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
           .proposal-document {
             max-width: 8.5in;
             margin: 0 auto;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            background-color: #e5e7eb;
+            padding: 2rem 0;
           }
 
           .page {
             min-height: 11in;
+          }
+
+          .page-frame {
+            min-height: 11in;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+          }
+
+          .page-frame:last-child {
+            margin-bottom: 0;
           }
 
           .cover-page {
@@ -1853,7 +1047,8 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
         }
       `}</style>
 
-      {/* Layout Mode Toggle */}
+      {/* Layout Mode Toggle + Add Section Button */}
+      <AddSectionButton onAddSection={handleAddCustomSection} />
       <LayoutModeToggle />
     </LayoutModeProvider>
   );

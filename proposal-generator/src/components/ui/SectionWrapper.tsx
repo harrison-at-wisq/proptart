@@ -1,12 +1,10 @@
 'use client';
 
 import React from 'react';
-import { SectionVisibility } from '@/types/proposal';
-
 interface SectionWrapperProps {
-  sectionKey: keyof SectionVisibility;
+  sectionKey: string;
   visible: boolean;
-  onToggleVisibility: (key: keyof SectionVisibility) => void;
+  onToggleVisibility: (key: string) => void;
   children: React.ReactNode;
   className?: string;
 }
