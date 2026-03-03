@@ -216,14 +216,13 @@ function ElementPicker({
   onSelect: (type: ProposalElementType, colSpan: number) => void;
   onClose: () => void;
 }) {
-  const categories = ['text', 'data', 'cards', 'lists', 'accents', 'structural'] as const;
+  const categories = ['text', 'data', 'cards', 'lists', 'layout'] as const;
   const categoryLabels: Record<string, string> = {
-    text: 'Text & Headings',
-    data: 'Data Display',
-    cards: 'Cards & Grids',
+    text: 'Text',
+    data: 'Data',
+    cards: 'Cards',
     lists: 'Lists',
-    accents: 'Accents & Quotes',
-    structural: 'Structural',
+    layout: 'Layout',
   };
 
   const bgClass = darkTheme ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200';

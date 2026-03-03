@@ -57,7 +57,7 @@ export interface ElementMeta {
   type: ProposalElementType;
   name: string;
   description: string;
-  category: 'text' | 'data' | 'cards' | 'lists' | 'accents' | 'structural';
+  category: 'text' | 'data' | 'cards' | 'lists' | 'layout';
   defaultColSpan: number;
 }
 
@@ -85,15 +85,17 @@ export const ELEMENT_CATALOG: ElementMeta[] = [
   { type: 'bullet-list', name: 'Bullet List', description: 'Bulleted list with dot markers', category: 'lists', defaultColSpan: 7 },
   { type: 'numbered-steps', name: 'Numbered Steps', description: 'Steps with circle number badges', category: 'lists', defaultColSpan: 12 },
 
-  // Accents & Quotes
-  { type: 'customer-quote', name: 'Customer Quote', description: 'Italic quote with attribution', category: 'accents', defaultColSpan: 12 },
-  { type: 'divider-line', name: 'Divider Line', description: 'Navy accent bar', category: 'accents', defaultColSpan: 12 },
-  { type: 'faq-section', name: 'FAQ Section', description: 'Question and answer pairs', category: 'accents', defaultColSpan: 12 },
+  // Text (continued)
+  { type: 'customer-quote', name: 'Customer Quote', description: 'Italic quote with attribution', category: 'text', defaultColSpan: 12 },
+  { type: 'faq-section', name: 'FAQ Section', description: 'Question and answer pairs', category: 'text', defaultColSpan: 12 },
+  { type: 'cover-title-block', name: 'Cover Title', description: 'Full cover page title area', category: 'text', defaultColSpan: 12 },
 
-  // Structural
-  { type: 'integration-pills', name: 'Integration Pills', description: 'Rounded badge pills', category: 'structural', defaultColSpan: 12 },
-  { type: 'contact-card', name: 'Contact Card', description: 'Contact information panel', category: 'structural', defaultColSpan: 12 },
-  { type: 'page-footer', name: 'Page Footer', description: 'Logo, date, and confidentiality', category: 'structural', defaultColSpan: 12 },
-  { type: 'cover-title-block', name: 'Cover Title', description: 'Full cover page title area', category: 'structural', defaultColSpan: 12 },
-  { type: 'spacer', name: 'Spacer', description: 'Adjustable vertical space', category: 'structural', defaultColSpan: 12 },
+  // Cards (continued)
+  { type: 'contact-card', name: 'Contact Card', description: 'Contact information panel', category: 'cards', defaultColSpan: 12 },
+  { type: 'integration-pills', name: 'Integration Pills', description: 'Rounded badge pills', category: 'cards', defaultColSpan: 12 },
+
+  // Layout
+  { type: 'page-footer', name: 'Page Footer', description: 'Logo, date, and confidentiality', category: 'layout', defaultColSpan: 12 },
+  { type: 'spacer', name: 'Spacer', description: 'Adjustable vertical space', category: 'layout', defaultColSpan: 12 },
+  { type: 'divider-line', name: 'Divider Line', description: 'Navy accent bar', category: 'layout', defaultColSpan: 12 },
 ];

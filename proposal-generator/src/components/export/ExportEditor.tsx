@@ -1463,13 +1463,11 @@ function ExportElementBlock({
 // ---------- Element Picker ----------
 
 const ELEMENT_CATEGORIES = [
-  { key: 'all', label: 'All' },
   { key: 'text', label: 'Text' },
   { key: 'data', label: 'Data' },
   { key: 'cards', label: 'Cards' },
   { key: 'lists', label: 'Lists' },
-  { key: 'accents', label: 'Accents' },
-  { key: 'structural', label: 'Layout' },
+  { key: 'layout', label: 'Layout' },
 ];
 
 /** Mini visual preview for each element type */
@@ -1716,11 +1714,9 @@ function ElementPicker({
   onSelect: (elementType: ProposalElementType) => void;
   onClose: () => void;
 }) {
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeCategory, setActiveCategory] = useState('text');
 
-  const filteredItems = activeCategory === 'all'
-    ? ELEMENT_CATALOG
-    : ELEMENT_CATALOG.filter(e => e.category === activeCategory);
+  const filteredItems = ELEMENT_CATALOG.filter(e => e.category === activeCategory);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm print:hidden" onClick={onClose}>
