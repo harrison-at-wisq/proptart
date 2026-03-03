@@ -444,12 +444,115 @@ export interface ProposalInputs {
   roiEstimateGenerated?: boolean;
   // AI Personalization
   aiPersonalization?: AIPersonalizationInputs;
-  // Content overrides from inline editing
+  // Content overrides from inline editing (deprecated - use documentContent)
   contentOverrides?: ProposalContentOverrides;
   // AI-generated content
   generatedContent?: GeneratedProposalContent;
   // RFP Response Appendix
   rfpAppendix?: RFPAppendix;
+  // Materialized editable document content (replaces contentOverrides for rendering)
+  documentContent?: ProposalDocumentContent;
+}
+
+// ============================================================
+// Widget-based editable document types
+// ============================================================
+
+/** A single item within a repeatable widget group */
+export interface WidgetItem {
+  id: string;
+  [key: string]: unknown;
+}
+
+/** Section visibility flags for soft hide/restore */
+export interface SectionVisibility {
+  cover: boolean;
+  executiveSummary: boolean;
+  meetHarper: boolean;
+  investmentCase: boolean;
+  securityIntegration: boolean;
+  whyNow: boolean;
+  nextSteps: boolean;
+}
+
+/** Fully materialized, directly-editable document content */
+export interface ProposalDocumentContent {
+  // Cover Page
+  coverTitle: string;
+  coverQuote: string;
+
+  // Executive Summary
+  execSummaryInsight: string;
+  execSummaryVision: string;
+  execSummaryBullets: WidgetItem[]; // { id, text }
+
+  // Current State - Pain Points
+  painPoints: WidgetItem[]; // { id, headline, impact }
+
+  // Meet Harper
+  harperIntro: string;
+  harperStats: WidgetItem[]; // { id, stat, context }
+
+  // Value Drivers
+  valueDrivers: WidgetItem[]; // { id, key, headline, description, proof, isPrimary }
+
+  // Security Features
+  securityFeatures: WidgetItem[]; // { id, title, description }
+
+  // Implementation Timeline
+  implementationTimeline: WidgetItem[]; // { id, week, title, description }
+
+  // Why Now
+  whyNowItems: WidgetItem[]; // { id, key, headline, description }
+
+  // Next Steps
+  nextStepsItems: WidgetItem[]; // { id, title, description }
+
+  // FAQ Sections
+  faqSections: FAQSection[];
+
+  // Selected Quotes
+  selectedQuotes: string[];
+
+  // Section visibility
+  sectionVisibility: SectionVisibility;
+
+  // Page layout configuration per section
+  sectionLayouts?: Partial<Record<keyof SectionVisibility, SectionLayout>>;
+
+  // Custom blocks added by the user
+  customBlocks?: CustomBlock[];
+
+  // Metadata
+  materializedAt: string;
+}
+
+/** Types of custom blocks the user can insert */
+export type CustomBlockType = 'text' | 'heading' | 'card-grid-2' | 'card-grid-3' | 'bullet-list' | 'numbered-list';
+
+/** A user-created block inserted between existing blocks */
+export interface CustomBlock {
+  id: string;
+  type: CustomBlockType;
+  sectionKey: string;
+  label: string;
+  colSpan: number;
+  data: {
+    text?: string;
+    items?: WidgetItem[];
+  };
+}
+
+/** Layout configuration for a single block within a section */
+export interface BlockLayout {
+  blockId: string;
+  colSpan: number; // 1-12 (12-column grid)
+  order: number;
+}
+
+/** Layout configuration for an entire section */
+export interface SectionLayout {
+  blocks: BlockLayout[];
 }
 
 // Content overrides from inline editing

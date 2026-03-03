@@ -1,9 +1,10 @@
 'use client';
 
-import { use, useState, useEffect, useCallback } from 'react';
+import { use, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProposalDocument } from '@/components/proposal/ProposalDocument';
-import { ProposalInputs, ProposalContentOverrides } from '@/types/proposal';
+import { ProposalInputs, ProposalDocumentContent } from '@/types/proposal';
+import { materializeDocumentContent } from '@/lib/materialize-content';
 
 export default function ProposalAssetsPage({
   params,
@@ -15,6 +16,7 @@ export default function ProposalAssetsPage({
   const [proposalData, setProposalData] = useState<ProposalInputs | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch(`/api/proposals/${id}`, { cache: 'no-store' })
@@ -24,11 +26,24 @@ export default function ProposalAssetsPage({
       })
       .then(json => {
         const data = json?.proposal?.data as ProposalInputs | undefined;
-        if (!data?.generatedContent) {
-          // No generated content — redirect to editor
+        if (!data) {
+          // No proposal data at all — redirect to editor
           router.replace(`/p/${id}`);
           return;
         }
+
+        // Lazy materialization: if documentContent doesn't exist yet, create it
+        if (!data.documentContent) {
+          const materialized = materializeDocumentContent(data);
+          data.documentContent = materialized;
+          // Save materialized content back to DB
+          fetch(`/api/proposals/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data }),
+          }).catch(err => console.error('Failed to save materialized content:', err));
+        }
+
         setProposalData(data);
         setLoading(false);
       })
@@ -38,18 +53,25 @@ export default function ProposalAssetsPage({
       });
   }, [id, router]);
 
-  const handleContentChange = useCallback((overrides: ProposalContentOverrides) => {
+  const handleDocumentContentChange = useCallback((content: ProposalDocumentContent) => {
     setProposalData(prev => {
       if (!prev) return prev;
-      const updated = { ...prev, contentOverrides: overrides };
-      // Save overrides to API
-      fetch(`/api/proposals/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: updated }),
-      }).catch(err => console.error('Failed to save content changes:', err));
-      return updated;
+      return { ...prev, documentContent: content };
     });
+
+    // Debounced save (500ms)
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      setProposalData(current => {
+        if (!current) return current;
+        fetch(`/api/proposals/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: current }),
+        }).catch(err => console.error('Failed to save content changes:', err));
+        return current;
+      });
+    }, 500);
   }, [id]);
 
   const handleClose = () => {
@@ -90,7 +112,7 @@ export default function ProposalAssetsPage({
       inputs={proposalData}
       proposalId={id}
       onClose={handleClose}
-      onContentChange={handleContentChange}
+      onDocumentContentChange={handleDocumentContentChange}
     />
   );
 }
