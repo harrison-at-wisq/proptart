@@ -11,6 +11,7 @@ interface CoverTitleBlockProps {
   onQuoteChange?: (value: string) => void;
   contactName?: string;
   contactTitle?: string;
+  darkTheme?: boolean;
 }
 
 export const COVER_TITLE_BLOCK_PLACEHOLDER = {
@@ -29,10 +30,18 @@ export function CoverTitleBlock({
   onQuoteChange,
   contactName = COVER_TITLE_BLOCK_PLACEHOLDER.contactName,
   contactTitle = COVER_TITLE_BLOCK_PLACEHOLDER.contactTitle,
+  darkTheme,
 }: CoverTitleBlockProps) {
+  const headingColor = darkTheme ? 'text-white' : 'text-[#03143B]';
+  const dividerBg = darkTheme ? 'bg-white/50' : 'bg-[#03143B]';
+  const quoteText = darkTheme ? 'text-white/80' : 'text-gray-700';
+  const quoteBorder = darkTheme ? 'border-white/40' : 'border-[#03143B]';
+  const metaText = darkTheme ? 'text-white/60' : 'text-gray-600';
+  const nameText = darkTheme ? 'text-white' : 'text-gray-900';
+
   return (
     <div>
-      <div className="text-sm font-semibold text-[#03143B] tracking-widest uppercase mb-2">
+      <div className={`text-sm font-semibold ${headingColor} tracking-widest uppercase mb-2`}>
         {eyebrow}
       </div>
       {onTitleChange ? (
@@ -40,14 +49,14 @@ export function CoverTitleBlock({
           value={title}
           onChange={onTitleChange}
           as="h1"
-          className="text-5xl font-bold text-[#03143B] leading-tight mb-6"
+          className={`text-5xl font-bold ${headingColor} leading-tight mb-6`}
         />
       ) : (
-        <h1 className="text-5xl font-bold text-[#03143B] leading-tight mb-6">{title}</h1>
+        <h1 className={`text-5xl font-bold ${headingColor} leading-tight mb-6`}>{title}</h1>
       )}
-      <div className="w-24 h-1 bg-[#03143B] mb-8"></div>
+      <div className={`w-24 h-1 ${dividerBg} mb-8`}></div>
       {quote && (
-        <div className="text-xl text-gray-700 italic border-l-4 border-[#03143B] pl-4 mb-8 max-w-2xl">
+        <div className={`text-xl ${quoteText} italic border-l-4 ${quoteBorder} pl-4 mb-8 max-w-2xl`}>
           {onQuoteChange ? (
             <p>&ldquo;<DirectEditableText
               value={quote}
@@ -59,8 +68,8 @@ export function CoverTitleBlock({
           )}
         </div>
       )}
-      <div className="text-lg text-gray-600 space-y-1">
-        <p>Prepared for <span className="font-semibold text-gray-900">{contactName}</span>, {contactTitle}</p>
+      <div className={`text-lg ${metaText} space-y-1`}>
+        <p>Prepared for <span className={`font-semibold ${nameText}`}>{contactName}</span>, {contactTitle}</p>
       </div>
     </div>
   );

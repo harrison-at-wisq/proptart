@@ -37,34 +37,34 @@ export function ValueDriverCards({ items = VALUE_DRIVER_CARDS_PLACEHOLDER.items,
         isPrimary: false,
       })}
       renderItem={(item, index) => {
-        const isPrimary = item.isPrimary as boolean;
+        const isPrimary = index === 0;
         const cardClass = darkTheme
           ? `p-4 rounded-lg ${isPrimary ? 'bg-white/20 ring-2 ring-white/50' : 'bg-white/10'}`
           : `p-4 rounded-lg ${isPrimary ? 'bg-[#03143B]/10 ring-2 ring-[#03143B]' : 'bg-gray-50'}`;
         const numColor = darkTheme
-          ? `text-3xl font-bold ${isPrimary ? 'text-white' : 'text-white/30'}`
-          : `text-3xl font-bold ${isPrimary ? 'text-[#03143B]' : 'text-[#03143B]/20'}`;
+          ? `text-3xl font-bold flex-shrink-0 ${isPrimary ? 'text-white' : 'text-white/30'}`
+          : `text-3xl font-bold flex-shrink-0 ${isPrimary ? 'text-[#03143B]' : 'text-[#03143B]/20'}`;
         const headlineColor = darkTheme ? 'text-white' : 'text-gray-900';
         const descColor = darkTheme ? 'text-white/70' : 'text-gray-600';
         const proofColor = darkTheme ? 'text-white font-semibold' : 'text-[#03143B] font-semibold';
 
         return (
           <div className={cardClass}>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3 mb-2">
               <div className={numColor}>{(index ?? 0) + 1}</div>
+              <DirectEditableText
+                value={item.headline as string}
+                onChange={(value) => {
+                  if (!onChange) return;
+                  onChange(items.map(d => d.id === item.id ? { ...d, headline: value } : d));
+                }}
+                as="h4"
+                className={`font-bold ${headlineColor} flex-1`}
+              />
               {isPrimary && (
-                <span className={`px-2 py-0.5 text-xs font-medium rounded ${darkTheme ? 'bg-white text-[#03143B]' : 'bg-[#03143B] text-white'}`}>PRIMARY</span>
+                <span className={`px-2 py-0.5 text-xs font-medium rounded flex-shrink-0 ${darkTheme ? 'bg-white text-[#03143B]' : 'bg-[#03143B] text-white'}`}>PRIMARY</span>
               )}
             </div>
-            <DirectEditableText
-              value={item.headline as string}
-              onChange={(value) => {
-                if (!onChange) return;
-                onChange(items.map(d => d.id === item.id ? { ...d, headline: value } : d));
-              }}
-              as="h4"
-              className={`font-bold ${headlineColor} mb-2`}
-            />
             <DirectEditableText
               value={item.description as string}
               onChange={(value) => {

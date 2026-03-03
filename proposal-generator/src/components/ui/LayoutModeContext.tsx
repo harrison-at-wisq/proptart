@@ -7,7 +7,7 @@ interface LayoutModeContextValue {
   setLayoutMode: (value: boolean) => void;
 }
 
-const LayoutModeContext = createContext<LayoutModeContextValue>({
+export const LayoutModeContext = createContext<LayoutModeContextValue>({
   layoutMode: false,
   setLayoutMode: () => {},
 });

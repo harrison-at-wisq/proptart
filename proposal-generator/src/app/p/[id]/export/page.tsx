@@ -1,11 +1,23 @@
 'use client';
 
-import React, { use, useState, useEffect, useCallback } from 'react';
+import React, { use, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ProposalInputs, ProposalElementType } from '@/types/proposal';
+import type { ProposalInputs, ProposalElementType, QuoteSection } from '@/types/proposal';
+import { resolveOtherValue } from '@/types/proposal';
 import { ExportToolbar } from '@/components/ui/ExportToolbar';
 import { ELEMENT_REGISTRY, ELEMENT_CATALOG } from '@/components/proposal/templates/registry';
+import { LayoutModeContext } from '@/components/ui/LayoutModeContext';
 import { getDefaultElementData, getEditableDataKey } from '@/components/proposal/templates/element-defaults';
+import { calculatePricing, formatCompactCurrency } from '@/lib/pricing-calculator';
+import {
+  calculateHROperationsROI,
+  calculateLegalComplianceROI,
+  calculateEmployeeExperienceROI,
+  calculateROISummary,
+  calculate3YearProjection,
+} from '@/lib/roi-calculator';
+import { materializeDocumentContent } from '@/lib/materialize-content';
+import { getSelectedQuoteForSection } from '@/lib/customer-quotes';
 
 // ---------- Local types ----------
 
@@ -43,6 +55,234 @@ function el(elementType: ProposalElementType, colSpan: number, dataOverrides?: R
     groupId: groupId ?? crypto.randomUUID(),
     data: { ...getDefaultElementData(elementType), ...dataOverrides },
   };
+}
+
+/** Build the default 7-section proposal matching the assets template, populated with real data */
+function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
+  // Materialize document content (narrative text, bullets, etc.)
+  const docContent = inputs.documentContent || materializeDocumentContent(inputs);
+
+  // Calculate pricing & ROI
+  const pricing = calculatePricing(inputs.pricing);
+  const hrOutput = calculateHROperationsROI(inputs.hrOperations);
+  const tier2Cases = inputs.hrOperations.tier2Workflows.reduce((sum, w) => sum + w.volumePerYear, 0);
+  const legalOutput = calculateLegalComplianceROI(inputs.legalCompliance, tier2Cases);
+  const employeeOutput = calculateEmployeeExperienceROI(inputs.employeeExperience);
+  const summary = calculateROISummary(hrOutput, legalOutput, employeeOutput, pricing.annualRecurringRevenue);
+  const projection = calculate3YearProjection(summary.grossAnnualValue, pricing.annualRecurringRevenue);
+
+  // Build integrations list
+  const customerIntegrations = [
+    inputs.integrations.hcm && { name: resolveOtherValue(inputs.integrations.hcm, inputs.integrations.customHcm), category: 'HCM' },
+    inputs.integrations.identity && { name: resolveOtherValue(inputs.integrations.identity, inputs.integrations.customIdentity), category: 'Identity' },
+    inputs.integrations.documents && { name: resolveOtherValue(inputs.integrations.documents, inputs.integrations.customDocuments), category: 'Documents' },
+    inputs.integrations.communication && { name: resolveOtherValue(inputs.integrations.communication, inputs.integrations.customCommunication), category: 'Communication' },
+    inputs.integrations.ticketing && inputs.integrations.ticketing !== 'None / Not applicable' && { name: resolveOtherValue(inputs.integrations.ticketing, inputs.integrations.customTicketing), category: 'Ticketing' },
+  ].filter(Boolean) as { name: string; category: string }[];
+
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  // Helper: get quote for a section (if user selected one)
+  const getQuote = (section: QuoteSection) => {
+    if (!docContent.selectedQuotes?.length) return null;
+    return getSelectedQuoteForSection(docContent.selectedQuotes, section);
+  };
+
+  // Helper: get FAQs for a page
+  const getFAQs = (pageId: string) => {
+    const sec = docContent.faqSections?.find((s: { pageId: string }) => s.pageId === pageId);
+    if (!sec || !sec.faqs?.length) return null;
+    return sec.faqs;
+  };
+
+  // Build investment breakdown rows
+  const investmentRows: { label: string; value: string }[] = [];
+  pricing.yearlyBreakdown.forEach((year, index) => {
+    const yearConfig = inputs.pricing.yearlyConfig[index];
+    const suffix = yearConfig?.workflows.included ? ' (Platform + Workflows)' : ' (Platform)';
+    investmentRows.push({ label: `Year ${year.year} Software${suffix}`, value: formatCompactCurrency(year.softwareNetPrice) });
+  });
+  if (pricing.implementationNetPrice > 0) {
+    investmentRows.push({ label: 'One-Time Implementation', value: formatCompactCurrency(pricing.implementationNetPrice) });
+  }
+  if (pricing.servicesNetPrice > 0) {
+    investmentRows.push({ label: 'Professional Services', value: formatCompactCurrency(pricing.servicesNetPrice) });
+  }
+  if (pricing.integrationsNetPrice > 0) {
+    investmentRows.push({ label: 'Additional Integrations', value: formatCompactCurrency(pricing.integrationsNetPrice) });
+  }
+  investmentRows.push({ label: 'Total Contract Value', value: formatCompactCurrency(pricing.totalContractValue) });
+
+  const sections: ExportSection[] = [];
+
+  // ==================== 1. COVER (dark) ====================
+  sections.push({
+    id: crypto.randomUUID(),
+    name: 'Cover Page',
+    darkTheme: true,
+    elements: [
+      el('cover-title-block', 12, {
+        title: docContent.coverTitle,
+        quote: docContent.coverQuote || '',
+        contactName: inputs.company.contactName,
+        contactTitle: resolveOtherValue(inputs.company.contactTitle, inputs.company.customContactTitle),
+      }),
+      el('page-footer', 12, { date: today, showConfidential: false }),
+    ],
+  });
+
+  // ==================== 2. EXECUTIVE SUMMARY ====================
+  const execLeftCol = crypto.randomUUID();
+  const execElements: ExportElement[] = [
+    el('section-heading', 12, { text: 'Executive Summary' }),
+    el('body-text', 7, { text: docContent.execSummaryInsight }, execLeftCol),
+    el('metric-table', 5, {
+      title: 'Key Metrics',
+      rows: [
+        { label: 'Annual Investment', value: formatCompactCurrency(pricing.annualRecurringRevenue) },
+        { label: 'Projected Annual Value', value: formatCompactCurrency(summary.grossAnnualValue) },
+        { label: 'Return on Investment', value: `${summary.totalROI.toFixed(0)}%` },
+        { label: 'Payback Period', value: `${summary.paybackPeriodMonths.toFixed(1)} mo` },
+      ],
+    }),
+    el('vision-callout', 7, { text: docContent.execSummaryVision }, execLeftCol),
+  ];
+  const execQuote = getQuote('executive-summary');
+  if (execQuote) {
+    execElements.push(el('customer-quote', 7, { text: execQuote.text, attribution: execQuote.attribution }, execLeftCol));
+  }
+  execElements.push(el('bullet-list', 7, { items: docContent.execSummaryBullets }, execLeftCol));
+  execElements.push(el('sub-heading', 12, { text: 'Current State Assessment', borderPosition: 'top' }));
+  execElements.push(el('accent-card-grid', 12, {
+    items: docContent.painPoints.map((pp: Record<string, unknown>) => ({
+      ...pp,
+      description: pp.description || pp.impact,
+    })),
+  }));
+  const currentStateQuote = getQuote('current-state');
+  if (currentStateQuote) {
+    execElements.push(el('customer-quote', 12, { text: currentStateQuote.text, attribution: currentStateQuote.attribution }));
+  }
+  const execFaqs = getFAQs('executive-summary');
+  if (execFaqs) {
+    execElements.push(el('faq-section', 12, { faqs: execFaqs }));
+  }
+  sections.push({ id: crypto.randomUUID(), name: 'Executive Summary', darkTheme: false, elements: execElements });
+
+  // ==================== 3. THE SOLUTION: MEET HARPER ====================
+  const harperElements: ExportElement[] = [
+    el('section-heading', 12, { text: 'The Solution: Meet Harper', subtitle: 'Your AI HR Generalist' }),
+    el('body-text', 12, { text: docContent.harperIntro }),
+    el('stat-cards', 12, { items: docContent.harperStats }),
+  ];
+  const harperQuote = getQuote('meet-harper');
+  if (harperQuote) {
+    harperElements.push(el('customer-quote', 12, { text: harperQuote.text, attribution: harperQuote.attribution }));
+  }
+  harperElements.push(el('sub-heading', 12, { text: 'Value Drivers', borderPosition: 'none' }));
+  harperElements.push(el('value-driver-cards', 12, { items: docContent.valueDrivers }));
+  const valueDriversQuote = getQuote('value-drivers');
+  if (valueDriversQuote) {
+    harperElements.push(el('customer-quote', 12, { text: valueDriversQuote.text, attribution: valueDriversQuote.attribution }));
+  }
+  const valueDriversFaqs = getFAQs('value-drivers');
+  if (valueDriversFaqs) {
+    harperElements.push(el('faq-section', 12, { faqs: valueDriversFaqs }));
+  }
+  sections.push({ id: crypto.randomUUID(), name: 'The Solution: Meet Harper', darkTheme: false, elements: harperElements });
+
+  // ==================== 4. INVESTMENT CASE (dark) ====================
+  const investLeftCol = crypto.randomUUID();
+  const investRightCol = crypto.randomUUID();
+  const investElements: ExportElement[] = [
+    el('section-heading', 12, { text: 'Investment Case' }),
+    el('metric-table', 6, {
+      title: `Your Investment (${inputs.pricing.contractTermYears}-Year Contract)`,
+      rows: investmentRows,
+    }, investLeftCol),
+    el('metric-table', 6, {
+      title: 'Your Return',
+      rows: [
+        { label: 'HR Operations Savings', value: formatCompactCurrency(summary.hrOpsSavings) },
+        { label: 'Compliance Value', value: formatCompactCurrency(summary.legalSavings) },
+        { label: 'Productivity Gains', value: formatCompactCurrency(summary.productivitySavings) },
+        { label: 'Net Annual Value', value: formatCompactCurrency(summary.netAnnualBenefit) },
+      ],
+    }, investRightCol),
+    el('kpi-tiles', 12, {
+      tiles: [
+        { value: `${summary.totalROI.toFixed(0)}%`, label: 'ROI' },
+        { value: `${summary.paybackPeriodMonths.toFixed(1)} mo`, label: 'Payback' },
+        { value: formatCompactCurrency(projection.total), label: '3-Year Value' },
+        { value: formatCompactCurrency(projection.netTotal), label: '3-Year Net' },
+      ],
+    }),
+  ];
+  const investQuote = getQuote('investment');
+  if (investQuote) {
+    investElements.push(el('customer-quote', 12, { text: investQuote.text, attribution: investQuote.attribution }));
+  }
+  investElements.push(el('projection-panel', 12, {
+    columns: [
+      { label: 'Year 1 (50% adoption)', value: formatCompactCurrency(projection.year1) },
+      { label: 'Year 2 (75% adoption)', value: formatCompactCurrency(projection.year2) },
+      { label: 'Year 3 (100% adoption)', value: formatCompactCurrency(projection.year3) },
+    ],
+  }));
+  const investFaqs = getFAQs('investment');
+  if (investFaqs) {
+    investElements.push(el('faq-section', 12, { faqs: investFaqs }));
+  }
+  sections.push({ id: crypto.randomUUID(), name: 'Investment Case', darkTheme: true, elements: investElements });
+
+  // ==================== 5. SECURITY & INTEGRATION ====================
+  const securityElements: ExportElement[] = [
+    el('section-heading', 12, { text: 'Security & Integration' }),
+    el('sub-heading', 12, { text: 'Enterprise Security', borderPosition: 'none' }),
+    el('feature-card-grid', 12, { items: docContent.securityFeatures }),
+    el('integration-pills', 12, { integrations: customerIntegrations }),
+  ];
+  const securityQuote = getQuote('security');
+  if (securityQuote) {
+    securityElements.push(el('customer-quote', 12, { text: securityQuote.text, attribution: securityQuote.attribution }));
+  }
+  securityElements.push(el('sub-heading', 12, { text: 'Implementation Timeline (12 weeks)', borderPosition: 'none' }));
+  securityElements.push(el('timeline-card-grid', 12, { items: docContent.implementationTimeline }));
+  const securityFaqs = getFAQs('security');
+  if (securityFaqs) {
+    securityElements.push(el('faq-section', 12, { faqs: securityFaqs }));
+  }
+  sections.push({ id: crypto.randomUUID(), name: 'Security & Integration', darkTheme: false, elements: securityElements });
+
+  // ==================== 6. WHY NOW ====================
+  const whyNowElements: ExportElement[] = [
+    el('section-heading', 12, { text: 'Why Now?' }),
+    el('accent-card-grid', 12, { items: docContent.whyNowItems }),
+  ];
+  const whyNowQuote = getQuote('why-now');
+  if (whyNowQuote) {
+    whyNowElements.push(el('customer-quote', 12, { text: whyNowQuote.text, attribution: whyNowQuote.attribution }));
+  }
+  const whyNowFaqs = getFAQs('why-now');
+  if (whyNowFaqs) {
+    whyNowElements.push(el('faq-section', 12, { faqs: whyNowFaqs }));
+  }
+  sections.push({ id: crypto.randomUUID(), name: 'Why Now', darkTheme: false, elements: whyNowElements });
+
+  // ==================== 7. NEXT STEPS ====================
+  sections.push({
+    id: crypto.randomUUID(),
+    name: 'Next Steps',
+    darkTheme: false,
+    elements: [
+      el('sub-heading', 12, { text: 'Next Steps', borderPosition: 'top' }),
+      el('numbered-steps', 12, { items: docContent.nextStepsItems }),
+      el('contact-card', 12, { email: inputs.company.contactEmail }),
+      el('page-footer', 12, { date: today, showConfidential: true }),
+    ],
+  });
+
+  return sections;
 }
 
 const SECTION_TEMPLATES: SectionTemplate[] = [
@@ -306,6 +546,42 @@ export default function ProposalExportPage({
   const [sections, setSections] = useState<ExportSection[]>([]);
   const [dragData, setDragData] = useState<{ elementId: string; fromSectionId: string; fromGroupId: string } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ sectionId: string; groupId: string; insertBeforeId: string | null } | null>(null);
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // Track which section is most visible in the viewport
+  useEffect(() => {
+    if (sections.length === 0) return;
+    const ratioMap = new Map<string, number>();
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const sectionId = entry.target.id.replace('section-', '');
+          ratioMap.set(sectionId, entry.intersectionRatio);
+        }
+        let bestId: string | null = null;
+        let bestRatio = 0;
+        for (const [sid, ratio] of ratioMap) {
+          if (ratio > bestRatio) { bestRatio = ratio; bestId = sid; }
+        }
+        if (bestId) setActiveSectionId(bestId);
+      },
+      { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] }
+    );
+
+    const timer = setTimeout(() => {
+      for (const s of sections) {
+        const el = document.getElementById(`section-${s.id}`);
+        if (el) observerRef.current?.observe(el);
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      observerRef.current?.disconnect();
+    };
+  }, [sections]);
 
   useEffect(() => {
     fetch(`/api/proposals/${id}`, { cache: 'no-store' })
@@ -320,6 +596,7 @@ export default function ProposalExportPage({
           return;
         }
         setProposalData(data);
+        setSections(buildDefaultSections(data));
         setLoading(false);
       })
       .catch(err => {
@@ -344,6 +621,12 @@ export default function ProposalExportPage({
 
   const handleRemoveSection = useCallback((sectionId: string) => {
     setSections(prev => prev.filter(s => s.id !== sectionId));
+  }, []);
+
+  const handleToggleDarkTheme = useCallback((sectionId: string) => {
+    setSections(prev => prev.map(s =>
+      s.id === sectionId ? { ...s, darkTheme: !s.darkTheme } : s
+    ));
   }, []);
 
   const handleUpdateElementData = useCallback((sectionId: string, elementId: string, data: Record<string, unknown>) => {
@@ -486,7 +769,7 @@ export default function ProposalExportPage({
   if (!proposalData) return null;
 
   return (
-    <>
+    <LayoutModeContext.Provider value={{ layoutMode, setLayoutMode }}>
       <ExportToolbar
         proposalId={id}
         inputs={proposalData}
@@ -514,6 +797,7 @@ export default function ProposalExportPage({
             dragData={dragData}
             dropTarget={dropTarget}
             onRemoveSection={() => handleRemoveSection(section.id)}
+            onToggleDarkTheme={() => handleToggleDarkTheme(section.id)}
             onUpdateElementData={(elId, data) => handleUpdateElementData(section.id, elId, data)}
             onAddElement={(colSpan, groupId) => setShowElementPicker({ sectionId: section.id, colSpan, groupId })}
             onRemoveElement={(elId) => handleRemoveElement(section.id, elId)}
@@ -546,6 +830,27 @@ export default function ProposalExportPage({
           </section>
         )}
       </div>
+
+      {/* Side navigation */}
+      {sections.length > 1 && (
+        <nav className="section-nav print-hidden">
+          {sections.map((s) => {
+            const isActive = s.id === activeSectionId;
+            return (
+              <button
+                key={s.id}
+                onClick={() => {
+                  document.getElementById(`section-${s.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                className={`section-nav-dot ${isActive ? 'active' : ''}`}
+                title={s.name}
+              >
+                <span className="section-nav-label">{s.name}</span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
 
       {/* Add Section button — layout mode only */}
       {layoutMode && (
@@ -668,6 +973,7 @@ export default function ProposalExportPage({
             border-radius: 3px;
             padding: 4px;
             position: relative;
+            flex: 1;
           }
           .layout-widget.layout-dark {
             border-color: rgba(192, 132, 252, 0.30);
@@ -856,6 +1162,84 @@ export default function ProposalExportPage({
             border-radius: 6px;
             background: rgba(168, 85, 247, 0.04);
           }
+
+          /* ── Layout Mode: Footer zone (yellow) ── */
+          .layout-footer-zone {
+            border: 1px dashed rgba(234, 179, 8, 0.35);
+            border-radius: 4px;
+            padding: 6px;
+            position: relative;
+            margin-top: 12px;
+          }
+          .layout-footer-zone.layout-dark {
+            border-color: rgba(250, 204, 21, 0.30);
+          }
+
+          .layout-footer-label {
+            position: absolute;
+            top: -7px;
+            left: 8px;
+            background: white;
+            padding: 0 4px;
+            color: rgba(234, 179, 8, 0.6);
+            z-index: 1;
+          }
+          .layout-footer-label.layout-dark {
+            background: #03143B;
+            color: rgba(250, 204, 21, 0.6);
+          }
+
+          /* ── Side Navigation ── */
+          .section-nav {
+            position: fixed;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 40;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+          }
+          .section-nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.15);
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            padding: 0;
+          }
+          .section-nav-dot:hover {
+            background: rgba(0, 0, 0, 0.35);
+            transform: scale(1.4);
+          }
+          .section-nav-dot.active {
+            background: #03143B;
+            transform: scale(1.5);
+          }
+          .section-nav-label {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            white-space: nowrap;
+            font-size: 11px;
+            font-weight: 500;
+            color: #374151;
+            background: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s;
+          }
+          .section-nav-dot:hover .section-nav-label {
+            opacity: 1;
+          }
         }
 
         @media print {
@@ -900,12 +1284,14 @@ export default function ProposalExportPage({
           /* Hide layout mode visuals in print */
           .layout-content-area,
           .layout-column,
-          .layout-widget {
+          .layout-widget,
+          .layout-footer-zone {
             border: none !important;
             padding: 0 !important;
             background: none !important;
           }
           .layout-tier-label,
+          .layout-footer-label,
           .layout-widget-toolbar,
           .layout-add-widget,
           .layout-add-circle,
@@ -917,7 +1303,7 @@ export default function ProposalExportPage({
           }
         }
       `}</style>
-    </>
+    </LayoutModeContext.Provider>
   );
 }
 
@@ -963,6 +1349,7 @@ function SectionPage({
   onClearDrag,
   onSetDropTarget,
   onDrop,
+  onToggleDarkTheme,
 }: {
   section: ExportSection;
   layoutMode: boolean;
@@ -976,8 +1363,13 @@ function SectionPage({
   onClearDrag: () => void;
   onSetDropTarget: (target: { sectionId: string; groupId: string; insertBeforeId: string | null } | null) => void;
   onDrop: (toSectionId: string, toGroupId: string, toColSpan: number, insertBeforeId: string | null) => void;
+  onToggleDarkTheme: () => void;
 }) {
   const dark = section.darkTheme;
+
+  // Split elements into body (non-footer) and footer
+  const bodyElements = section.elements.filter(e => e.elementType !== 'page-footer');
+  const footerElements = section.elements.filter(e => e.elementType === 'page-footer');
 
   const handleColumnDragOver = (e: React.DragEvent, groupId: string) => {
     if (!dragData) return;
@@ -1040,133 +1432,186 @@ function SectionPage({
     onDrop(section.id, groupId, colSpan, insertBeforeId);
   };
 
+  /** Render a grid of columns (used for both body and footer) */
+  const renderColumnsLayout = (elements: ExportElement[]) => (
+    <div className="grid grid-cols-12 gap-x-6 gap-y-3">
+      {computeColumns(elements).map(col => {
+        const isColumnDropTarget = dropTarget?.sectionId === section.id && dropTarget?.groupId === col.groupId;
+        return (
+          <div
+            key={col.groupId}
+            className={`layout-column ${dark ? 'layout-dark' : ''} ${isColumnDropTarget && dragData ? 'layout-column-drag-over' : ''}`}
+            style={{ gridColumn: `span ${col.colSpan}` }}
+            onDragOver={(e) => handleColumnDragOver(e, col.groupId)}
+            onDragLeave={handleColumnDragLeave}
+            onDrop={(e) => handleColumnDrop(e, col.groupId, col.colSpan)}
+          >
+            <div className={`layout-tier-label layout-tier2-label ${dark ? 'layout-dark' : ''}`}>
+              {col.colSpan} col
+            </div>
+            {col.elements.map((element) => {
+              const isBeingDragged = dragData?.elementId === element.id;
+              const showDropBefore = isColumnDropTarget && dropTarget?.insertBeforeId === element.id;
+              return (
+                <ExportElementBlock
+                  key={element.id}
+                  element={element}
+                  sectionId={section.id}
+                  darkTheme={dark}
+                  layoutMode
+                  isDragging={isBeingDragged}
+                  isDropBefore={showDropBefore}
+                  onUpdateData={(data) => onUpdateElementData(element.id, data)}
+                  onRemove={() => onRemoveElement(element.id)}
+                  onDragStart={() => onSetDragData({ elementId: element.id, fromSectionId: section.id, fromGroupId: element.groupId })}
+                  onDragEnd={onClearDrag}
+                  onDragOverElement={(e) => handleElementDragOver(e, col.groupId, element.id)}
+                  onDropOnElement={(e) => handleElementDrop(e, col.groupId, col.colSpan)}
+                />
+              );
+            })}
+            {/* Drop indicator at end of column */}
+            {isColumnDropTarget && dropTarget?.insertBeforeId === null && dragData && (
+              <div className="drop-indicator" />
+            )}
+            {/* Purple (+) circle at the bottom of this green column */}
+            <div className="flex justify-center mt-2">
+              <button
+                onClick={() => onAddElement(col.colSpan, col.groupId)}
+                className={`layout-add-circle ${dark ? 'layout-dark' : ''}`}
+                title="Add widget"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <section className={`export-page ${dark ? 'dark-theme' : ''}`}>
+    <section id={`section-${section.id}`} className={`export-page ${dark ? 'dark-theme' : ''}`} style={{ display: 'flex', flexDirection: 'column' }}>
       {/* Section controls — layout mode only */}
       {layoutMode && (
         <div className={`flex items-center justify-between mb-4 pb-2 border-b print-hidden ${dark ? 'border-white/20' : 'border-gray-200'}`}>
           <span className={`text-sm font-semibold ${dark ? 'text-white/70' : 'text-gray-500'}`}>
             {section.name}
           </span>
-          <button
-            onClick={onRemoveSection}
-            className={`p-1.5 rounded text-red-400 hover:text-red-600 transition-colors ${dark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}
-            title="Remove section"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1">
+            {/* Dark mode toggle */}
+            <button
+              onClick={onToggleDarkTheme}
+              className={`p-1.5 rounded transition-colors ${dark ? 'text-amber-300 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+              title={dark ? 'Switch to light theme' : 'Switch to dark theme'}
+            >
+              {dark ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+            {/* Remove section */}
+            <button
+              onClick={onRemoveSection}
+              className={`p-1.5 rounded text-red-400 hover:text-red-600 transition-colors ${dark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}
+              title="Remove section"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Content area — with visual hierarchy in layout mode */}
-      {layoutMode ? (
-        <div className={`layout-content-area ${dark ? 'layout-dark' : ''}`}>
-          <div className={`layout-tier-label layout-tier1-label ${dark ? 'layout-dark' : ''}`}>Content Area</div>
+      {/* Body content area — flex-1 so footer sticks to bottom */}
+      <div style={{ flex: 1 }}>
+        {layoutMode ? (
+          <div className={`layout-content-area ${dark ? 'layout-dark' : ''}`}>
+            <div className={`layout-tier-label layout-tier1-label ${dark ? 'layout-dark' : ''}`}>Content Area</div>
 
-          {section.elements.length === 0 ? (
-            /* Empty section — show a full-width add prompt OR drop zone */
-            <div
-              onDragOver={dragData ? (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                onSetDropTarget({ sectionId: section.id, groupId: '__new__', insertBeforeId: null });
-              } : undefined}
-              onDragLeave={() => onSetDropTarget(null)}
-              onDrop={dragData ? (e) => {
-                e.preventDefault();
-                const raw = e.dataTransfer.getData('application/export-widget');
-                if (!raw) return;
-                const newGroupId = crypto.randomUUID();
-                onDrop(section.id, newGroupId, 12, null);
-              } : undefined}
-              className={dragData && dropTarget?.sectionId === section.id ? 'layout-column-drop-zone' : ''}
-            >
-              <button
-                onClick={() => onAddElement(12, crypto.randomUUID())}
-                className={`layout-add-widget ${dark ? 'layout-dark' : ''}`}
+            {bodyElements.length === 0 ? (
+              /* Empty section — show a full-width add prompt OR drop zone */
+              <div
+                onDragOver={dragData ? (e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  onSetDropTarget({ sectionId: section.id, groupId: '__new__', insertBeforeId: null });
+                } : undefined}
+                onDragLeave={() => onSetDropTarget(null)}
+                onDrop={dragData ? (e) => {
+                  e.preventDefault();
+                  const raw = e.dataTransfer.getData('application/export-widget');
+                  if (!raw) return;
+                  const newGroupId = crypto.randomUUID();
+                  onDrop(section.id, newGroupId, 12, null);
+                } : undefined}
+                className={dragData && dropTarget?.sectionId === section.id ? 'layout-column-drop-zone' : ''}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span>{dragData ? 'Drop here' : 'Add First Widget'}</span>
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-12 gap-x-6 gap-y-3">
-              {computeColumns(section.elements).map(col => {
-                const isColumnDropTarget = dropTarget?.sectionId === section.id && dropTarget?.groupId === col.groupId;
-                return (
-                  <div
-                    key={col.groupId}
-                    className={`layout-column ${dark ? 'layout-dark' : ''} ${isColumnDropTarget && dragData ? 'layout-column-drag-over' : ''}`}
-                    style={{ gridColumn: `span ${col.colSpan}` }}
-                    onDragOver={(e) => handleColumnDragOver(e, col.groupId)}
-                    onDragLeave={handleColumnDragLeave}
-                    onDrop={(e) => handleColumnDrop(e, col.groupId, col.colSpan)}
-                  >
-                    <div className={`layout-tier-label layout-tier2-label ${dark ? 'layout-dark' : ''}`}>
-                      {col.colSpan} col
-                    </div>
-                    {col.elements.map((element) => {
-                      const isBeingDragged = dragData?.elementId === element.id;
-                      const showDropBefore = isColumnDropTarget && dropTarget?.insertBeforeId === element.id;
-                      return (
-                        <ExportElementBlock
-                          key={element.id}
-                          element={element}
-                          sectionId={section.id}
-                          darkTheme={dark}
-                          layoutMode
-                          isDragging={isBeingDragged}
-                          isDropBefore={showDropBefore}
-                          onUpdateData={(data) => onUpdateElementData(element.id, data)}
-                          onRemove={() => onRemoveElement(element.id)}
-                          onDragStart={() => onSetDragData({ elementId: element.id, fromSectionId: section.id, fromGroupId: element.groupId })}
-                          onDragEnd={onClearDrag}
-                          onDragOverElement={(e) => handleElementDragOver(e, col.groupId, element.id)}
-                          onDropOnElement={(e) => handleElementDrop(e, col.groupId, col.colSpan)}
-                        />
-                      );
-                    })}
-                    {/* Drop indicator at end of column */}
-                    {isColumnDropTarget && dropTarget?.insertBeforeId === null && dragData && (
-                      <div className="drop-indicator" />
-                    )}
-                    {/* Purple (+) circle at the bottom of this green column */}
-                    <div className="flex justify-center mt-2">
-                      <button
-                        onClick={() => onAddElement(col.colSpan, col.groupId)}
-                        className={`layout-add-circle ${dark ? 'layout-dark' : ''}`}
-                        title="Add widget"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-12 gap-x-6 gap-y-4">
-          {computeColumns(section.elements).map(col => (
-            <div key={col.groupId} style={{ gridColumn: `span ${col.colSpan}` }} className="flex flex-col gap-y-4">
-              {col.elements.map((element) => (
-                <ExportElementBlock
-                  key={element.id}
-                  element={element}
-                  darkTheme={dark}
-                  onUpdateData={(data) => onUpdateElementData(element.id, data)}
-                />
+                <button
+                  onClick={() => onAddElement(12, crypto.randomUUID())}
+                  className={`layout-add-widget ${dark ? 'layout-dark' : ''}`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>{dragData ? 'Drop here' : 'Add First Widget'}</span>
+                </button>
+              </div>
+            ) : (
+              renderColumnsLayout(bodyElements)
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-12 gap-x-6 gap-y-4">
+            {computeColumns(bodyElements).map(col => (
+              <div key={col.groupId} style={{ gridColumn: `span ${col.colSpan}` }} className="flex flex-col gap-y-4">
+                {col.elements.map((element) => (
+                  <ExportElementBlock
+                    key={element.id}
+                    element={element}
+                    darkTheme={dark}
+                    onUpdateData={(data) => onUpdateElementData(element.id, data)}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Footer zone — pinned to bottom */}
+      {footerElements.length > 0 && (
+        layoutMode ? (
+          <div className={`layout-footer-zone ${dark ? 'layout-dark' : ''}`}>
+            <div className={`layout-tier-label layout-footer-label ${dark ? 'layout-dark' : ''}`}>Footer</div>
+            {renderColumnsLayout(footerElements)}
+          </div>
+        ) : (
+          <div className="mt-auto pt-4">
+            <div className="grid grid-cols-12 gap-x-6 gap-y-4">
+              {computeColumns(footerElements).map(col => (
+                <div key={col.groupId} style={{ gridColumn: `span ${col.colSpan}` }} className="flex flex-col gap-y-4">
+                  {col.elements.map((element) => (
+                    <ExportElementBlock
+                      key={element.id}
+                      element={element}
+                      darkTheme={dark}
+                      onUpdateData={(data) => onUpdateElementData(element.id, data)}
+                    />
+                  ))}
+                </div>
               ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )
       )}
     </section>
   );
@@ -1252,6 +1697,15 @@ function ExportElementBlock({
       faqs[index] = { ...faqs[index], [field]: value };
       onUpdateData({ ...element.data, faqs });
     };
+    props.onAdd = () => {
+      const faqs = [...((element.data.faqs as Array<Record<string, string>>) || [])];
+      faqs.push({ question: 'New question?', answer: 'Answer here...' });
+      onUpdateData({ ...element.data, faqs });
+    };
+    props.onRemove = (index: number) => {
+      const faqs = ((element.data.faqs as Array<Record<string, string>>) || []).filter((_, i) => i !== index);
+      onUpdateData({ ...element.data, faqs });
+    };
   } else if (element.elementType === 'spacer') {
     props.onHeightChange = (h: number) => {
       onUpdateData({ ...element.data, height: h });
@@ -1260,7 +1714,7 @@ function ExportElementBlock({
 
   return (
     <div
-      className={layoutMode ? `layout-widget ${darkTheme ? 'layout-dark' : ''} ${isDragging ? 'layout-widget-dragging' : ''}` : ''}
+      className={layoutMode ? `layout-widget ${darkTheme ? 'layout-dark' : ''} ${isDragging ? 'layout-widget-dragging' : ''}` : 'flex-1'}
       draggable={layoutMode}
       onDragStart={layoutMode ? (e) => {
         e.dataTransfer.effectAllowed = 'move';

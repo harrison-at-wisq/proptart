@@ -30,7 +30,7 @@ export function CustomerQuote({
   const attrColor = darkTheme ? 'text-white/60' : 'text-gray-500';
 
   return (
-    <div className={`my-6 pl-5 border-l-4 ${borderColor}`}>
+    <div className={`pl-5 border-l-4 ${borderColor}`}>
       {onTextChange ? (
         <p className={`text-sm italic leading-relaxed ${quoteColor}`}>
           &ldquo;<DirectEditableText

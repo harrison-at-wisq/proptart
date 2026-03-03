@@ -30,7 +30,7 @@ export function ProjectionPanel({
   if (darkTheme) {
     return (
       <div className="bg-white/5 rounded-lg p-4">
-        <h4 className="text-sm font-semibold text-white/70 mb-3 uppercase tracking-wide">{title}</h4>
+        <h4 className="text-sm font-semibold text-white/70 mb-3 uppercase tracking-wide text-center">{title}</h4>
         <div className={`grid grid-cols-${columns.length} gap-4 text-center`}>
           {columns.map((col, i) => (
             <div key={i}>
@@ -45,7 +45,7 @@ export function ProjectionPanel({
 
   return (
     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-      <h4 className="text-sm font-semibold text-[#03143B] mb-3 uppercase tracking-wide">{title}</h4>
+      <h4 className="text-sm font-semibold text-[#03143B] mb-3 uppercase tracking-wide text-center">{title}</h4>
       <div className={`grid grid-cols-${columns.length} gap-4 text-center`}>
         {columns.map((col, i) => (
           <div key={i}>

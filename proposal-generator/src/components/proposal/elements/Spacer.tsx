@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useCallback, useState } from 'react';
+import { useLayoutMode } from '@/components/ui/LayoutModeContext';
 
 interface SpacerProps {
   height?: number;
@@ -13,6 +14,7 @@ export const SPACER_PLACEHOLDER = {
 };
 
 export function Spacer({ height = SPACER_PLACEHOLDER.height, onHeightChange, darkTheme }: SpacerProps) {
+  const { layoutMode } = useLayoutMode();
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -97,7 +99,7 @@ export function Spacer({ height = SPACER_PLACEHOLDER.height, onHeightChange, dar
       style={{ height: `${displayHeight}px` }}
       className="relative w-full select-none"
     >
-      {onHeightChange && (
+      {layoutMode && onHeightChange && (
         <div
           onMouseDown={handleMouseDownStable}
           style={{
