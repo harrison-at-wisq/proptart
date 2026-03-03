@@ -26,11 +26,12 @@ export function PageFooter({
 }: PageFooterProps) {
   const textColor = darkTheme ? 'text-white/50' : 'text-gray-500';
   const borderColor = darkTheme ? 'border-white/20' : 'border-gray-200';
+  const effectiveLogoSrc = darkTheme ? '/wisq-logo-white.svg' : logoSrc;
 
   return (
     <div className={`flex justify-between items-center pt-6 border-t ${borderColor}`}>
       <div className="flex items-center gap-3">
-        <img src={logoSrc} alt="Logo" className="h-10 w-10" />
+        <img src={effectiveLogoSrc} alt="Logo" className="h-10 w-10" />
         <p className={`${textColor} text-sm`}>{siteUrl}</p>
       </div>
       <div className={`text-right ${textColor} text-sm`}>

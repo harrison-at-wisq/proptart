@@ -866,12 +866,14 @@ export interface MicrositeRecord {
   id: string;
   proposal_id: string;
   slug: string;
+  name: string;
   data: ProposalInputs;
   published_at: string;
   unpublished_at: string | null;
   view_count: number;
   last_viewed_at: string | null;
   owner_email: string;
+  updated_at: string;
 }
 
 // Knowledge base entry format

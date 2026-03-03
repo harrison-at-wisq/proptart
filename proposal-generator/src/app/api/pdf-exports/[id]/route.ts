@@ -4,70 +4,47 @@ import { createServerSupabaseClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-// GET - Public fetch (no auth required), increments view count
+// GET - Fetch a single PDF export
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { slug } = await params;
+  const { id } = await params;
   const supabase = createServerSupabaseClient();
 
   const { data, error } = await supabase
-    .from('microsites')
+    .from('pdf_exports')
     .select('*')
-    .eq('slug', slug)
+    .eq('id', id)
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    console.error('pdf-exports GET error:', { id, error, data });
+    return NextResponse.json({ error: 'Not found', detail: error?.message }, { status: 404 });
   }
 
-  // Check if unpublished
-  if (data.unpublished_at) {
-    return NextResponse.json({ error: 'This microsite is no longer available' }, { status: 410 });
-  }
-
-  // Increment view count (fire-and-forget)
-  supabase
-    .from('microsites')
-    .update({
-      view_count: (data.view_count || 0) + 1,
-      last_viewed_at: new Date().toISOString(),
-    })
-    .eq('id', data.id)
-    .then(() => {});
-
-  return NextResponse.json({
-    microsite: {
-      slug: data.slug,
-      data: data.data,
-      published_at: data.published_at,
-      company_name: (data.data as Record<string, unknown>)?.company
-        ? ((data.data as Record<string, Record<string, string>>).company.companyName || 'Company')
-        : 'Company',
-    },
-  });
+  return NextResponse.json({ pdfExport: data });
 }
 
-// PUT - Update/unpublish (auth required)
+// PUT - Update a PDF export
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAuthUser();
   if (!user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { slug } = await params;
+  const { id } = await params;
   const body = await request.json();
   const supabase = createServerSupabaseClient();
 
   // Verify ownership
   const { data: existing, error: fetchError } = await supabase
-    .from('microsites')
+    .from('pdf_exports')
     .select('id, owner_email')
-    .eq('slug', slug)
+    .eq('id', id)
     .single();
 
   if (fetchError || !existing) {
@@ -79,22 +56,12 @@ export async function PUT(
   }
 
   const updates: Record<string, unknown> = {};
-  if (body.unpublish) {
-    updates.unpublished_at = new Date().toISOString();
-  }
-  if (body.republish) {
-    updates.unpublished_at = null;
-    updates.published_at = new Date().toISOString();
-  }
-  if (body.data) {
-    updates.data = body.data;
-  }
-  if (body.name !== undefined) {
-    updates.name = body.name;
-  }
+  if (body.name !== undefined) updates.name = body.name;
+  if (body.data !== undefined) updates.data = body.data;
+  if (body.sections_config !== undefined) updates.sections_config = body.sections_config;
 
   const { data: updated, error: updateError } = await supabase
-    .from('microsites')
+    .from('pdf_exports')
     .update(updates)
     .eq('id', existing.id)
     .select()
@@ -104,26 +71,26 @@ export async function PUT(
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ microsite: updated });
+  return NextResponse.json({ pdfExport: updated });
 }
 
-// DELETE - Remove (auth required)
+// DELETE - Remove a PDF export
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAuthUser();
   if (!user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { slug } = await params;
+  const { id } = await params;
   const supabase = createServerSupabaseClient();
 
   const { data: existing, error: fetchError } = await supabase
-    .from('microsites')
+    .from('pdf_exports')
     .select('id, owner_email')
-    .eq('slug', slug)
+    .eq('id', id)
     .single();
 
   if (fetchError || !existing) {
@@ -135,7 +102,7 @@ export async function DELETE(
   }
 
   const { error } = await supabase
-    .from('microsites')
+    .from('pdf_exports')
     .delete()
     .eq('id', existing.id);
 

@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/supabase-server';
 import { createServerSupabaseClient } from '@/lib/supabase';
-import { generateMicrositeSlug } from '@/lib/microsite-slug';
 import { ProposalInputs } from '@/types/proposal';
 
 export const dynamic = 'force-dynamic';
 
-// GET - List microsites for a proposal (supports multiple)
+// GET - List PDF exports for a proposal
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const proposalId = searchParams.get('proposalId');
-  const includeArchived = searchParams.get('includeArchived') === 'true';
 
   if (!proposalId) {
     return NextResponse.json({ error: 'proposalId query param required' }, { status: 400 });
@@ -18,40 +16,34 @@ export async function GET(request: Request) {
 
   const supabase = createServerSupabaseClient();
 
-  let query = supabase
-    .from('microsites')
-    .select('id, slug, name, published_at, unpublished_at, view_count, last_viewed_at, updated_at, owner_email')
+  const { data, error } = await supabase
+    .from('pdf_exports')
+    .select('id, name, created_at, updated_at, owner_email')
     .eq('proposal_id', proposalId)
     .order('updated_at', { ascending: false });
-
-  if (!includeArchived) {
-    query = query.is('unpublished_at', null);
-  }
-
-  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ microsites: data || [] });
+  return NextResponse.json({ pdfExports: data || [] });
 }
 
-// POST - Publish a new microsite for a proposal
+// POST - Create a new PDF export
 export async function POST(request: Request) {
   const user = await getAuthUser();
   if (!user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { proposalId, data: clientData, name } = await request.json();
+  const { proposalId, name, data: clientData, sectionsConfig } = await request.json();
   if (!proposalId) {
     return NextResponse.json({ error: 'proposalId is required' }, { status: 400 });
   }
 
   const supabase = createServerSupabaseClient();
 
-  // Fetch the proposal (for ownership check)
+  // Fetch the proposal (for ownership check and data)
   const { data: proposal, error: fetchError } = await supabase
     .from('proposals')
     .select('id, name, owner_email, data')
@@ -66,24 +58,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
   }
 
-  // Prefer data sent from the client (current in-memory state) over what's in DB,
-  // in case the auto-save hasn't flushed yet
   const proposalData = (clientData || proposal.data) as ProposalInputs;
-
-  // Generate slug and create record (always new — supports multiple per deal)
-  const micrositeName = name || `${proposalData.company?.companyName || 'Company'} Microsite`;
-  const slug = generateMicrositeSlug(proposalData.company?.companyName || 'proposal');
+  const pdfName = name || `${proposalData.company?.companyName || 'Proposal'} PDF`;
 
   const { data: created, error: createError } = await supabase
-    .from('microsites')
+    .from('pdf_exports')
     .insert({
       proposal_id: proposalId,
-      slug,
-      name: micrositeName,
+      name: pdfName,
       data: proposalData,
-      published_at: new Date().toISOString(),
+      sections_config: sectionsConfig || [],
       owner_email: user.email,
-      view_count: 0,
     })
     .select()
     .single();
@@ -92,5 +77,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: createError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ microsite: created });
+  return NextResponse.json({ pdfExport: created });
 }

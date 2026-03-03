@@ -49,5 +49,6 @@ export interface ProposalListItemWithOwnership {
   isOwner: boolean;
   documentType: DocumentType;
   hasGeneratedContent: boolean;
-  micrositeSlug: string | null;
+  micrositeCount: number;
+  latestMicrositeSlug: string | null;
 }

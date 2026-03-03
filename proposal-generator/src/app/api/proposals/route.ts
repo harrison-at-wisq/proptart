@@ -40,16 +40,22 @@ export async function GET() {
     .select('proposal_id, slug, unpublished_at')
     .in('proposal_id', proposalIds);
 
-  const micrositeMap = new Map<string, { slug: string; archived: boolean }>();
+  // Count microsites per proposal and track the latest active slug
+  const micrositeCountMap = new Map<string, number>();
+  const latestActiveSlugMap = new Map<string, string>();
   for (const m of microsites || []) {
-    micrositeMap.set(m.proposal_id, { slug: m.slug, archived: !!m.unpublished_at });
+    micrositeCountMap.set(m.proposal_id, (micrositeCountMap.get(m.proposal_id) || 0) + 1);
+    if (!m.unpublished_at) {
+      latestActiveSlugMap.set(m.proposal_id, m.slug);
+    }
   }
 
   // Transform to list items with ownership info
   const proposals = (data || []).map((p) => {
     const docType = (p.document_type as DocumentType) || 'proposal';
     const pData = p.data as ProposalInputs | MOUInputs;
-    const microsite = micrositeMap.get(p.id);
+    const micrositeCount = micrositeCountMap.get(p.id) || 0;
+    const latestMicrositeSlug = latestActiveSlugMap.get(p.id) || null;
     const hasGenerated = docType === 'mou'
       ? !!(pData as MOUInputs)?.generatedContent
       : !!(pData as ProposalInputs)?.generatedContent;
@@ -71,7 +77,8 @@ export async function GET() {
       isOwner: p.owner_email === user?.email,
       documentType: docType,
       hasGeneratedContent: hasGenerated,
-      micrositeSlug: microsite && !microsite.archived ? microsite.slug : null,
+      micrositeCount,
+      latestMicrositeSlug,
     };
   });
 
