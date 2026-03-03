@@ -516,6 +516,20 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
     }
   };
 
+  // All required fields across all sections must be filled to unlock the workspace
+  const canAccessWorkspace = !!(
+    company.companyName &&
+    company.contactName &&
+    company.contactEmail &&
+    painPoints.length > 0 &&
+    pricing.employeeCount > 0
+  );
+
+  const handleGoToWorkspace = async () => {
+    await saveNow();
+    router.push(`/p/${proposalId}/assets`);
+  };
+
   const goToNextSection = () => {
     const currentIndex = sections.findIndex((s) => s.id === activeSection);
     if (currentIndex < sections.length - 1) {
@@ -567,24 +581,6 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {hasBeenGenerated && (
-                <button
-                  onClick={() => router.push(`/p/${proposalId}/assets`)}
-                  className="px-3 py-1.5 text-sm font-medium text-[#03143B] bg-white border border-[#03143B] rounded-md hover:bg-[#03143B]/5 transition-colors"
-                >
-                  View Assets
-                </button>
-              )}
-              {micrositeSlug && (
-                <a
-                  href={`/m/${micrositeSlug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md hover:bg-emerald-100 transition-colors"
-                >
-                  View Microsite
-                </a>
-              )}
               {saveStatus === 'saving' && (
                 <span className="text-sm text-gray-400 flex items-center gap-1.5">
                   <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -611,11 +607,15 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
                 </span>
               )}
               <button
-                onClick={saveNow}
-                disabled={!currentProposalIdRef.current || saveStatus === 'saving'}
-                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                onClick={handleGoToWorkspace}
+                disabled={!canAccessWorkspace || saveStatus === 'saving'}
+                className="px-4 py-1.5 text-sm font-medium text-white bg-[#03143B] rounded-md hover:bg-[#03143B]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                title={!canAccessWorkspace ? 'Fill in all required fields to unlock the workspace' : ''}
               >
-                Save
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                Workspace
               </button>
             </div>
           </div>
@@ -1742,57 +1742,21 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
             </div>
 
             <div className="bg-gradient-to-br from-[#03143B] to-[#020e29] rounded-lg p-8 text-white text-center">
-              {hasBeenGenerated ? (
-                <>
-                  <h3 className="text-xl font-semibold mb-2">Proposal Generated</h3>
-                  <p className="text-white/80 mb-6">
-                    This proposal has already been generated. You can regenerate from scratch if needed.
-                  </p>
-                  <button
-                    onClick={() => setShowRegenerateDialog(true)}
-                    disabled={isGenerating}
-                    className="px-8 py-3 bg-white/10 border border-white/30 text-white font-semibold rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Regenerate Proposal
-                  </button>
-                </>
-              ) : (
-                <>
-                  <h3 className="text-xl font-semibold mb-2">Ready to Generate</h3>
-                  <p className="text-white/80 mb-6">
-                    Click the button below to generate your personalized Wisq proposal.
-                  </p>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={isGenerating}
-                    className="px-8 py-3 bg-white text-[#03143B] font-semibold rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isGenerating ? (
-                      <span className="flex items-center gap-2">
-                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                            fill="none"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          />
-                        </svg>
-                        Generating Proposal...
-                      </span>
-                    ) : (
-                      'Generate Proposal'
-                    )}
-                  </button>
-                </>
-              )}
+              <h3 className="text-xl font-semibold mb-2">
+                {canAccessWorkspace ? 'Ready to Go' : 'Complete Required Fields'}
+              </h3>
+              <p className="text-white/80 mb-6">
+                {canAccessWorkspace
+                  ? 'Your deal info is complete. Head to the Workspace to create microsites and PDF exports.'
+                  : 'Fill in all required (*) fields across the tabs above to unlock the Workspace.'}
+              </p>
+              <button
+                onClick={handleGoToWorkspace}
+                disabled={!canAccessWorkspace}
+                className="px-8 py-3 bg-white text-[#03143B] font-semibold rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue to Workspace
+              </button>
             </div>
 
             {/* Regenerate Confirmation Dialog */}
