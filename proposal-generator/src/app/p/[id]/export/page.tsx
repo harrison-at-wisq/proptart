@@ -127,7 +127,7 @@ function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
         contactName: inputs.company.contactName,
         contactTitle: resolveOtherValue(inputs.company.contactTitle, inputs.company.customContactTitle),
       }),
-      el('page-footer', 12, { date: today, showConfidential: false }),
+      el('page-footer', 12, { date: today, showConfidential: false, customerLogoSrc: inputs.company.customerLogoBase64 }),
     ],
   });
 
@@ -278,7 +278,7 @@ function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
       el('sub-heading', 12, { text: 'Next Steps', borderPosition: 'top' }),
       el('numbered-steps', 12, { items: docContent.nextStepsItems }),
       el('contact-card', 12, { email: inputs.company.contactEmail }),
-      el('page-footer', 12, { date: today, showConfidential: true }),
+      el('page-footer', 12, { date: today, showConfidential: true, customerLogoSrc: inputs.company.customerLogoBase64 }),
     ],
   });
 

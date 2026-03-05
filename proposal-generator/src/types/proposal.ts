@@ -378,6 +378,8 @@ export interface CompanyInfo {
   customContactTitle?: string; // Custom text when "Other" is selected
   contactEmail: string;
   crmRecordId?: string;
+  customerLogoBase64?: string; // data:image/png;base64,... URI of customer logo
+  customerLogoDomain?: string; // Domain used to fetch the logo
 }
 
 // Custom pain points added by the user

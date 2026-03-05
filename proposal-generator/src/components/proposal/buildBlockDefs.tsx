@@ -117,6 +117,7 @@ export function buildBlockDefs(
             <PageFooter
               date={today}
               showConfidential={false}
+              customerLogoSrc={inputs.company.customerLogoBase64}
             />
           );
 
@@ -497,6 +498,7 @@ export function buildBlockDefs(
               date={today}
               showConfidential={true}
               darkTheme={dark}
+              customerLogoSrc={inputs.company.customerLogoBase64}
             />
           );
 

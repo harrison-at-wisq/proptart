@@ -243,6 +243,10 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
   const [faqGongNotes, setFaqGongNotes] = useState('');
   const [isGeneratingFaqs, setIsGeneratingFaqs] = useState(false);
   const [enhancementsTab, setEnhancementsTab] = useState<EnhancementsTab>('ai-personalization');
+  // Logo fetch
+  const [logoFetchStatus, setLogoFetchStatus] = useState<'idle' | 'fetching' | 'preview' | 'error'>('idle');
+  const [logoPreview, setLogoPreview] = useState<{ base64: string; domain: string } | null>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
 
   // Track whether initial load has completed to prevent saving empty state
   const hasLoadedRef = useRef(false);
@@ -302,6 +306,53 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
       setSaveStatus('error');
     }
   }, [buildFormData]);
+
+  // Logo fetch handler
+  const handleFetchLogo = useCallback(async () => {
+    if (!company.companyName.trim()) return;
+    setLogoFetchStatus('fetching');
+    setLogoError(null);
+    setLogoPreview(null);
+    try {
+      const res = await fetch('/api/fetch-logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyName: company.companyName }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLogoError(data.error || 'Failed to fetch logo');
+        setLogoFetchStatus('error');
+        return;
+      }
+      setLogoPreview({ base64: data.logoBase64, domain: data.domain });
+      setLogoFetchStatus('preview');
+    } catch {
+      setLogoError('Network error. Please try again.');
+      setLogoFetchStatus('error');
+    }
+  }, [company.companyName]);
+
+  const handleAcceptLogo = useCallback(() => {
+    if (!logoPreview) return;
+    setCompany(prev => ({
+      ...prev,
+      customerLogoBase64: logoPreview.base64,
+      customerLogoDomain: logoPreview.domain,
+    }));
+    setLogoPreview(null);
+    setLogoFetchStatus('idle');
+  }, [logoPreview]);
+
+  const handleRemoveLogo = useCallback(() => {
+    setCompany(prev => ({
+      ...prev,
+      customerLogoBase64: undefined,
+      customerLogoDomain: undefined,
+    }));
+    setLogoPreview(null);
+    setLogoFetchStatus('idle');
+  }, []);
 
   // Load saved form data on mount or when proposalId changes
   useEffect(() => {
@@ -772,6 +823,124 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
                     placeholder="Optional - for tracking"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#03143B]"
                   />
+                </div>
+              </div>
+            </div>
+
+            {/* Company Logo */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Company Logo</h3>
+              <p className="text-sm text-gray-500 mb-4">Auto-fetch the prospect&apos;s logo to include in the proposal alongside the Wisq logo.</p>
+
+              <div className="flex items-start gap-6">
+                {/* Logo preview area */}
+                <div className="flex-shrink-0">
+                  {company.customerLogoBase64 ? (
+                    <div className="w-24 h-24 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center p-2">
+                      <img
+                        src={company.customerLogoBase64}
+                        alt="Company logo"
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
+                  ) : logoFetchStatus === 'preview' && logoPreview ? (
+                    <div className="w-24 h-24 rounded-lg border-2 border-blue-300 bg-blue-50 flex items-center justify-center p-2">
+                      <img
+                        src={logoPreview.base64}
+                        alt="Logo preview"
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
+                  ) : logoFetchStatus === 'fetching' ? (
+                    <div className="w-24 h-24 rounded-lg border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center">
+                      <svg className="animate-spin h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <div className="w-24 h-24 rounded-lg border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center">
+                      <svg className="h-8 w-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex-1 space-y-3">
+                  {company.customerLogoBase64 ? (
+                    <>
+                      <p className="text-sm text-green-700">
+                        Logo loaded{company.customerLogoDomain ? ` from ${company.customerLogoDomain}` : ''}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleFetchLogo}
+                          disabled={!company.companyName.trim()}
+                          className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          Re-fetch
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveLogo}
+                          className="px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-md hover:bg-red-50"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </>
+                  ) : logoFetchStatus === 'preview' && logoPreview ? (
+                    <>
+                      <p className="text-sm text-gray-600">
+                        Found logo from <span className="font-medium">{logoPreview.domain}</span>
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAcceptLogo}
+                          className="px-3 py-1.5 text-sm bg-[#03143B] text-white rounded-md hover:bg-[#03143B]/90"
+                        >
+                          Use This Logo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleFetchLogo}
+                          className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                        >
+                          Try Again
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setLogoPreview(null); setLogoFetchStatus('idle'); }}
+                          className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700"
+                        >
+                          Skip
+                        </button>
+                      </div>
+                    </>
+                  ) : logoFetchStatus === 'fetching' ? (
+                    <p className="text-sm text-gray-500">Searching for logo...</p>
+                  ) : (
+                    <>
+                      {logoFetchStatus === 'error' && logoError && (
+                        <p className="text-sm text-red-600 mb-2">{logoError}</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleFetchLogo}
+                        disabled={!company.companyName.trim()}
+                        className="px-4 py-2 text-sm bg-[#03143B] text-white rounded-md hover:bg-[#03143B]/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Fetch Logo
+                      </button>
+                      {!company.companyName.trim() && (
+                        <p className="text-xs text-gray-400">Enter a company name first</p>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>

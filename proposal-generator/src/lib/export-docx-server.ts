@@ -47,9 +47,22 @@ async function getLogoPngBuffer(): Promise<Buffer> {
   return pngBuffer;
 }
 
+async function getCustomerLogoPngBuffer(base64DataUri: string): Promise<Buffer> {
+  // Strip data URI prefix: "data:image/png;base64,"
+  const base64Data = base64DataUri.replace(/^data:image\/\w+;base64,/, '');
+  const buffer = Buffer.from(base64Data, 'base64');
+  return sharp(buffer)
+    .resize(100, 100, { fit: 'inside', withoutEnlargement: true })
+    .png()
+    .toBuffer();
+}
+
 export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Promise<Document> {
   // Get logo as PNG buffer
   const logoBuffer = await getLogoPngBuffer();
+  const customerLogoBuffer = inputs.company.customerLogoBase64
+    ? await getCustomerLogoPngBuffer(inputs.company.customerLogoBase64)
+    : null;
 
   // Calculate values
   const pricing = calculatePricing(inputs.pricing);
@@ -72,15 +85,26 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
   children.push(new Paragraph({ spacing: { after: 1200 } }));
 
   // Logo on cover page - larger and more prominent
+  const coverLogoChildren: (ImageRun | TextRun)[] = [
+    new ImageRun({
+      data: logoBuffer,
+      transformation: { width: 100, height: 100 },
+      type: 'png',
+    }),
+  ];
+  if (customerLogoBuffer) {
+    coverLogoChildren.push(
+      new TextRun({ text: '  \u00D7  ', size: 32, color: 'CCCCCC' }),
+      new ImageRun({
+        data: customerLogoBuffer,
+        transformation: { width: 100, height: 100 },
+        type: 'png',
+      }),
+    );
+  }
   children.push(
     new Paragraph({
-      children: [
-        new ImageRun({
-          data: logoBuffer,
-          transformation: { width: 100, height: 100 },
-          type: 'png',
-        }),
-      ],
+      children: coverLogoChildren,
       spacing: { after: 800 },
     })
   );

@@ -18,6 +18,14 @@ export const CUSTOMER_QUOTES: CustomerQuote[] = [
     theme: 'Strategic Vision',
   },
 
+  {
+    id: 'q-exec-02',
+    text: 'I\'ve had the opportunity to see Wisq develop from an AI concept into a strategic investment that drives operational excellence at FICO. By automating routine HR functions, we\'ve shifted our organization toward higher-value priorities while enhancing the employee experience. We\'re seeing this impact firsthand... This allows us to deploy our human capital where it creates the most business impact.',
+    attribution: 'Rich Deal, CHRO at FICO',
+    section: 'executive-summary',
+    theme: 'Strategic Vision',
+  },
+
   // ===== MEET HARPER =====
   {
     id: 'q-harper-01',
@@ -32,6 +40,21 @@ export const CUSTOMER_QUOTES: CustomerQuote[] = [
     attribution: 'Director, Project Management Office, Global Operations',
     section: 'meet-harper',
     theme: 'Context Awareness',
+  },
+
+  {
+    id: 'q-harper-03',
+    text: 'We have employees in Seattle, Las Vegas, the Philippines, and remote, each with different policies and needs. Harper understands that context. An employee in Cebu gets Philippines-specific support; someone in Seattle gets exactly the support they need. We love that we can rely on Harper for that.',
+    attribution: 'Gulliver Swenson, VP People & General Counsel, Boundless',
+    section: 'meet-harper',
+    theme: 'Context Awareness',
+  },
+  {
+    id: 'q-harper-04',
+    text: 'When you\'re running an airline with pilots, flight attendants, and crew working around the clock across 75+ cities, traditional HR support simply doesn\'t scale. Harper gives our team members quick, accurate answers whether it\'s 2pm or 2am - without our People Services team having to staff a 24/7 operation. That\'s a game-changer for a company growing as fast as we are.',
+    attribution: 'Jeff Weber, Chief People Officer, Breeze Airways',
+    section: 'meet-harper',
+    theme: '24/7 Scalability',
   },
 
   // ===== VALUE DRIVERS =====

@@ -38,9 +38,15 @@ export function MicrositeCover({ inputs }: Props) {
       </div>
 
       <div className="relative z-10 max-w-3xl mx-auto px-6 text-center">
-        {/* Logo */}
-        <div className="flex justify-center mb-10">
+        {/* Logos */}
+        <div className="flex justify-center items-center gap-4 mb-10">
           <img src="/wisq-logo.svg" alt="Wisq" className="h-14 w-14" />
+          {inputs.company.customerLogoBase64 && (
+            <>
+              <span className="text-[#03143B]/20 text-2xl font-light">&times;</span>
+              <img src={inputs.company.customerLogoBase64} alt={inputs.company.companyName} className="h-14 w-auto max-w-[120px] object-contain" />
+            </>
+          )}
         </div>
 
         <div className="text-sm font-semibold tracking-[0.2em] uppercase mb-5 text-[#03143B]/40">

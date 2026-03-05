@@ -14,7 +14,11 @@ const SECTIONS: NavSection[] = [
   { id: 'why-now', label: 'Next Steps' },
 ];
 
-export function MicrositeNav() {
+interface MicrositeNavProps {
+  customerLogoBase64?: string;
+}
+
+export function MicrositeNav({ customerLogoBase64 }: MicrositeNavProps) {
   const { activeSection, isVisible, scrollTo } = useStickyNav(SECTIONS);
 
   return (
@@ -27,6 +31,12 @@ export function MicrositeNav() {
         <div className="max-w-5xl mx-auto px-4 flex items-center h-12 gap-1 overflow-x-auto">
           <div className="flex items-center gap-2 mr-4 flex-shrink-0">
             <img src="/wisq-logo.svg" alt="Wisq" className="h-7 w-7" />
+            {customerLogoBase64 && (
+              <>
+                <span className="text-gray-300 text-sm">&times;</span>
+                <img src={customerLogoBase64} alt="Customer" className="h-7 w-auto max-w-[80px] object-contain" />
+              </>
+            )}
           </div>
           {SECTIONS.map((section) => (
             <button

@@ -22,7 +22,7 @@ interface Props {
 export function MicrositeDocument({ inputs }: Props) {
   return (
     <div className="min-h-screen bg-white font-[family-name:var(--font-geist-sans)]">
-      <MicrositeNav />
+      <MicrositeNav customerLogoBase64={inputs.company.customerLogoBase64} />
       <MicrositeCover inputs={inputs} />
       <MicrositeVision inputs={inputs} />
       <MicrositeExecutiveSummary inputs={inputs} />
@@ -32,7 +32,7 @@ export function MicrositeDocument({ inputs }: Props) {
       <MicrositeROIExplorer inputs={inputs} />
       <MicrositeSecurity inputs={inputs} />
       <MicrositeWhyNow inputs={inputs} />
-      <MicrositeFooter />
+      <MicrositeFooter customerLogoBase64={inputs.company.customerLogoBase64} />
     </div>
   );
 }
