@@ -25,7 +25,7 @@ import {
   WORKFORCE_TYPE_LABELS,
   ORG_MODEL_LABELS,
 } from '@/lib/benchmarks';
-import { formatCurrency } from '@/lib/pricing-calculator';
+import { formatCurrency, formatCompactCurrency } from '@/lib/pricing-calculator';
 import {
   DEFAULT_HR_OPERATIONS,
   DEFAULT_LEGAL_COMPLIANCE,
@@ -1504,11 +1504,11 @@ function SummaryTab({
       <div className="grid md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-[#03143B] to-[#020e29] rounded-lg p-6 text-white">
           <p className="text-sm opacity-80 mb-1">Gross Annual Value</p>
-          <p className="text-2xl font-bold">{formatCurrency(summary.grossAnnualValue)}</p>
+          <p className="text-2xl font-bold">{formatCompactCurrency(summary.grossAnnualValue)}</p>
         </div>
         <div className="bg-gradient-to-br from-[#03143B]/80 to-[#020e29]/80 rounded-lg p-6 text-white">
           <p className="text-sm opacity-80 mb-1">Return on Investment</p>
-          <p className="text-2xl font-bold">{formatCurrency(summary.netAnnualBenefit)}</p>
+          <p className="text-2xl font-bold">{formatCompactCurrency(summary.netAnnualBenefit)}</p>
           <p className="text-xs opacity-60 mt-1">annually</p>
         </div>
         <div className="bg-gradient-to-br from-gray-600 to-gray-500 rounded-lg p-6 text-white">
@@ -1517,7 +1517,7 @@ function SummaryTab({
         </div>
         <div className="bg-gradient-to-br from-[#03143B]/60 to-[#020e29]/60 rounded-lg p-6 text-white">
           <p className="text-sm opacity-80 mb-1">Net Annual Benefit</p>
-          <p className="text-2xl font-bold">{formatCurrency(summary.netAnnualBenefit)}</p>
+          <p className="text-2xl font-bold">{formatCompactCurrency(summary.netAnnualBenefit)}</p>
         </div>
       </div>
 
@@ -1650,14 +1650,14 @@ function generateBusinessCaseNarrative(
   }
 
   if (managerDriven) {
-    return `The biggest impact for your organization comes from giving managers back productive time. With a ${ORG_MODEL_LABELS[profile.orgModel].toLowerCase()} HR model, managers are currently spending significant hours on HR tasks that Wisq can deflect or streamline. Combined with operational efficiency and compliance value, this creates a compelling ${formatCurrency(summary.netAnnualBenefit)} in annual return on investment.`;
+    return `The biggest impact for your organization comes from giving managers back productive time. With a ${ORG_MODEL_LABELS[profile.orgModel].toLowerCase()} HR model, managers are currently spending significant hours on HR tasks that Wisq can deflect or streamline. Combined with operational efficiency and compliance value, this creates a compelling ${formatCompactCurrency(summary.netAnnualBenefit)} in annual return on investment.`;
   }
 
   if (hrPercent > 50) {
     return `HR operational efficiency is your strongest value lever at ${hrPercent.toFixed(0)}% of total value. Wisq's AI-powered deflection reduces your effective cost per case by automating Tier 0-1 responses and streamlining Tier 2+ workflows. This translates to ${hrOutput.headcountReduction.toFixed(1)} FTE in workload reduction.`;
   }
 
-  return `Wisq delivers balanced value across operations (${hrPercent.toFixed(0)}%), compliance (${legalPercent.toFixed(0)}%), and employee experience (${prodPercent.toFixed(0)}%). This diversified ROI means the business case holds up even if any single value stream performs below projections. Net annual benefit of ${formatCurrency(summary.netAnnualBenefit)} annually.`;
+  return `Wisq delivers balanced value across operations (${hrPercent.toFixed(0)}%), compliance (${legalPercent.toFixed(0)}%), and employee experience (${prodPercent.toFixed(0)}%). This diversified ROI means the business case holds up even if any single value stream performs below projections. Net annual benefit of ${formatCompactCurrency(summary.netAnnualBenefit)} annually.`;
 }
 
 // ──────────────────────────────────────────────

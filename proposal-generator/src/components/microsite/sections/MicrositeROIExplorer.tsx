@@ -115,7 +115,7 @@ export function MicrositeROIExplorer({ inputs }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 p-5 rounded-xl text-center">
               <div className="text-2xl font-bold ms-number-transition" style={{ color: 'var(--theme-primary)' }}>
-                {formatCurrency(summary.netAnnualBenefit)}
+                {formatCompactCurrency(summary.netAnnualBenefit)}
               </div>
               <div className="text-xs text-gray-500 mt-1">Annual ROI</div>
             </div>

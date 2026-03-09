@@ -16,7 +16,7 @@ import {
 } from 'docx';
 import { ProposalInputs, PAIN_POINT_LABELS, PainPoint, RFPCategory, RFP_CATEGORY_LABELS, resolveOtherValue, FAQSection, DEFAULT_COLOR_PALETTE } from '@/types/proposal';
 import { lightenHex } from '@/lib/theme';
-import { calculatePricing, formatCurrency } from '@/lib/pricing-calculator';
+import { calculatePricing, formatCurrency, formatCompactCurrency } from '@/lib/pricing-calculator';
 import {
   calculateHROperationsROI,
   calculateLegalComplianceROI,
@@ -268,10 +268,10 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
 
   children.push(
     metricsTable([
-      { label: 'Year 1 ROI', value: `${formatCurrency(summary.netAnnualBenefit)}/yr` },
-      { label: 'Gross Annual Value', value: formatCurrency(summary.grossAnnualValue) },
+      { label: 'Year 1 ROI', value: `${formatCompactCurrency(summary.netAnnualBenefit)}/yr` },
+      { label: 'Gross Annual Value', value: formatCompactCurrency(summary.grossAnnualValue) },
       { label: 'Payback Period', value: `${summary.paybackPeriodMonths.toFixed(1)} months` },
-      { label: 'Net Annual Benefit', value: formatCurrency(summary.netAnnualBenefit) },
+      { label: 'Net Annual Benefit', value: formatCompactCurrency(summary.netAnnualBenefit) },
     ])
   );
 
@@ -433,10 +433,10 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
   children.push(
     simpleTable([
       ['Value Category', 'Annual Savings'],
-      ['HR Operations Efficiency (Net)', formatCurrency(summary.hrOpsSavings)],
-      ['Legal & Compliance Risk Reduction', formatCurrency(summary.legalSavings)],
-      ['Employee Productivity Gains', formatCurrency(summary.productivitySavings)],
-      ['Net Annual Value', formatCurrency(summary.netAnnualBenefit)],
+      ['HR Operations Efficiency (Net)', formatCompactCurrency(summary.hrOpsSavings)],
+      ['Legal & Compliance Risk Reduction', formatCompactCurrency(summary.legalSavings)],
+      ['Employee Productivity Gains', formatCompactCurrency(summary.productivitySavings)],
+      ['Net Annual Value', formatCompactCurrency(summary.netAnnualBenefit)],
     ])
   );
 
@@ -447,7 +447,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
     new Paragraph({
       children: [
         new TextRun({
-          text: `Annual ROI: ${formatCurrency(summary.netAnnualBenefit)}/yr  •  Payback: ${summary.paybackPeriodMonths.toFixed(1)} months  •  Gross Annual Value: ${formatCurrency(summary.grossAnnualValue)}`,
+          text: `Annual ROI: ${formatCompactCurrency(summary.netAnnualBenefit)}/yr  •  Payback: ${summary.paybackPeriodMonths.toFixed(1)} months  •  Gross Annual Value: ${formatCompactCurrency(summary.grossAnnualValue)}`,
           bold: true,
           size: 26,
           color: 'FFFFFF',

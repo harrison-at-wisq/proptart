@@ -107,7 +107,7 @@ export function MicrositeInvestment({ inputs }: Props) {
         <div ref={metricsRef} className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10 ms-fade-up">
           <div className="bg-white/10 p-5 rounded-xl text-center backdrop-blur-sm">
             <div className="text-3xl font-bold mb-1" ref={roiCounter.ref as React.RefObject<HTMLDivElement>}>
-              {formatCurrency(roiCounter.value)}
+              {formatCompactCurrency(roiCounter.value)}
             </div>
             <div className="text-white/60 text-sm">Annual ROI</div>
           </div>

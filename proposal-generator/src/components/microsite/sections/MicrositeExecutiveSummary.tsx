@@ -101,7 +101,7 @@ export function MicrositeExecutiveSummary({ inputs }: Props) {
               <div className="flex justify-between items-center pb-3 border-b border-gray-200">
                 <span className="text-gray-600 text-sm">Return on Investment</span>
                 <span className="text-xl font-bold" style={{ color: 'var(--theme-primary)' }} ref={roiCounter.ref as React.RefObject<HTMLSpanElement>}>
-                  {formatCurrency(roiCounter.value)}/yr
+                  {formatCompactCurrency(roiCounter.value)}/yr
                 </span>
               </div>
               <div className="flex justify-between items-center">

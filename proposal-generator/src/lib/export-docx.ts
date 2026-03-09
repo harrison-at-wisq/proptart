@@ -20,7 +20,7 @@ import {
   ImageRun,
 } from 'docx';
 import { ProposalInputs, VALUE_DRIVER_LABELS, PAIN_POINT_LABELS } from '@/types/proposal';
-import { calculatePricing, formatCurrency } from '@/lib/pricing-calculator';
+import { calculatePricing, formatCurrency, formatCompactCurrency } from '@/lib/pricing-calculator';
 import {
   calculateHROperationsROI,
   calculateLegalComplianceROI,
@@ -198,10 +198,10 @@ export function generateProposalDocx(inputs: ProposalInputs): Document {
 
   children.push(
     createMetricsTable([
-      { label: 'Annual ROI', value: `${formatCurrency(summary.netAnnualBenefit)}/yr` },
-      { label: 'Gross Annual Value', value: formatCurrency(summary.grossAnnualValue) },
+      { label: 'Annual ROI', value: `${formatCompactCurrency(summary.netAnnualBenefit)}/yr` },
+      { label: 'Gross Annual Value', value: formatCompactCurrency(summary.grossAnnualValue) },
       { label: 'Payback Period', value: `${summary.paybackPeriodMonths.toFixed(1)} months` },
-      { label: 'Net Annual Benefit', value: formatCurrency(summary.netAnnualBenefit) },
+      { label: 'Net Annual Benefit', value: formatCompactCurrency(summary.netAnnualBenefit) },
     ])
   );
 
@@ -321,10 +321,10 @@ export function generateProposalDocx(inputs: ProposalInputs): Document {
   children.push(
     createSimpleTable([
       ['Value Category', 'Annual Savings'],
-      ['HR Operations Efficiency (Net)', formatCurrency(summary.hrOpsSavings)],
-      ['Legal & Compliance Risk Reduction', formatCurrency(summary.legalSavings)],
-      ['Employee Productivity Gains', formatCurrency(summary.productivitySavings)],
-      ['Net Annual Value', formatCurrency(summary.netAnnualBenefit)],
+      ['HR Operations Efficiency (Net)', formatCompactCurrency(summary.hrOpsSavings)],
+      ['Legal & Compliance Risk Reduction', formatCompactCurrency(summary.legalSavings)],
+      ['Employee Productivity Gains', formatCompactCurrency(summary.productivitySavings)],
+      ['Net Annual Value', formatCompactCurrency(summary.netAnnualBenefit)],
     ])
   );
 
@@ -335,7 +335,7 @@ export function generateProposalDocx(inputs: ProposalInputs): Document {
     new Paragraph({
       children: [
         new TextRun({
-          text: `Annual ROI: ${formatCurrency(summary.netAnnualBenefit)}/yr  •  Payback: ${summary.paybackPeriodMonths.toFixed(1)} months  •  Gross Annual Value: ${formatCurrency(summary.grossAnnualValue)}`,
+          text: `Annual ROI: ${formatCompactCurrency(summary.netAnnualBenefit)}/yr  •  Payback: ${summary.paybackPeriodMonths.toFixed(1)} months  •  Gross Annual Value: ${formatCompactCurrency(summary.grossAnnualValue)}`,
           bold: true,
           size: 26,
           color: 'FFFFFF',

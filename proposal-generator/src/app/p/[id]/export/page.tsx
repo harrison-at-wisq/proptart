@@ -144,7 +144,7 @@ function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
       rows: [
         { label: 'Annual Investment', value: formatCompactCurrency(pricing.annualRecurringRevenue) },
         { label: 'Projected Annual Value', value: formatCompactCurrency(summary.grossAnnualValue) },
-        { label: 'Return on Investment', value: `${formatCurrency(summary.netAnnualBenefit)}/yr` },
+        { label: 'Return on Investment', value: `${formatCompactCurrency(summary.netAnnualBenefit)}/yr` },
         { label: 'Payback Period', value: `${summary.paybackPeriodMonths.toFixed(1)} mo` },
       ],
     }),
@@ -214,7 +214,7 @@ function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
     }, investRightCol),
     el('kpi-tiles', 12, {
       tiles: [
-        { value: `${formatCurrency(summary.netAnnualBenefit)}/yr`, label: 'ROI' },
+        { value: `${formatCompactCurrency(summary.netAnnualBenefit)}/yr`, label: 'ROI' },
         { value: `${summary.paybackPeriodMonths.toFixed(1)} mo`, label: 'Payback' },
         { value: formatCompactCurrency(projection.total), label: '3-Year Value' },
         { value: formatCompactCurrency(projection.netTotal), label: '3-Year Net' },
