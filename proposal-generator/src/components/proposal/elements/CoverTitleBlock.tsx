@@ -32,16 +32,19 @@ export function CoverTitleBlock({
   contactTitle = COVER_TITLE_BLOCK_PLACEHOLDER.contactTitle,
   darkTheme,
 }: CoverTitleBlockProps) {
-  const headingColor = darkTheme ? 'text-white' : 'text-[#03143B]';
-  const dividerBg = darkTheme ? 'bg-white/50' : 'bg-[#03143B]';
+  const headingColor = darkTheme ? 'text-white' : '';
+  const headingStyle = darkTheme ? undefined : { color: 'var(--theme-primary)' } as React.CSSProperties;
+  const dividerBg = darkTheme ? 'bg-white/50' : '';
+  const dividerStyle = darkTheme ? undefined : { backgroundColor: 'var(--theme-primary)' } as React.CSSProperties;
   const quoteText = darkTheme ? 'text-white/80' : 'text-gray-700';
-  const quoteBorder = darkTheme ? 'border-white/40' : 'border-[#03143B]';
+  const quoteBorder = darkTheme ? 'border-white/40' : '';
+  const quoteBorderStyle = darkTheme ? undefined : { borderColor: 'var(--theme-primary)' } as React.CSSProperties;
   const metaText = darkTheme ? 'text-white/60' : 'text-gray-600';
   const nameText = darkTheme ? 'text-white' : 'text-gray-900';
 
   return (
     <div>
-      <div className={`text-sm font-semibold ${headingColor} tracking-widest uppercase mb-2`}>
+      <div className={`text-sm font-semibold ${headingColor} tracking-widest uppercase mb-2`} style={headingStyle}>
         {eyebrow}
       </div>
       {onTitleChange ? (
@@ -50,13 +53,14 @@ export function CoverTitleBlock({
           onChange={onTitleChange}
           as="h1"
           className={`text-5xl font-bold ${headingColor} leading-tight mb-6`}
+          style={headingStyle}
         />
       ) : (
-        <h1 className={`text-5xl font-bold ${headingColor} leading-tight mb-6`}>{title}</h1>
+        <h1 className={`text-5xl font-bold ${headingColor} leading-tight mb-6`} style={headingStyle}>{title}</h1>
       )}
-      <div className={`w-24 h-1 ${dividerBg} mb-8`}></div>
+      <div className={`w-24 h-1 ${dividerBg} mb-8`} style={dividerStyle}></div>
       {quote && (
-        <div className={`text-xl ${quoteText} italic border-l-4 ${quoteBorder} pl-4 mb-8 max-w-2xl`}>
+        <div className={`text-xl ${quoteText} italic border-l-4 ${quoteBorder} pl-4 mb-8 max-w-2xl`} style={quoteBorderStyle}>
           {onQuoteChange ? (
             <p>&ldquo;<DirectEditableText
               value={quote}

@@ -32,6 +32,8 @@ import {
   DEFAULT_LEGAL_COMPLIANCE,
   DEFAULT_EMPLOYEE_EXPERIENCE,
   DEFAULT_PRICING,
+  ColorPalette,
+  DEFAULT_COLOR_PALETTE,
 } from '@/types/proposal';
 import { PricingCalculator } from '@/components/calculators/PricingCalculator';
 import { ROICalculator } from '@/components/calculators/ROICalculator';
@@ -208,7 +210,7 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
     hcm: '',
     identity: '',
     documents: '',
-    communication: '',
+    communication: [],
     ticketing: '',
   });
   const [nextSteps, setNextSteps] = useState<NextStepId[]>(['technical-deepdive', 'pilot-scope', 'implementation-kickoff']);
@@ -247,6 +249,8 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
   const [logoFetchStatus, setLogoFetchStatus] = useState<'idle' | 'fetching' | 'preview' | 'error'>('idle');
   const [logoPreview, setLogoPreview] = useState<{ base64: string; domain: string } | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
+  // Color palette
+  const [colorPalette, setColorPalette] = useState<ColorPalette>(DEFAULT_COLOR_PALETTE);
 
   // Track whether initial load has completed to prevent saving empty state
   const hasLoadedRef = useRef(false);
@@ -278,7 +282,8 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
     aiPersonalization,
     generatedContent: generatedContent || undefined,
     rfpAppendix: rfpAppendix.enabled ? rfpAppendix : undefined,
-  }), [company, pricing, hrOperations, legalCompliance, employeeExperience, primaryValueDriver, painPoints, integrations, nextSteps, coverQuote, customNotes, customPainPoints, customNextSteps, painPointOrder, nextStepOrder, selectedQuotes, faqSections, roiEstimateGenerated, aiPersonalization, generatedContent, rfpAppendix]);
+    colorPalette,
+  }), [company, pricing, hrOperations, legalCompliance, employeeExperience, primaryValueDriver, painPoints, integrations, nextSteps, coverQuote, customNotes, customPainPoints, customNextSteps, painPointOrder, nextStepOrder, selectedQuotes, faqSections, roiEstimateGenerated, aiPersonalization, generatedContent, rfpAppendix, colorPalette]);
 
   // Explicit save function
   const saveNow = useCallback(async () => {
@@ -386,6 +391,7 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
       if (data.faqSections) setFAQSections(data.faqSections);
       if (data.selectedQuotes) setSelectedQuotes(data.selectedQuotes);
       if (data.roiEstimateGenerated) setRoiEstimateGenerated(true);
+      if (data.colorPalette) setColorPalette(data.colorPalette);
       // Detect if proposal has been generated before
       if (data.generatedContent || data.contentOverrides) {
         setHasBeenGenerated(true);
@@ -1025,15 +1031,38 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
                   label="Documents"
                   placeholder="Enter document platform..."
                 />
-                <SelectWithOther
-                  options={INTEGRATION_OPTIONS.communication}
-                  value={integrations.communication}
-                  customValue={integrations.customCommunication}
-                  onChange={(value) => setIntegrations({ ...integrations, communication: value })}
-                  onCustomChange={(value) => setIntegrations({ ...integrations, customCommunication: value })}
-                  label="Communication"
-                  placeholder="Enter communication tool..."
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Communication</label>
+                  <div className="space-y-1.5 border border-gray-300 rounded-md p-2.5">
+                    {INTEGRATION_OPTIONS.communication.map((option) => {
+                      const commArray = Array.isArray(integrations.communication) ? integrations.communication : (integrations.communication ? [integrations.communication] : []);
+                      const checked = commArray.includes(option);
+                      return (
+                        <label key={option} className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 hover:text-gray-900">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const next = checked ? commArray.filter(v => v !== option) : [...commArray, option];
+                              setIntegrations({ ...integrations, communication: next });
+                            }}
+                            className="rounded border-gray-300 text-[#03143B] focus:ring-[#03143B]"
+                          />
+                          {option}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {(Array.isArray(integrations.communication) ? integrations.communication : [integrations.communication]).includes('Other') && (
+                    <input
+                      type="text"
+                      value={integrations.customCommunication ?? ''}
+                      onChange={(e) => setIntegrations({ ...integrations, customCommunication: e.target.value })}
+                      placeholder="Enter communication tool..."
+                      className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#03143B] bg-gray-50"
+                    />
+                  )}
+                </div>
                 <SelectWithOther
                   options={INTEGRATION_OPTIONS.ticketing}
                   value={integrations.ticketing}

@@ -22,9 +22,11 @@ export const STAT_CARDS_PLACEHOLDER = {
 export function StatCards({ items = STAT_CARDS_PLACEHOLDER.items, onChange, darkTheme }: StatCardsProps) {
   const cardClass = darkTheme
     ? 'text-center p-4 bg-white/10 rounded-lg'
-    : 'text-center p-4 bg-white border-2 border-[#03143B] rounded-lg';
+    : 'text-center p-4 bg-white border-2 rounded-lg';
+  const cardStyle = darkTheme ? undefined : { borderColor: 'var(--theme-primary)' } as React.CSSProperties;
 
-  const statColor = darkTheme ? 'text-white' : 'text-[#03143B]';
+  const statColor = darkTheme ? 'text-white' : '';
+  const statStyle = darkTheme ? undefined : { color: 'var(--theme-primary)' } as React.CSSProperties;
   const contextColor = darkTheme ? 'text-white/60' : 'text-gray-600';
 
   return (
@@ -36,7 +38,7 @@ export function StatCards({ items = STAT_CARDS_PLACEHOLDER.items, onChange, dark
       addLabel="Add stat"
       createNewItem={() => ({ id: crypto.randomUUID(), stat: '0%', context: 'New metric...' })}
       renderItem={(item) => (
-        <div className={cardClass}>
+        <div className={cardClass} style={cardStyle}>
           <DirectEditableText
             value={item.stat as string}
             onChange={(value) => {
@@ -45,6 +47,7 @@ export function StatCards({ items = STAT_CARDS_PLACEHOLDER.items, onChange, dark
             }}
             as="div"
             className={`text-3xl font-bold ${statColor} mb-1`}
+            style={statStyle}
           />
           <DirectEditableText
             value={item.context as string}

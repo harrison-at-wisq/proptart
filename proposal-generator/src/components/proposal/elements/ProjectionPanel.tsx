@@ -45,12 +45,12 @@ export function ProjectionPanel({
 
   return (
     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-      <h4 className="text-sm font-semibold text-[#03143B] mb-3 uppercase tracking-wide text-center">{title}</h4>
+      <h4 className="text-sm font-semibold mb-3 uppercase tracking-wide text-center" style={{ color: 'var(--theme-primary)' }}>{title}</h4>
       <div className={`grid grid-cols-${columns.length} gap-4 text-center`}>
         {columns.map((col, i) => (
           <div key={i}>
             <div className="text-gray-500 text-xs mb-1">{col.label}</div>
-            <div className="text-xl font-bold text-[#03143B]">{col.value}</div>
+            <div className="text-xl font-bold" style={{ color: 'var(--theme-primary)' }}>{col.value}</div>
           </div>
         ))}
       </div>

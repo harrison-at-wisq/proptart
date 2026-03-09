@@ -3,11 +3,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLayoutMode } from './LayoutModeContext';
 
-interface DirectEditableTextProps {
+export interface DirectEditableTextProps {
   value: string;
   onChange: (value: string) => void;
   as?: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'span' | 'li' | 'div';
   className?: string;
+  style?: React.CSSProperties;
   multiline?: boolean;
   placeholder?: string;
 }
@@ -17,6 +18,7 @@ export function DirectEditableText({
   onChange,
   as: Component = 'p',
   className = '',
+  style,
   multiline = false,
   placeholder = 'Click to edit...',
 }: DirectEditableTextProps) {
@@ -107,6 +109,7 @@ export function DirectEditableText({
         transition-all duration-150 rounded
         print:hover:bg-transparent print:hover:outline-none
       `}
+      style={style}
       title="Click to edit"
     >
       {displayValue}

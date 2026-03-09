@@ -65,10 +65,20 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
   // Future state (with Wisq) workload calculations
   const tier01FutureMinutes =
     tier01Cases * (1 - inputs.tier01DeflectionRate / 100) * effectiveTier01HandleTime;
-  const tier2PlusNotDeflectedCases =
-    tier2PlusConfiguredCases * (1 - inputs.tier2PlusDeflectionRate / 100);
-  const tier2PlusConfiguredFutureMinutes =
-    tier2PlusNotDeflectedCases * effectiveTier2HandleTime * (1 - inputs.tier2PlusEffortReduction / 100);
+
+  // Per-workflow future state calculation (uses per-workflow rates with global fallback)
+  let tier2PlusConfiguredFutureMinutes = 0;
+  let tier2PlusNotDeflectedCases = 0;
+  for (const wf of inputs.tier2Workflows) {
+    const wfCases = wf.volumePerYear * seepageMultiplier;
+    const wfHandleTime = wf.timePerWorkflowHours * 60 * overheadMultiplier;
+    const wfDeflection = (wf.deflectionRate ?? inputs.tier2PlusDeflectionRate) / 100;
+    const wfEffortRed = (wf.effortReduction ?? inputs.tier2PlusEffortReduction) / 100;
+    const wfNotDeflected = wfCases * (1 - wfDeflection);
+    tier2PlusNotDeflectedCases += wfNotDeflected;
+    tier2PlusConfiguredFutureMinutes += wfNotDeflected * wfHandleTime * (1 - wfEffortRed);
+  }
+
   const tier2PlusUnconfiguredFutureMinutes = tier2PlusUnconfiguredCases * effectiveTier2HandleTime;
   const futureTotalMinutes =
     tier01FutureMinutes + tier2PlusConfiguredFutureMinutes + tier2PlusUnconfiguredFutureMinutes;
@@ -116,12 +126,25 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
 
   // Deflection metrics
   const tier01Deflected = tier01Cases * (inputs.tier01DeflectionRate / 100);
-  const tier2PlusDeflected = tier2PlusConfiguredCases * (inputs.tier2PlusDeflectionRate / 100);
+
+  // Per-workflow deflection metrics
+  let tier2PlusDeflected = 0;
+  let tier2PlusDeflectedTimeSavingsHours = 0;
+  let tier2PlusEffortReductionHours = 0;
+  for (const wf of inputs.tier2Workflows) {
+    const wfCases = wf.volumePerYear * seepageMultiplier;
+    const wfHandleTime = wf.timePerWorkflowHours * 60 * overheadMultiplier;
+    const wfDeflection = (wf.deflectionRate ?? inputs.tier2PlusDeflectionRate) / 100;
+    const wfEffortRed = (wf.effortReduction ?? inputs.tier2PlusEffortReduction) / 100;
+    const wfDeflectedCases = wfCases * wfDeflection;
+    const wfNotDeflected = wfCases * (1 - wfDeflection);
+    tier2PlusDeflected += wfDeflectedCases;
+    tier2PlusDeflectedTimeSavingsHours += (wfHandleTime * wfDeflectedCases) / 60;
+    tier2PlusEffortReductionHours += (wfNotDeflected * wfHandleTime * wfEffortRed) / 60;
+  }
+
   const totalDeflected = tier01Deflected + tier2PlusDeflected;
   const tier01TimeSavingsHours = (effectiveTier01HandleTime * tier01Deflected) / 60;
-  const tier2PlusDeflectedTimeSavingsHours = (effectiveTier2HandleTime * tier2PlusDeflected) / 60;
-  const tier2PlusEffortReductionHours =
-    (tier2PlusNotDeflectedCases * effectiveTier2HandleTime * (inputs.tier2PlusEffortReduction / 100)) / 60;
   const tier2PlusTotalTimeSavingsHours =
     tier2PlusDeflectedTimeSavingsHours + tier2PlusEffortReductionHours;
 

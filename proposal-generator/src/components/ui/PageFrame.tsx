@@ -27,7 +27,7 @@ export function PageFrame({ children, darkTheme, className }: PageFrameProps) {
   ];
 
   if (darkTheme) {
-    baseClasses.push('bg-[#03143B] text-white');
+    baseClasses.push('text-white');
   } else {
     baseClasses.push('bg-white');
   }
@@ -38,8 +38,12 @@ export function PageFrame({ children, darkTheme, className }: PageFrameProps) {
     baseClasses.push('p-12');
   }
 
+  const style = darkTheme
+    ? { backgroundColor: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' } as React.CSSProperties
+    : undefined;
+
   return (
-    <section className={baseClasses.join(' ')}>
+    <section className={baseClasses.join(' ')} style={style}>
       {children}
     </section>
   );

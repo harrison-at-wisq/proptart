@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ProposalInputs } from '@/types/proposal';
+import { getThemeVars } from '@/lib/theme';
 import { MicrositeNav } from './MicrositeNav';
 import { MicrositeCover } from './sections/MicrositeCover';
 import { MicrositeVision } from './sections/MicrositeVision';
@@ -21,7 +22,7 @@ interface Props {
 
 export function MicrositeDocument({ inputs }: Props) {
   return (
-    <div className="min-h-screen bg-white font-[family-name:var(--font-geist-sans)]">
+    <div className="min-h-screen bg-white font-[family-name:var(--font-geist-sans)]" style={getThemeVars(inputs.colorPalette)}>
       <MicrositeNav customerLogoBase64={inputs.company.customerLogoBase64} />
       <MicrositeCover inputs={inputs} />
       <MicrositeVision inputs={inputs} />

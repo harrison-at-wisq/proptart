@@ -161,6 +161,8 @@ export function ROICalculator({
       name: `Workflow ${hrInputs.tier2Workflows.length + 1}`,
       volumePerYear: 250,
       timePerWorkflowHours: 0.75,
+      deflectionRate: hrInputs.tier2PlusDeflectionRate,
+      effortReduction: hrInputs.tier2PlusEffortReduction,
     };
     onHRChange({ tier2Workflows: [...hrInputs.tier2Workflows, newWorkflow] });
   };
@@ -636,14 +638,45 @@ function HROperationsTab({
                       />
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <div className="flex justify-between mb-0.5">
+                        <label className="text-xs text-gray-500">Deflection Rate</label>
+                        <span className="text-xs font-medium text-[#03143B]">{workflow.deflectionRate ?? inputs.tier2PlusDeflectionRate}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        value={workflow.deflectionRate ?? inputs.tier2PlusDeflectionRate}
+                        onChange={(e) => onUpdateWorkflow(workflow.id, { deflectionRate: Number(e.target.value) })}
+                        min={0}
+                        max={100}
+                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#03143B]"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between mb-0.5">
+                        <label className="text-xs text-gray-500">Effort Reduction</label>
+                        <span className="text-xs font-medium text-[#03143B]">{workflow.effortReduction ?? inputs.tier2PlusEffortReduction}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        value={workflow.effortReduction ?? inputs.tier2PlusEffortReduction}
+                        onChange={(e) => onUpdateWorkflow(workflow.id, { effortReduction: Number(e.target.value) })}
+                        min={0}
+                        max={100}
+                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#03143B]"
+                      />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
           <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
+            <p className="text-xs text-gray-500">Default rates for new workflows (existing workflows keep their own values)</p>
             <SliderField
-              label="Tier 2+ Deflection Rate"
+              label="Default Deflection Rate"
               value={inputs.tier2PlusDeflectionRate}
               onChange={(v) => onChange({ tier2PlusDeflectionRate: v })}
               min={0}
@@ -651,7 +684,7 @@ function HROperationsTab({
               unit="%"
             />
             <SliderField
-              label="Effort Reduction on Remaining"
+              label="Default Effort Reduction"
               value={inputs.tier2PlusEffortReduction}
               onChange={(v) => onChange({ tier2PlusEffortReduction: v })}
               min={0}
@@ -1475,7 +1508,8 @@ function SummaryTab({
         </div>
         <div className="bg-gradient-to-br from-[#03143B]/80 to-[#020e29]/80 rounded-lg p-6 text-white">
           <p className="text-sm opacity-80 mb-1">Return on Investment</p>
-          <p className="text-2xl font-bold">{summary.totalROI.toFixed(0)}%</p>
+          <p className="text-2xl font-bold">{formatCurrency(summary.netAnnualBenefit)}</p>
+          <p className="text-xs opacity-60 mt-1">annually</p>
         </div>
         <div className="bg-gradient-to-br from-gray-600 to-gray-500 rounded-lg p-6 text-white">
           <p className="text-sm opacity-80 mb-1">Payback Period</p>
@@ -1616,14 +1650,14 @@ function generateBusinessCaseNarrative(
   }
 
   if (managerDriven) {
-    return `The biggest impact for your organization comes from giving managers back productive time. With a ${ORG_MODEL_LABELS[profile.orgModel].toLowerCase()} HR model, managers are currently spending significant hours on HR tasks that Wisq can deflect or streamline. Combined with operational efficiency and compliance value, this creates a compelling ${summary.totalROI.toFixed(0)}% return on investment.`;
+    return `The biggest impact for your organization comes from giving managers back productive time. With a ${ORG_MODEL_LABELS[profile.orgModel].toLowerCase()} HR model, managers are currently spending significant hours on HR tasks that Wisq can deflect or streamline. Combined with operational efficiency and compliance value, this creates a compelling ${formatCurrency(summary.netAnnualBenefit)} in annual return on investment.`;
   }
 
   if (hrPercent > 50) {
     return `HR operational efficiency is your strongest value lever at ${hrPercent.toFixed(0)}% of total value. Wisq's AI-powered deflection reduces your effective cost per case by automating Tier 0-1 responses and streamlining Tier 2+ workflows. This translates to ${hrOutput.headcountReduction.toFixed(1)} FTE in workload reduction.`;
   }
 
-  return `Wisq delivers balanced value across operations (${hrPercent.toFixed(0)}%), compliance (${legalPercent.toFixed(0)}%), and employee experience (${prodPercent.toFixed(0)}%). This diversified ROI means the business case holds up even if any single value stream performs below projections. Net annual benefit of ${formatCurrency(summary.netAnnualBenefit)} yields a ${summary.totalROI.toFixed(0)}% return.`;
+  return `Wisq delivers balanced value across operations (${hrPercent.toFixed(0)}%), compliance (${legalPercent.toFixed(0)}%), and employee experience (${prodPercent.toFixed(0)}%). This diversified ROI means the business case holds up even if any single value stream performs below projections. Net annual benefit of ${formatCurrency(summary.netAnnualBenefit)} annually.`;
 }
 
 // ──────────────────────────────────────────────

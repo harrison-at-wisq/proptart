@@ -25,12 +25,13 @@ export function CustomerQuote({
 }: CustomerQuoteProps) {
   if (!text) return null;
 
-  const borderColor = darkTheme ? 'border-white/50' : 'border-[#4d65ff]';
+  const borderColor = darkTheme ? 'border-white/50' : '';
+  const borderStyle = darkTheme ? undefined : { borderColor: 'var(--theme-accent)' } as React.CSSProperties;
   const quoteColor = darkTheme ? 'text-white/90' : 'text-gray-700';
   const attrColor = darkTheme ? 'text-white/60' : 'text-gray-500';
 
   return (
-    <div className={`pl-5 border-l-4 ${borderColor}`}>
+    <div className={`pl-5 border-l-4 ${borderColor}`} style={borderStyle}>
       {onTextChange ? (
         <p className={`text-sm italic leading-relaxed ${quoteColor}`}>
           &ldquo;<DirectEditableText

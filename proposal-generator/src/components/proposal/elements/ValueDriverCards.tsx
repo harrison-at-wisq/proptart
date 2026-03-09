@@ -40,18 +40,27 @@ export function ValueDriverCards({ items = VALUE_DRIVER_CARDS_PLACEHOLDER.items,
         const isPrimary = index === 0;
         const cardClass = darkTheme
           ? `p-4 rounded-lg ${isPrimary ? 'bg-white/20 ring-2 ring-white/50' : 'bg-white/10'}`
-          : `p-4 rounded-lg ${isPrimary ? 'bg-[#03143B]/10 ring-2 ring-[#03143B]' : 'bg-gray-50'}`;
+          : `p-4 rounded-lg ${isPrimary ? 'ring-2' : 'bg-gray-50'}`;
+        const cardStyle = (!darkTheme && isPrimary)
+          ? { backgroundColor: 'rgba(var(--theme-primary-rgb), 0.1)', ringColor: 'var(--theme-primary)', '--tw-ring-color': 'var(--theme-primary)' } as React.CSSProperties
+          : undefined;
         const numColor = darkTheme
           ? `text-3xl font-bold flex-shrink-0 ${isPrimary ? 'text-white' : 'text-white/30'}`
-          : `text-3xl font-bold flex-shrink-0 ${isPrimary ? 'text-[#03143B]' : 'text-[#03143B]/20'}`;
+          : 'text-3xl font-bold flex-shrink-0';
+        const numStyle = darkTheme
+          ? undefined
+          : isPrimary
+            ? { color: 'var(--theme-primary)' } as React.CSSProperties
+            : { color: 'rgba(var(--theme-primary-rgb), 0.2)' } as React.CSSProperties;
         const headlineColor = darkTheme ? 'text-white' : 'text-gray-900';
         const descColor = darkTheme ? 'text-white/70' : 'text-gray-600';
-        const proofColor = darkTheme ? 'text-white font-semibold' : 'text-[#03143B] font-semibold';
+        const proofColor = darkTheme ? 'text-white font-semibold' : 'font-semibold';
+        const proofStyle = darkTheme ? undefined : { color: 'var(--theme-primary)' } as React.CSSProperties;
 
         return (
-          <div className={cardClass}>
+          <div className={cardClass} style={cardStyle}>
             <div className="flex items-center gap-3 mb-2">
-              <div className={numColor}>{(index ?? 0) + 1}</div>
+              <div className={numColor} style={numStyle}>{(index ?? 0) + 1}</div>
               <DirectEditableText
                 value={item.headline as string}
                 onChange={(value) => {
@@ -62,7 +71,7 @@ export function ValueDriverCards({ items = VALUE_DRIVER_CARDS_PLACEHOLDER.items,
                 className={`font-bold ${headlineColor} flex-1`}
               />
               {isPrimary && (
-                <span className={`px-2 py-0.5 text-xs font-medium rounded flex-shrink-0 ${darkTheme ? 'bg-white text-[#03143B]' : 'bg-[#03143B] text-white'}`}>PRIMARY</span>
+                <span className={`px-2 py-0.5 text-xs font-medium rounded flex-shrink-0 ${darkTheme ? 'bg-white' : 'text-white'}`} style={darkTheme ? { color: 'var(--theme-primary)' } : { backgroundColor: 'var(--theme-primary)' }}>PRIMARY</span>
               )}
             </div>
             <DirectEditableText
@@ -83,6 +92,7 @@ export function ValueDriverCards({ items = VALUE_DRIVER_CARDS_PLACEHOLDER.items,
               }}
               as="p"
               className={`${proofColor} text-sm`}
+              style={proofStyle}
             />
           </div>
         );

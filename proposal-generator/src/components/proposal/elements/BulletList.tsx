@@ -20,7 +20,8 @@ export const BULLET_LIST_PLACEHOLDER = {
 };
 
 export function BulletList({ items = BULLET_LIST_PLACEHOLDER.items, onChange, darkTheme }: BulletListProps) {
-  const bulletColor = darkTheme ? 'bg-white/70' : 'bg-[#03143B]';
+  const bulletColor = darkTheme ? 'bg-white/70' : '';
+  const bulletStyle = darkTheme ? undefined : { backgroundColor: 'var(--theme-primary)' } as React.CSSProperties;
   const textColor = darkTheme ? 'text-white/80' : 'text-gray-600';
 
   return (
@@ -33,7 +34,7 @@ export function BulletList({ items = BULLET_LIST_PLACEHOLDER.items, onChange, da
       createNewItem={() => ({ id: crypto.randomUUID(), text: 'New insight...' })}
       renderItem={(item) => (
         <li className={`flex items-start gap-2 ${textColor} text-sm`}>
-          <span className={`w-1.5 h-1.5 ${bulletColor} rounded-full mt-2 flex-shrink-0`}></span>
+          <span className={`w-1.5 h-1.5 ${bulletColor} rounded-full mt-2 flex-shrink-0`} style={bulletStyle}></span>
           <DirectEditableText
             value={item.text as string}
             onChange={(value) => {

@@ -13,6 +13,7 @@ import { SectionNavBar } from '@/components/ui/SectionNavBar';
 import { PageFrame } from '@/components/ui/PageFrame';
 import { AddSectionButton } from '@/components/ui/AddSectionButton';
 import { CustomSectionRenderer } from './CustomSectionRenderer';
+import { getThemeVars } from '@/lib/theme';
 import { getDefaultElementData } from './templates/element-defaults';
 import { ELEMENT_CATALOG } from './templates/registry';
 import { DEFAULT_TEMPLATE } from './templates/default-template';
@@ -397,7 +398,9 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
     inputs.integrations.hcm && { name: resolveOtherValue(inputs.integrations.hcm, inputs.integrations.customHcm), category: 'HCM' },
     inputs.integrations.identity && { name: resolveOtherValue(inputs.integrations.identity, inputs.integrations.customIdentity), category: 'Identity' },
     inputs.integrations.documents && { name: resolveOtherValue(inputs.integrations.documents, inputs.integrations.customDocuments), category: 'Documents' },
-    inputs.integrations.communication && { name: resolveOtherValue(inputs.integrations.communication, inputs.integrations.customCommunication), category: 'Communication' },
+    ...(Array.isArray(inputs.integrations.communication)
+      ? inputs.integrations.communication.filter(Boolean).map(v => ({ name: resolveOtherValue(v, inputs.integrations.customCommunication), category: 'Communication' }))
+      : inputs.integrations.communication ? [{ name: resolveOtherValue(inputs.integrations.communication, inputs.integrations.customCommunication), category: 'Communication' }] : []),
     inputs.integrations.ticketing && inputs.integrations.ticketing !== 'None / Not applicable' && { name: resolveOtherValue(inputs.integrations.ticketing, inputs.integrations.customTicketing), category: 'Ticketing' },
   ].filter(Boolean) as { name: string; category: string }[];
 
@@ -561,6 +564,7 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
       <div
         ref={documentRef}
         className="proposal-document min-h-screen"
+        style={getThemeVars(inputs.colorPalette)}
       >
         {/* ==================== TEMPLATE-DRIVEN SECTIONS ==================== */}
         {DEFAULT_TEMPLATE.sections.map((sectionConfig) => {

@@ -40,10 +40,11 @@ export function FAQSection({
     if (layoutMode && onAdd) {
       return (
         <div className={`pt-4 border-t ${darkTheme ? 'border-white/20' : 'border-gray-200'}`}>
-          <h4 className={`text-sm font-semibold mb-3 uppercase tracking-wide ${darkTheme ? 'text-white/70' : 'text-[#03143B]'}`}>{title}</h4>
+          <h4 className={`text-sm font-semibold mb-3 uppercase tracking-wide ${darkTheme ? 'text-white/70' : ''}`} style={darkTheme ? undefined : { color: 'var(--theme-primary)' }}>{title}</h4>
           <button
             onClick={onAdd}
-            className={`flex items-center gap-2 text-sm transition-colors print:hidden ${darkTheme ? 'text-white/40 hover:text-white/70' : 'text-[#03143B]/50 hover:text-[#03143B]'}`}
+            className={`flex items-center gap-2 text-sm transition-colors print:hidden ${darkTheme ? 'text-white/40 hover:text-white/70' : ''}`}
+            style={darkTheme ? undefined : { color: 'rgba(var(--theme-primary-rgb), 0.5)' }}
           >
             <span className="w-6 h-6 border border-dashed border-current rounded flex items-center justify-center text-lg leading-none">+</span>
             Add FAQ
@@ -55,14 +56,15 @@ export function FAQSection({
   }
 
   const borderColor = darkTheme ? 'border-white/20' : 'border-gray-200';
-  const titleColor = darkTheme ? 'text-white/70' : 'text-[#03143B]';
+  const titleColor = darkTheme ? 'text-white/70' : '';
+  const titleStyle = darkTheme ? undefined : { color: 'var(--theme-primary)' } as React.CSSProperties;
   const qColor = darkTheme ? 'text-white' : 'text-gray-900';
   const aColor = darkTheme ? 'text-white/70' : 'text-gray-600';
   const itemBorder = darkTheme ? 'border-white/30' : 'border-gray-200';
 
   return (
     <div className={`pt-4 border-t ${borderColor}`}>
-      <h4 className={`text-sm font-semibold mb-3 uppercase tracking-wide ${titleColor}`}>{title}</h4>
+      <h4 className={`text-sm font-semibold mb-3 uppercase tracking-wide ${titleColor}`} style={titleStyle}>{title}</h4>
       <div className="space-y-3">
         {faqs.map((faq, i) => (
           <div key={i} className={`pl-4 border-l-2 ${itemBorder} relative group`}>
@@ -105,7 +107,8 @@ export function FAQSection({
       {layoutMode && onAdd && (
         <button
           onClick={onAdd}
-          className={`mt-3 flex items-center gap-2 text-sm transition-colors print:hidden ${darkTheme ? 'text-white/40 hover:text-white/70' : 'text-[#03143B]/50 hover:text-[#03143B]'}`}
+          className={`mt-3 flex items-center gap-2 text-sm transition-colors print:hidden ${darkTheme ? 'text-white/40 hover:text-white/70' : ''}`}
+          style={darkTheme ? undefined : { color: 'rgba(var(--theme-primary-rgb), 0.5)' }}
         >
           <span className="w-6 h-6 border border-dashed border-current rounded flex items-center justify-center text-lg leading-none">+</span>
           Add FAQ

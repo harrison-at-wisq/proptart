@@ -54,20 +54,20 @@ export function MetricTable({ title = METRIC_TABLE_PLACEHOLDER.title, rows = MET
   return (
     <div className="bg-gray-50 p-5 rounded-lg border border-gray-200 h-full flex flex-col">
       {title && (
-        <h3 className="text-sm font-semibold text-[#03143B] mb-3 uppercase tracking-wide">{title}</h3>
+        <h3 className="text-sm font-semibold mb-3 uppercase tracking-wide" style={{ color: 'var(--theme-primary)' }}>{title}</h3>
       )}
       <div className="space-y-3">
         {bodyRows.map((row, i) => (
           <div key={i} className="flex justify-between items-center pb-2 border-b border-gray-200">
             <span className="text-gray-600 text-sm">{row.label}</span>
-            <span className="text-xl font-bold text-[#03143B]">{row.value}</span>
+            <span className="text-xl font-bold" style={{ color: 'var(--theme-primary)' }}>{row.value}</span>
           </div>
         ))}
       </div>
       {totalRow && (
         <div className="flex justify-between items-center mt-auto pt-3">
           <span className="text-gray-600 text-sm">{totalRow.label}</span>
-          <span className="text-xl font-bold text-[#03143B]">{totalRow.value}</span>
+          <span className="text-xl font-bold" style={{ color: 'var(--theme-primary)' }}>{totalRow.value}</span>
         </div>
       )}
     </div>

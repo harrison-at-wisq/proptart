@@ -20,13 +20,14 @@ export function EyebrowLabel({ text = EYEBROW_LABEL_PLACEHOLDER.text, onChange, 
         value={text}
         onChange={onChange}
         as="div"
-        className={`text-sm font-semibold tracking-widest uppercase mb-2 ${darkTheme ? 'text-white/70' : 'text-[#03143B]'}`}
+        className={`text-sm font-semibold tracking-widest uppercase mb-2 ${darkTheme ? 'text-white/70' : ''}`}
+        style={darkTheme ? undefined : { color: 'var(--theme-primary)' }}
       />
     );
   }
 
   return (
-    <div className={`text-sm font-semibold tracking-widest uppercase mb-2 ${darkTheme ? 'text-white/70' : 'text-[#03143B]'}`}>
+    <div className={`text-sm font-semibold tracking-widest uppercase mb-2 ${darkTheme ? 'text-white/70' : ''}`} style={darkTheme ? undefined : { color: 'var(--theme-primary)' }}>
       {text}
     </div>
   );

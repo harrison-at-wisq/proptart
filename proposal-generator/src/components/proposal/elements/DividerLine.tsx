@@ -11,6 +11,6 @@ export const DIVIDER_LINE_PLACEHOLDER = {};
 
 export function DividerLine({ width = 'w-24', darkTheme }: DividerLineProps) {
   return (
-    <div className={`${width} h-1 ${darkTheme ? 'bg-white/50' : 'bg-[#03143B]'}`} />
+    <div className={`${width} h-1 ${darkTheme ? 'bg-white/50' : ''}`} style={darkTheme ? undefined : { backgroundColor: 'var(--theme-primary)' }} />
   );
 }

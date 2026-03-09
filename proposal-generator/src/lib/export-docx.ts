@@ -198,7 +198,7 @@ export function generateProposalDocx(inputs: ProposalInputs): Document {
 
   children.push(
     createMetricsTable([
-      { label: 'Year 1 ROI', value: `${summary.totalROI.toFixed(0)}%` },
+      { label: 'Annual ROI', value: `${formatCurrency(summary.netAnnualBenefit)}/yr` },
       { label: 'Gross Annual Value', value: formatCurrency(summary.grossAnnualValue) },
       { label: 'Payback Period', value: `${summary.paybackPeriodMonths.toFixed(1)} months` },
       { label: 'Net Annual Benefit', value: formatCurrency(summary.netAnnualBenefit) },
@@ -335,7 +335,7 @@ export function generateProposalDocx(inputs: ProposalInputs): Document {
     new Paragraph({
       children: [
         new TextRun({
-          text: `Total ROI: ${summary.totalROI.toFixed(0)}%  •  Payback: ${summary.paybackPeriodMonths.toFixed(1)} months  •  Net Benefit: ${formatCurrency(summary.netAnnualBenefit)}`,
+          text: `Annual ROI: ${formatCurrency(summary.netAnnualBenefit)}/yr  •  Payback: ${summary.paybackPeriodMonths.toFixed(1)} months  •  Gross Annual Value: ${formatCurrency(summary.grossAnnualValue)}`,
           bold: true,
           size: 26,
           color: 'FFFFFF',

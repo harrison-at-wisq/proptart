@@ -34,11 +34,15 @@ export function useROIScenarios(inputs: ProposalInputs) {
     const multipliers = SCENARIO_MULTIPLIERS[scenario];
     const pricing = calculatePricing(inputs.pricing);
 
-    // Adjust HR operations inputs
+    // Adjust HR operations inputs (scale per-workflow deflection rates too)
     const adjustedHR: HROperationsInputs = {
       ...inputs.hrOperations,
       tier01DeflectionRate: Math.min(100, inputs.hrOperations.tier01DeflectionRate * multipliers.deflection),
       tier2PlusDeflectionRate: Math.min(100, inputs.hrOperations.tier2PlusDeflectionRate * multipliers.deflection),
+      tier2Workflows: inputs.hrOperations.tier2Workflows.map(wf => ({
+        ...wf,
+        deflectionRate: wf.deflectionRate != null ? Math.min(100, wf.deflectionRate * multipliers.deflection) : undefined,
+      })),
     };
 
     // Adjust employee experience inputs

@@ -21,8 +21,11 @@ export const NUMBERED_STEPS_PLACEHOLDER = {
 
 export function NumberedSteps({ items = NUMBERED_STEPS_PLACEHOLDER.items, onChange, darkTheme }: NumberedStepsProps) {
   const badgeClass = darkTheme
-    ? 'w-8 h-8 bg-white rounded-full flex items-center justify-center text-[#03143B] font-bold flex-shrink-0 text-sm'
-    : 'w-8 h-8 bg-[#03143B] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 text-sm';
+    ? 'w-8 h-8 bg-white rounded-full flex items-center justify-center font-bold flex-shrink-0 text-sm'
+    : 'w-8 h-8 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 text-sm';
+  const badgeStyle = darkTheme
+    ? { color: 'var(--theme-primary)' } as React.CSSProperties
+    : { backgroundColor: 'var(--theme-primary)' } as React.CSSProperties;
   const titleColor = darkTheme ? 'text-white' : 'text-gray-900';
   const descColor = darkTheme ? 'text-white/70' : 'text-gray-600';
 
@@ -36,7 +39,7 @@ export function NumberedSteps({ items = NUMBERED_STEPS_PLACEHOLDER.items, onChan
       createNewItem={() => ({ id: crypto.randomUUID(), title: 'New Step', description: 'Describe the next step...' })}
       renderItem={(item, index) => (
         <div className="flex items-start gap-4">
-          <div className={badgeClass}>
+          <div className={badgeClass} style={badgeStyle}>
             {(index ?? 0) + 1}
           </div>
           <div>

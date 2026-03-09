@@ -13,7 +13,7 @@ export function MicrositeFooter({ customerLogoBase64 }: MicrositeFooterProps) {
     <footer
       id="footer"
       className="py-12 text-white"
-      style={{ background: '#03143B' }}
+      style={{ background: 'var(--theme-primary)' }}
     >
       <div className="max-w-5xl mx-auto px-6">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">

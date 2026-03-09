@@ -85,7 +85,8 @@ export function CustomSectionRenderer({
   };
 
   const darkTheme = section.darkTheme;
-  const headingColor = darkTheme ? 'text-white' : 'text-[#03143B]';
+  const headingColor = darkTheme ? 'text-white' : '';
+  const headingStyle = darkTheme ? undefined : { color: 'var(--theme-primary)' } as React.CSSProperties;
   const subtleColor = darkTheme ? 'text-white/50' : 'text-gray-400';
   const btnHover = darkTheme ? 'hover:bg-white/10' : 'hover:bg-gray-100';
 
@@ -105,12 +106,14 @@ export function CustomSectionRenderer({
                   if (e.key === 'Enter') handleRename();
                   if (e.key === 'Escape') { setEditName(section.name); setIsEditing(false); }
                 }}
-                className={`text-lg font-bold bg-transparent border-b-2 outline-none px-1 ${headingColor} ${darkTheme ? 'border-white/50' : 'border-[#03143B]'}`}
+                className={`text-lg font-bold bg-transparent border-b-2 outline-none px-1 ${headingColor} ${darkTheme ? 'border-white/50' : ''}`}
+                style={darkTheme ? undefined : { color: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' }}
               />
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
                 className={`text-lg font-bold ${headingColor} hover:underline`}
+                style={headingStyle}
               >
                 {section.name}
               </button>

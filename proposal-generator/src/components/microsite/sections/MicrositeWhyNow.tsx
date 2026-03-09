@@ -52,8 +52,8 @@ export function MicrositeWhyNow({ inputs }: Props) {
   return (
     <section id="why-now" className="py-20 sm:py-28 bg-white" ref={sectionRef}>
       <div className="max-w-5xl mx-auto px-6 ms-fade-up">
-        <h2 className="text-3xl sm:text-4xl font-bold text-[#03143B] mb-2">Why Now?</h2>
-        <div className="w-16 h-0.5 bg-[#03143B] mb-10" />
+        <h2 className="text-3xl sm:text-4xl font-bold mb-2" style={{ color: 'var(--theme-primary)' }}>Why Now?</h2>
+        <div className="w-16 h-0.5 mb-10" style={{ backgroundColor: 'var(--theme-primary)' }} />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-14">
           {whyNowKeys.map((itemKey, index) => {
@@ -64,11 +64,11 @@ export function MicrositeWhyNow({ inputs }: Props) {
             const description = overrides?.description || generated?.description || template.description;
 
             return (
-              <div key={itemKey} className="p-5 bg-gray-50 rounded-xl border-l-4 border-[#03143B]">
-                <h3 className="font-semibold text-[#03143B] mb-1">{headline}</h3>
+              <div key={itemKey} className="p-5 bg-gray-50 rounded-xl border-l-4" style={{ borderColor: 'var(--theme-primary)' }}>
+                <h3 className="font-semibold mb-1" style={{ color: 'var(--theme-primary)' }}>{headline}</h3>
                 <p className="text-gray-600 text-sm leading-relaxed">{description}</p>
                 {index === 0 && (
-                  <p className="text-lg font-bold text-[#03143B] mt-3">
+                  <p className="text-lg font-bold mt-3" style={{ color: 'var(--theme-primary)' }}>
                     {formatCompactCurrency(summary.grossAnnualValue / 12)}/month in potential value
                   </p>
                 )}
@@ -82,13 +82,13 @@ export function MicrositeWhyNow({ inputs }: Props) {
         {/* Next Steps */}
         {orderedSteps.length > 0 && (
           <div ref={stepsRef} className="ms-fade-up">
-            <h2 className="text-2xl font-bold text-[#03143B] mb-6">Next Steps</h2>
+            <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--theme-primary)' }}>Next Steps</h2>
             <div className="space-y-4 mb-8 ms-stagger">
               {orderedSteps.map((step, index) => {
                 const overrides = inputs.contentOverrides?.nextStepOverrides?.[step.id];
                 return (
                   <div key={step.id} className="flex items-start gap-4">
-                    <div className="w-9 h-9 bg-[#03143B] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 text-sm">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 text-sm" style={{ backgroundColor: 'var(--theme-primary)' }}>
                       {index + 1}
                     </div>
                     <div>
@@ -105,15 +105,15 @@ export function MicrositeWhyNow({ inputs }: Props) {
               <p className="text-gray-600 mb-1">Questions? Let&apos;s talk.</p>
               {inputs.company.contactEmail.includes('|') ? (
                 <>
-                  <p className="text-xl font-semibold text-[#03143B]">
+                  <p className="text-xl font-semibold" style={{ color: 'var(--theme-primary)' }}>
                     {inputs.company.contactEmail.split('|')[0].trim()}
                   </p>
-                  <p className="text-lg text-[#03143B]">
+                  <p className="text-lg" style={{ color: 'var(--theme-primary)' }}>
                     {inputs.company.contactEmail.split('|')[1].trim()}
                   </p>
                 </>
               ) : (
-                <p className="text-xl font-semibold text-[#03143B]">{inputs.company.contactEmail}</p>
+                <p className="text-xl font-semibold" style={{ color: 'var(--theme-primary)' }}>{inputs.company.contactEmail}</p>
               )}
             </div>
           </div>

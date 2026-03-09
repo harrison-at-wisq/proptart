@@ -22,7 +22,7 @@ export function MicrositeCover({ inputs }: Props) {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'linear-gradient(to top, rgba(0,31,138,0.25) 0%, transparent 85%)',
+            'linear-gradient(to top, rgba(var(--theme-primary-rgb), 0.25) 0%, transparent 85%)',
         }}
       />
 
@@ -43,17 +43,17 @@ export function MicrositeCover({ inputs }: Props) {
           <img src="/wisq-logo.svg" alt="Wisq" className="h-14 w-14" />
           {inputs.company.customerLogoBase64 && (
             <>
-              <span className="text-[#03143B]/20 text-2xl font-light">&times;</span>
+              <span className="text-2xl font-light" style={{ color: 'rgba(var(--theme-primary-rgb), 0.2)' }}>&times;</span>
               <img src={inputs.company.customerLogoBase64} alt={inputs.company.companyName} className="h-14 w-auto max-w-[120px] object-contain" />
             </>
           )}
         </div>
 
-        <div className="text-sm font-semibold tracking-[0.2em] uppercase mb-5 text-[#03143B]/40">
+        <div className="text-sm font-semibold tracking-[0.2em] uppercase mb-5" style={{ color: 'rgba(var(--theme-primary-rgb), 0.4)' }}>
           Strategic Proposal
         </div>
 
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-[#03143B] leading-tight mb-6">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-6" style={{ color: 'var(--theme-primary)' }}>
           {inputs.contentOverrides?.coverTitle || (
             <>
               Transforming HR at<br />
@@ -62,24 +62,24 @@ export function MicrositeCover({ inputs }: Props) {
           )}
         </h1>
 
-        <div className="w-16 h-0.5 bg-[#03143B] mx-auto mb-8" />
+        <div className="w-16 h-0.5 mx-auto mb-8" style={{ backgroundColor: 'var(--theme-primary)' }} />
 
         {inputs.coverQuote && (
-          <p className="text-lg sm:text-xl text-[#03143B]/50 italic max-w-xl mx-auto mb-8 leading-relaxed">
+          <p className="text-lg sm:text-xl italic max-w-xl mx-auto mb-8 leading-relaxed" style={{ color: 'rgba(var(--theme-primary-rgb), 0.5)' }}>
             &ldquo;{inputs.contentOverrides?.coverQuote || inputs.coverQuote}&rdquo;
           </p>
         )}
 
-        <div className="text-[#03143B]/40 text-base">
+        <div className="text-base" style={{ color: 'rgba(var(--theme-primary-rgb), 0.4)' }}>
           Prepared for{' '}
-          <span className="text-[#03143B] font-medium">{contactName}</span>
+          <span className="font-medium" style={{ color: 'var(--theme-primary)' }}>{contactName}</span>
           {contactTitle && <>, {contactTitle}</>}
         </div>
       </div>
 
       {/* Scroll indicator */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-        <svg className="w-5 h-5 text-[#03143B]/25" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-5 h-5" style={{ color: 'rgba(var(--theme-primary-rgb), 0.25)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
         </svg>
       </div>

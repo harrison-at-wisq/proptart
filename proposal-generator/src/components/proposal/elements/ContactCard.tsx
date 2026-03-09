@@ -32,7 +32,8 @@ export function ContactCard({
     ? 'bg-white/10 p-5 rounded-lg'
     : 'bg-gray-50 p-5 rounded-lg border border-gray-200';
   const promptColor = darkTheme ? 'text-white/70' : 'text-gray-600';
-  const nameColor = darkTheme ? 'text-white' : 'text-[#03143B]';
+  const nameColor = darkTheme ? 'text-white' : '';
+  const nameStyle = darkTheme ? undefined : { color: 'var(--theme-primary)' } as React.CSSProperties;
 
   return (
     <div className={bgClass}>
@@ -52,9 +53,10 @@ export function ContactCard({
           onChange={onNameChange}
           as="p"
           className={`text-xl font-semibold ${nameColor}`}
+          style={nameStyle}
         />
       ) : (
-        <p className={`text-xl font-semibold ${nameColor}`}>{name}</p>
+        <p className={`text-xl font-semibold ${nameColor}`} style={nameStyle}>{name}</p>
       ))}
       {email && (onEmailChange ? (
         <DirectEditableText
@@ -62,9 +64,10 @@ export function ContactCard({
           onChange={onEmailChange}
           as="p"
           className={`text-lg ${nameColor}`}
+          style={nameStyle}
         />
       ) : (
-        <p className={`text-lg ${nameColor}`}>{email}</p>
+        <p className={`text-lg ${nameColor}`} style={nameStyle}>{email}</p>
       ))}
     </div>
   );

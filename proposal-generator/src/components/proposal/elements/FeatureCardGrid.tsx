@@ -23,7 +23,8 @@ export function FeatureCardGrid({ items = FEATURE_CARD_GRID_PLACEHOLDER.items, o
   const cardClass = darkTheme
     ? 'p-3 bg-white/10 rounded-lg'
     : 'p-3 bg-white border border-gray-200 rounded-lg';
-  const titleColor = darkTheme ? 'text-white' : 'text-[#03143B]';
+  const titleColor = darkTheme ? 'text-white' : '';
+  const titleStyle = darkTheme ? undefined : { color: 'var(--theme-primary)' } as React.CSSProperties;
   const descColor = darkTheme ? 'text-white/60' : 'text-gray-600';
 
   return (
@@ -44,6 +45,7 @@ export function FeatureCardGrid({ items = FEATURE_CARD_GRID_PLACEHOLDER.items, o
             }}
             as="h4"
             className={`font-semibold ${titleColor} mb-1 text-sm`}
+            style={titleStyle}
           />
           <DirectEditableText
             value={item.description as string}

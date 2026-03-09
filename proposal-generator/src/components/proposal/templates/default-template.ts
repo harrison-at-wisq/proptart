@@ -12,7 +12,7 @@ export const DEFAULT_TEMPLATE: ProposalTemplate = {
     {
       sectionKey: 'cover',
       layoutPreset: 'single-column',
-      className: 'cover-page min-h-screen flex flex-col justify-between p-12 border-l-8 border-[#03143B]',
+      className: 'cover-page min-h-screen flex flex-col justify-between p-12 border-l-8',
       elements: [
         {
           elementType: 'cover-title-block',

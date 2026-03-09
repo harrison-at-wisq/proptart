@@ -8,7 +8,7 @@ import { ExportToolbar } from '@/components/ui/ExportToolbar';
 import { ELEMENT_REGISTRY, ELEMENT_CATALOG } from '@/components/proposal/templates/registry';
 import { LayoutModeContext } from '@/components/ui/LayoutModeContext';
 import { getDefaultElementData, getEditableDataKey } from '@/components/proposal/templates/element-defaults';
-import { calculatePricing, formatCompactCurrency } from '@/lib/pricing-calculator';
+import { calculatePricing, formatCompactCurrency, formatCurrency } from '@/lib/pricing-calculator';
 import {
   calculateHROperationsROI,
   calculateLegalComplianceROI,
@@ -18,6 +18,7 @@ import {
 } from '@/lib/roi-calculator';
 import { materializeDocumentContent } from '@/lib/materialize-content';
 import { getSelectedQuoteForSection } from '@/lib/customer-quotes';
+import { getThemeVars } from '@/lib/theme';
 
 // ---------- Local types ----------
 
@@ -76,7 +77,9 @@ function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
     inputs.integrations.hcm && { name: resolveOtherValue(inputs.integrations.hcm, inputs.integrations.customHcm), category: 'HCM' },
     inputs.integrations.identity && { name: resolveOtherValue(inputs.integrations.identity, inputs.integrations.customIdentity), category: 'Identity' },
     inputs.integrations.documents && { name: resolveOtherValue(inputs.integrations.documents, inputs.integrations.customDocuments), category: 'Documents' },
-    inputs.integrations.communication && { name: resolveOtherValue(inputs.integrations.communication, inputs.integrations.customCommunication), category: 'Communication' },
+    ...(Array.isArray(inputs.integrations.communication)
+      ? inputs.integrations.communication.filter(Boolean).map(v => ({ name: resolveOtherValue(v, inputs.integrations.customCommunication), category: 'Communication' }))
+      : inputs.integrations.communication ? [{ name: resolveOtherValue(inputs.integrations.communication, inputs.integrations.customCommunication), category: 'Communication' }] : []),
     inputs.integrations.ticketing && inputs.integrations.ticketing !== 'None / Not applicable' && { name: resolveOtherValue(inputs.integrations.ticketing, inputs.integrations.customTicketing), category: 'Ticketing' },
   ].filter(Boolean) as { name: string; category: string }[];
 
@@ -141,7 +144,7 @@ function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
       rows: [
         { label: 'Annual Investment', value: formatCompactCurrency(pricing.annualRecurringRevenue) },
         { label: 'Projected Annual Value', value: formatCompactCurrency(summary.grossAnnualValue) },
-        { label: 'Return on Investment', value: `${summary.totalROI.toFixed(0)}%` },
+        { label: 'Return on Investment', value: `${formatCurrency(summary.netAnnualBenefit)}/yr` },
         { label: 'Payback Period', value: `${summary.paybackPeriodMonths.toFixed(1)} mo` },
       ],
     }),
@@ -211,7 +214,7 @@ function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
     }, investRightCol),
     el('kpi-tiles', 12, {
       tiles: [
-        { value: `${summary.totalROI.toFixed(0)}%`, label: 'ROI' },
+        { value: `${formatCurrency(summary.netAnnualBenefit)}/yr`, label: 'ROI' },
         { value: `${summary.paybackPeriodMonths.toFixed(1)} mo`, label: 'Payback' },
         { value: formatCompactCurrency(projection.total), label: '3-Year Value' },
         { value: formatCompactCurrency(projection.netTotal), label: '3-Year Net' },
@@ -776,7 +779,7 @@ export default function ProposalExportPage({
         onClose={() => router.push(`/p/${id}`)}
       />
 
-      <div className="export-document">
+      <div className="export-document" style={getThemeVars(proposalData.colorPalette)}>
         {sections.length === 0 && !layoutMode && (
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center text-gray-400">
@@ -933,7 +936,7 @@ export default function ProposalExportPage({
           }
 
           .export-page.dark-theme {
-            background: #03143B;
+            background: var(--theme-primary);
             color: white;
           }
 
@@ -998,7 +1001,7 @@ export default function ProposalExportPage({
             z-index: 1;
           }
           .layout-tier1-label.layout-dark {
-            background: #03143B;
+            background: var(--theme-primary);
             color: rgba(96, 165, 250, 0.5);
           }
 
@@ -1012,7 +1015,7 @@ export default function ProposalExportPage({
             z-index: 1;
           }
           .layout-tier2-label.layout-dark {
-            background: #03143B;
+            background: var(--theme-primary);
             color: rgba(74, 222, 128, 0.5);
           }
 
@@ -1185,7 +1188,7 @@ export default function ProposalExportPage({
             z-index: 1;
           }
           .layout-footer-label.layout-dark {
-            background: #03143B;
+            background: var(--theme-primary);
             color: rgba(250, 204, 21, 0.6);
           }
 
@@ -1273,7 +1276,7 @@ export default function ProposalExportPage({
           }
 
           .export-page.dark-theme {
-            background: #03143B !important;
+            background: var(--theme-primary) !important;
             color: white !important;
           }
 

@@ -1,3 +1,16 @@
+// Color Palette
+export interface ColorPalette {
+  primary: string;    // Default #03143B (navy)
+  accent: string;     // Default #4d65ff (periwinkle)
+  background: string; // Default #FFFFFF (white)
+}
+
+export const DEFAULT_COLOR_PALETTE: ColorPalette = {
+  primary: '#03143B',
+  accent: '#4d65ff',
+  background: '#FFFFFF',
+};
+
 // Pricing Types
 export interface PricingTier {
   minEmployees: number;
@@ -129,6 +142,8 @@ export interface Tier2Workflow {
   name: string;
   volumePerYear: number;
   timePerWorkflowHours: number;
+  deflectionRate?: number;    // per-workflow override (0-100%), falls back to global tier2PlusDeflectionRate
+  effortReduction?: number;   // per-workflow override (0-100%), falls back to global tier2PlusEffortReduction
 }
 
 export interface ManagerHRTime {
@@ -348,7 +363,7 @@ export interface CustomerIntegrations {
   hcm: string;
   identity: string;
   documents: string;
-  communication: string;
+  communication: string | string[]; // supports multi-select (e.g. Slack + Teams)
   ticketing: string;
   // Custom text when "Other" is selected
   customHcm?: string;
@@ -356,6 +371,12 @@ export interface CustomerIntegrations {
   customDocuments?: string;
   customCommunication?: string;
   customTicketing?: string;
+}
+
+/** Normalize communication field to an array (handles legacy single-string values) */
+export function normalizeCommunication(value: string | string[]): string[] {
+  if (Array.isArray(value)) return value;
+  return value ? [value] : [];
 }
 
 // Next Step IDs
@@ -446,6 +467,8 @@ export interface ProposalInputs {
   roiEstimateGenerated?: boolean;
   // AI Personalization
   aiPersonalization?: AIPersonalizationInputs;
+  // Color palette
+  colorPalette?: ColorPalette;
   // Content overrides from inline editing (deprecated - use documentContent)
   contentOverrides?: ProposalContentOverrides;
   // AI-generated content

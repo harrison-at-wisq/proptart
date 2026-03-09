@@ -2,7 +2,8 @@
 
 import { use, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ProposalInputs } from '@/types/proposal';
+import type { ProposalInputs, ColorPalette } from '@/types/proposal';
+import { DEFAULT_COLOR_PALETTE } from '@/types/proposal';
 
 interface MicrositeAsset {
   id: string;
@@ -378,6 +379,7 @@ export default function AssetsWorkspacePage({
                   key={site.id}
                   site={site}
                   versionNumber={versionNum}
+                  colorPalette={proposalData?.colorPalette}
                   onArchive={() => handleArchiveMicrosite(site.slug)}
                   onRepublish={() => handleRepublishMicrosite(site.slug)}
                   onDuplicate={() => handleDuplicateMicrosite(site)}
@@ -395,6 +397,7 @@ export default function AssetsWorkspacePage({
                   pdf={pdf}
                   versionNumber={versionNum}
                   proposalId={id}
+                  colorPalette={proposalData?.colorPalette}
                   onDuplicate={() => handleDuplicatePdf(pdf)}
                   onDelete={() => handleDeletePdf(pdf.id)}
                   onRename={(name) => handleRenamePdf(pdf.id, name)}
@@ -413,6 +416,7 @@ export default function AssetsWorkspacePage({
 function MicrositeCard({
   site,
   versionNumber,
+  colorPalette,
   onArchive,
   onRepublish,
   onDuplicate,
@@ -421,6 +425,7 @@ function MicrositeCard({
 }: {
   site: MicrositeAsset;
   versionNumber: number;
+  colorPalette?: ColorPalette;
   onArchive: () => void;
   onRepublish: () => void;
   onDuplicate: () => void;
@@ -569,6 +574,18 @@ function MicrositeCard({
           </div>
         </div>
 
+        {/* Color Palette */}
+        {colorPalette && (
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs text-gray-400">Colors</span>
+            <div className="flex gap-0.5 flex-1">
+              <div className="h-3 flex-1 rounded-sm" style={{ backgroundColor: colorPalette.primary }} />
+              <div className="h-3 flex-1 rounded-sm" style={{ backgroundColor: colorPalette.accent }} />
+              <div className="h-3 flex-1 rounded-sm border border-gray-100" style={{ backgroundColor: colorPalette.background }} />
+            </div>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex gap-2">
           <button
@@ -616,6 +633,7 @@ function PdfExportCard({
   pdf,
   versionNumber,
   proposalId,
+  colorPalette,
   onDuplicate,
   onDelete,
   onRename,
@@ -623,6 +641,7 @@ function PdfExportCard({
   pdf: PdfExportAsset;
   versionNumber: number;
   proposalId: string;
+  colorPalette?: ColorPalette;
   onDuplicate: () => void;
   onDelete: () => void;
   onRename: (name: string) => void;
@@ -725,6 +744,18 @@ function PdfExportCard({
             <span>{formatRelativeDate(pdf.updated_at || pdf.created_at)}</span>
           </div>
         </div>
+
+        {/* Color Palette */}
+        {colorPalette && (
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs text-gray-400">Colors</span>
+            <div className="flex gap-0.5 flex-1">
+              <div className="h-3 flex-1 rounded-sm" style={{ backgroundColor: colorPalette.primary }} />
+              <div className="h-3 flex-1 rounded-sm" style={{ backgroundColor: colorPalette.accent }} />
+              <div className="h-3 flex-1 rounded-sm border border-gray-100" style={{ backgroundColor: colorPalette.background }} />
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-2">

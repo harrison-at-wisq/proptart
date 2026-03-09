@@ -73,6 +73,23 @@ export default function PdfEditorPage({
     }, 1000);
   }, [rawPdfId]);
 
+  // Save inputs changes (e.g. color palette) — debounced
+  const inputsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleInputsChange = useCallback((updatedInputs: ProposalInputs) => {
+    setPdfData(updatedInputs);
+    if (inputsSaveTimerRef.current) clearTimeout(inputsSaveTimerRef.current);
+    inputsSaveTimerRef.current = setTimeout(() => {
+      setSaving(true);
+      fetch(`/api/pdf-exports/${rawPdfId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: updatedInputs }),
+      })
+        .catch(err => console.error('Failed to save inputs:', err))
+        .finally(() => setSaving(false));
+    }, 1000);
+  }, [rawPdfId]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-300 flex items-center justify-center">
@@ -108,6 +125,7 @@ export default function PdfEditorPage({
       inputs={pdfData}
       proposalId={proposalId}
       onSectionsChange={handleSectionsChange}
+      onInputsChange={handleInputsChange}
       toolbar={
         <PdfToolbar
           pdfName={pdfName}

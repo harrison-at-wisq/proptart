@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ProposalInputs, PainPoint } from '@/types/proposal';
-import { calculatePricing, formatCompactCurrency } from '@/lib/pricing-calculator';
+import { calculatePricing, formatCompactCurrency, formatCurrency } from '@/lib/pricing-calculator';
 import {
   calculateHROperationsROI,
   calculateLegalComplianceROI,
@@ -32,7 +32,7 @@ export function MicrositeExecutiveSummary({ inputs }: Props) {
 
   const opportunityContent = getOpportunityContent(inputs.company.industry);
 
-  const roiCounter = useAnimatedCounter(Math.round(summary.totalROI), 1400);
+  const roiCounter = useAnimatedCounter(Math.round(summary.netAnnualBenefit), 1400);
   const paybackCounter = useAnimatedCounter(summary.paybackPeriodMonths, 1200, 1);
   const valueCounter = useAnimatedCounter(Math.round(summary.grossAnnualValue / 1000), 1200);
 
@@ -66,19 +66,19 @@ export function MicrositeExecutiveSummary({ inputs }: Props) {
   return (
     <section id="executive-summary" className="py-20 sm:py-28 bg-white" ref={sectionRef}>
       <div className="max-w-5xl mx-auto px-6 ms-fade-up">
-        <h2 className="text-3xl sm:text-4xl font-bold text-[#03143B] mb-2">Executive Summary</h2>
-        <div className="w-16 h-0.5 bg-[#03143B] mb-8" />
+        <h2 className="text-3xl sm:text-4xl font-bold mb-2" style={{ color: 'var(--theme-primary)' }}>Executive Summary</h2>
+        <div className="w-16 h-0.5 mb-8" style={{ backgroundColor: 'var(--theme-primary)' }} />
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-12">
           <div className="md:col-span-3">
             <p className="text-gray-700 text-lg leading-relaxed mb-4">{insight}</p>
-            <p className="text-xl font-semibold text-[#03143B] italic border-l-4 border-[#03143B] pl-4 mb-6">
+            <p className="text-xl font-semibold italic border-l-4 pl-4 mb-6" style={{ color: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' }}>
               {vision}
             </p>
             <ul className="space-y-3">
               {bullets.map((bullet, i) => (
                 <li key={i} className="flex items-start gap-3 text-gray-600">
-                  <span className="w-2 h-2 bg-[#03143B] rounded-full mt-2 flex-shrink-0" />
+                  <span className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: 'var(--theme-primary)' }} />
                   <span>{bullet}</span>
                 </li>
               ))}
@@ -87,26 +87,26 @@ export function MicrositeExecutiveSummary({ inputs }: Props) {
 
           <div className="md:col-span-2 ms-fade-up" ref={metricsRef}>
             <div className="bg-gray-50 rounded-xl p-6 border border-[#e0e3eb] space-y-4">
-              <h3 className="text-xs font-semibold text-[#03143B] uppercase tracking-wider">Key Metrics</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--theme-primary)' }}>Key Metrics</h3>
               <div className="flex justify-between items-center pb-3 border-b border-gray-200">
                 <span className="text-gray-600 text-sm">Annual Investment</span>
-                <span className="text-xl font-bold text-[#03143B]">{formatCompactCurrency(pricing.annualRecurringRevenue)}</span>
+                <span className="text-xl font-bold" style={{ color: 'var(--theme-primary)' }}>{formatCompactCurrency(pricing.annualRecurringRevenue)}</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-gray-200">
                 <span className="text-gray-600 text-sm">Projected Annual Value</span>
-                <span className="text-xl font-bold text-[#03143B]" ref={valueCounter.ref as React.RefObject<HTMLSpanElement>}>
+                <span className="text-xl font-bold" style={{ color: 'var(--theme-primary)' }} ref={valueCounter.ref as React.RefObject<HTMLSpanElement>}>
                   ${valueCounter.display}K
                 </span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-gray-200">
                 <span className="text-gray-600 text-sm">Return on Investment</span>
-                <span className="text-xl font-bold text-[#03143B]" ref={roiCounter.ref as React.RefObject<HTMLSpanElement>}>
-                  {roiCounter.display}%
+                <span className="text-xl font-bold" style={{ color: 'var(--theme-primary)' }} ref={roiCounter.ref as React.RefObject<HTMLSpanElement>}>
+                  {formatCurrency(roiCounter.value)}/yr
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 text-sm">Payback Period</span>
-                <span className="text-xl font-bold text-[#03143B]" ref={paybackCounter.ref as React.RefObject<HTMLSpanElement>}>
+                <span className="text-xl font-bold" style={{ color: 'var(--theme-primary)' }} ref={paybackCounter.ref as React.RefObject<HTMLSpanElement>}>
                   {paybackCounter.display} mo
                 </span>
               </div>
@@ -118,12 +118,13 @@ export function MicrositeExecutiveSummary({ inputs }: Props) {
 
         {orderedItems.length > 0 && (
           <div ref={painRef} className="ms-fade-up">
-            <h3 className="text-xl font-semibold text-[#03143B] mb-5">Current State Assessment</h3>
+            <h3 className="text-xl font-semibold mb-5" style={{ color: 'var(--theme-primary)' }}>Current State Assessment</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ms-stagger">
               {orderedItems.map((point) => (
                 <div
                   key={point.key}
-                  className="p-5 bg-white border-l-4 border-[#03143B] shadow-sm rounded-r-lg"
+                  className="p-5 bg-white border-l-4 shadow-sm rounded-r-lg"
+                  style={{ borderColor: 'var(--theme-primary)' }}
                 >
                   <h4 className="font-semibold text-gray-900 mb-1">
                     {inputs.contentOverrides?.painPointHeadlines?.[point.key] || point.headline}

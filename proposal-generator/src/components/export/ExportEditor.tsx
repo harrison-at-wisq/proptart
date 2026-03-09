@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { ProposalInputs, ProposalElementType } from '@/types/proposal';
+import type { ProposalInputs, ProposalElementType, ColorPalette } from '@/types/proposal';
+import { DEFAULT_COLOR_PALETTE } from '@/types/proposal';
 import { ELEMENT_REGISTRY, ELEMENT_CATALOG } from '@/components/proposal/templates/registry';
 import { LayoutModeContext } from '@/components/ui/LayoutModeContext';
+import { getThemeVars } from '@/lib/theme';
 import { getDefaultElementData, getEditableDataKey } from '@/components/proposal/templates/element-defaults';
 import {
   ExportElement,
@@ -271,6 +273,7 @@ export interface ExportEditorProps {
   inputs: ProposalInputs; // needed for DOCX export
   proposalId: string | null;
   onSectionsChange?: (sections: ExportSection[]) => void; // called whenever sections change
+  onInputsChange?: (inputs: ProposalInputs) => void; // called when inputs change (e.g. color palette)
   toolbar?: React.ReactNode; // custom toolbar content (rendered at top-right)
   leftToolbar?: React.ReactNode; // custom left toolbar (rendered at top-left)
   onClose?: () => void;
@@ -283,6 +286,7 @@ export default function ExportEditor({
   inputs,
   proposalId,
   onSectionsChange,
+  onInputsChange,
   toolbar,
   leftToolbar,
   onClose,
@@ -291,6 +295,8 @@ export default function ExportEditor({
   const [showTemplateChooser, setShowTemplateChooser] = useState(false);
   const [showElementPicker, setShowElementPicker] = useState<{ sectionId: string; colSpan: number; groupId: string } | null>(null);
   const [sections, setSections] = useState<ExportSection[]>(initialSections);
+  const [colorPalette, setColorPalette] = useState<ColorPalette>(inputs.colorPalette || DEFAULT_COLOR_PALETTE);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const [dragData, setDragData] = useState<{ elementId: string; fromSectionId: string; fromGroupId: string } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ sectionId: string; groupId: string; insertBeforeId: string | null } | null>(null);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
@@ -304,6 +310,13 @@ export default function ExportEditor({
       return next;
     });
   }, [onSectionsChange]);
+
+  // Update color palette and notify parent
+  const updateColorPalette = useCallback((newPalette: ColorPalette) => {
+    setColorPalette(newPalette);
+    const updatedInputs = { ...inputs, colorPalette: newPalette };
+    onInputsChange?.(updatedInputs);
+  }, [inputs, onInputsChange]);
 
   // Track which section is most visible in the viewport
   useEffect(() => {
@@ -483,7 +496,7 @@ export default function ExportEditor({
         </>
       )}
 
-      <div className="export-document">
+      <div className="export-document" style={getThemeVars(colorPalette)}>
         {sections.length === 0 && !layoutMode && (
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center text-gray-400">
@@ -594,6 +607,82 @@ export default function ExportEditor({
         />
       )}
 
+      {/* Color Palette Picker */}
+      <div className="fixed bottom-6 left-6 z-50 print:hidden">
+        <button
+          onClick={() => setShowColorPicker(!showColorPicker)}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-full shadow-lg transition-all duration-200 ${
+            showColorPicker
+              ? 'bg-white ring-2 ring-blue-400'
+              : 'bg-white hover:bg-gray-50 border border-gray-200'
+          }`}
+          title="Color Palette"
+        >
+          <div className="flex gap-0.5">
+            <div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: colorPalette.primary }} />
+            <div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: colorPalette.accent }} />
+            <div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: colorPalette.background }} />
+          </div>
+          <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showColorPicker ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+          </svg>
+        </button>
+
+        {showColorPicker && (
+          <div className="absolute bottom-14 left-0 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 w-64">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-gray-900">Color Palette</h4>
+              {(colorPalette.primary !== DEFAULT_COLOR_PALETTE.primary ||
+                colorPalette.accent !== DEFAULT_COLOR_PALETTE.accent ||
+                colorPalette.background !== DEFAULT_COLOR_PALETTE.background) && (
+                <button
+                  onClick={() => updateColorPalette(DEFAULT_COLOR_PALETTE)}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              {([
+                { key: 'primary' as const, label: 'Primary' },
+                { key: 'accent' as const, label: 'Accent' },
+                { key: 'background' as const, label: 'Background' },
+              ]).map(({ key, label }) => (
+                <div key={key} className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={colorPalette[key]}
+                    onChange={(e) => updateColorPalette({ ...colorPalette, [key]: e.target.value })}
+                    className="w-8 h-8 rounded cursor-pointer border border-gray-200 flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-xs text-gray-500">{label}</label>
+                    <input
+                      type="text"
+                      value={colorPalette[key]}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (/^#[0-9a-fA-F]{0,6}$/.test(v)) updateColorPalette({ ...colorPalette, [key]: v });
+                      }}
+                      className="text-xs font-mono text-gray-700 w-full bg-transparent outline-none"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Preview strip */}
+            <div className="flex gap-0.5 mt-3 rounded overflow-hidden">
+              <div className="h-4 flex-1" style={{ backgroundColor: colorPalette.primary }} />
+              <div className="h-4 flex-1" style={{ backgroundColor: colorPalette.accent }} />
+              <div className="h-4 flex-1 border border-gray-100" style={{ backgroundColor: colorPalette.background }} />
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Layout Mode Toggle */}
       <button
         onClick={() => setLayoutMode(!layoutMode)}
@@ -640,7 +729,7 @@ export default function ExportEditor({
           }
 
           .export-page.dark-theme {
-            background: #03143B;
+            background: var(--theme-primary);
             color: white;
           }
 
@@ -705,7 +794,7 @@ export default function ExportEditor({
             z-index: 1;
           }
           .layout-tier1-label.layout-dark {
-            background: #03143B;
+            background: var(--theme-primary);
             color: rgba(96, 165, 250, 0.5);
           }
 
@@ -719,7 +808,7 @@ export default function ExportEditor({
             z-index: 1;
           }
           .layout-tier2-label.layout-dark {
-            background: #03143B;
+            background: var(--theme-primary);
             color: rgba(74, 222, 128, 0.5);
           }
 
@@ -892,7 +981,7 @@ export default function ExportEditor({
             z-index: 1;
           }
           .layout-footer-label.layout-dark {
-            background: #03143B;
+            background: var(--theme-primary);
             color: rgba(250, 204, 21, 0.6);
           }
 
@@ -924,7 +1013,7 @@ export default function ExportEditor({
             transform: scale(1.4);
           }
           .section-nav-dot.active {
-            background: #03143B;
+            background: var(--theme-primary);
             transform: scale(1.5);
           }
           .section-nav-label {
@@ -980,7 +1069,7 @@ export default function ExportEditor({
           }
 
           .export-page.dark-theme {
-            background: #03143B !important;
+            background: var(--theme-primary) !important;
             color: white !important;
           }
 

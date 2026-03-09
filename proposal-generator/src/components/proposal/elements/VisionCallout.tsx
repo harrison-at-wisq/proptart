@@ -14,12 +14,13 @@ export const VISION_CALLOUT_PLACEHOLDER = {
 };
 
 export function VisionCallout({ text = VISION_CALLOUT_PLACEHOLDER.text, onChange, darkTheme }: VisionCalloutProps) {
-  const borderColor = darkTheme ? 'border-white/50' : 'border-[#03143B]';
-  const textColor = darkTheme ? 'text-white' : 'text-[#03143B]';
+  const borderColor = darkTheme ? 'border-white/50' : '';
+  const textColor = darkTheme ? 'text-white' : '';
+  const lightStyle = darkTheme ? undefined : { color: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' } as React.CSSProperties;
 
   if (onChange) {
     return (
-      <div className={`text-lg font-semibold ${textColor} italic border-l-4 ${borderColor} pl-4`}>
+      <div className={`text-lg font-semibold ${textColor} italic border-l-4 ${borderColor} pl-4`} style={lightStyle}>
         <DirectEditableText
           value={text}
           onChange={onChange}
@@ -30,7 +31,7 @@ export function VisionCallout({ text = VISION_CALLOUT_PLACEHOLDER.text, onChange
   }
 
   return (
-    <div className={`text-lg font-semibold ${textColor} italic border-l-4 ${borderColor} pl-4`}>
+    <div className={`text-lg font-semibold ${textColor} italic border-l-4 ${borderColor} pl-4`} style={lightStyle}>
       {text}
     </div>
   );

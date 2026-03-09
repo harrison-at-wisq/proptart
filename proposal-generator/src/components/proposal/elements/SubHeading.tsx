@@ -26,10 +26,11 @@ export function SubHeading({ text = SUB_HEADING_PLACEHOLDER.text, borderPosition
           value={text}
           onChange={onChange}
           as="h3"
-          className={`text-xl font-semibold ${darkTheme ? 'text-white' : 'text-[#03143B]'}`}
+          className={`text-xl font-semibold ${darkTheme ? 'text-white' : ''}`}
+          style={darkTheme ? undefined : { color: 'var(--theme-primary)' }}
         />
       ) : (
-        <h3 className={`text-xl font-semibold ${darkTheme ? 'text-white' : 'text-[#03143B]'}`}>{text}</h3>
+        <h3 className={`text-xl font-semibold ${darkTheme ? 'text-white' : ''}`} style={darkTheme ? undefined : { color: 'var(--theme-primary)' }}>{text}</h3>
       )}
     </div>
   );

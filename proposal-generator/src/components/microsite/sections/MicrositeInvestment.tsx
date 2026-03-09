@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ProposalInputs } from '@/types/proposal';
-import { calculatePricing, formatCompactCurrency } from '@/lib/pricing-calculator';
+import { calculatePricing, formatCompactCurrency, formatCurrency } from '@/lib/pricing-calculator';
 import {
   calculateHROperationsROI,
   calculateLegalComplianceROI,
@@ -30,14 +30,14 @@ export function MicrositeInvestment({ inputs }: Props) {
   const summary = calculateROISummary(hrOutput, legalOutput, eeOutput, pricing.annualRecurringRevenue);
   const projection = calculate3YearProjection(summary.grossAnnualValue, pricing.annualRecurringRevenue);
 
-  const roiCounter = useAnimatedCounter(Math.round(summary.totalROI), 1400);
+  const roiCounter = useAnimatedCounter(Math.round(summary.netAnnualBenefit), 1400);
   const paybackCounter = useAnimatedCounter(summary.paybackPeriodMonths, 1200, 1);
 
   return (
     <section
       id="investment"
       className="py-20 sm:py-28 text-white"
-      style={{ background: '#03143B' }}
+      style={{ background: 'var(--theme-primary)' }}
       ref={sectionRef}
     >
       <div className="max-w-5xl mx-auto px-6 ms-fade-up">
@@ -107,9 +107,9 @@ export function MicrositeInvestment({ inputs }: Props) {
         <div ref={metricsRef} className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10 ms-fade-up">
           <div className="bg-white/10 p-5 rounded-xl text-center backdrop-blur-sm">
             <div className="text-3xl font-bold mb-1" ref={roiCounter.ref as React.RefObject<HTMLDivElement>}>
-              {roiCounter.display}%
+              {formatCurrency(roiCounter.value)}
             </div>
-            <div className="text-white/60 text-sm">ROI</div>
+            <div className="text-white/60 text-sm">Annual ROI</div>
           </div>
           <div className="bg-white/10 p-5 rounded-xl text-center backdrop-blur-sm">
             <div className="text-3xl font-bold mb-1" ref={paybackCounter.ref as React.RefObject<HTMLDivElement>}>

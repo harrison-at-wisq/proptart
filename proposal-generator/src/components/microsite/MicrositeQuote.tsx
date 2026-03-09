@@ -16,7 +16,7 @@ export function MicrositeQuote({ selectedQuotes, section, dark = false }: Props)
   if (!quote) return null;
 
   return (
-    <div className={`mt-10 pl-5 border-l-4 ${dark ? 'border-white/40' : 'border-[#03143B]'}`}>
+    <div className={`mt-10 pl-5 border-l-4 ${dark ? 'border-white/40' : ''}`} style={!dark ? { borderColor: 'var(--theme-primary)' } : {}}>
       <p className={`text-base italic leading-relaxed ${dark ? 'text-white/85' : 'text-gray-700'}`}>
         &ldquo;{quote.text}&rdquo;
       </p>

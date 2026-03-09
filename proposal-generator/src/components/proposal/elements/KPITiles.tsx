@@ -41,7 +41,7 @@ export function KPITiles({ tiles = KPI_TILES_PLACEHOLDER.tiles, darkTheme }: KPI
     <div className={`grid ${cols} gap-4`}>
       {tiles.map((tile, i) => (
         <div key={i} className="bg-gray-50 p-4 rounded-lg text-center border border-gray-200">
-          <div className="text-3xl font-bold text-[#03143B] mb-1">{tile.value}</div>
+          <div className="text-3xl font-bold mb-1" style={{ color: 'var(--theme-primary)' }}>{tile.value}</div>
           <div className="text-gray-500 text-sm">{tile.label}</div>
         </div>
       ))}

@@ -44,9 +44,13 @@ export function MicrositeNav({ customerLogoBase64 }: MicrositeNavProps) {
               onClick={() => scrollTo(section.id)}
               className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
                 activeSection === section.id
-                  ? 'bg-[#03143B] text-white'
-                  : 'text-gray-600 hover:text-[#03143B] hover:bg-gray-100'
+                  ? 'text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
               }`}
+              style={activeSection === section.id
+                ? { backgroundColor: 'var(--theme-primary)' }
+                : {}
+              }
             >
               {section.label}
             </button>

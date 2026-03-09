@@ -23,8 +23,10 @@ export const TIMELINE_CARD_GRID_PLACEHOLDER = {
 export function TimelineCardGrid({ items = TIMELINE_CARD_GRID_PLACEHOLDER.items, onChange, darkTheme }: TimelineCardGridProps) {
   const cardClass = darkTheme
     ? 'p-4 bg-white/10 rounded-lg border-t-4 border-white/50'
-    : 'p-4 bg-gray-50 rounded-lg border-t-4 border-[#03143B]';
-  const weekColor = darkTheme ? 'text-white/70' : 'text-[#03143B]';
+    : 'p-4 bg-gray-50 rounded-lg border-t-4';
+  const cardStyle = darkTheme ? undefined : { borderColor: 'var(--theme-primary)' } as React.CSSProperties;
+  const weekColor = darkTheme ? 'text-white/70' : '';
+  const weekStyle = darkTheme ? undefined : { color: 'var(--theme-primary)' } as React.CSSProperties;
   const titleColor = darkTheme ? 'text-white' : 'text-gray-900';
   const descColor = darkTheme ? 'text-white/60' : 'text-gray-600';
 
@@ -37,7 +39,7 @@ export function TimelineCardGrid({ items = TIMELINE_CARD_GRID_PLACEHOLDER.items,
       addLabel="Add phase"
       createNewItem={() => ({ id: crypto.randomUUID(), week: 'Week X-Y', title: 'New Phase', description: 'Phase activities...' })}
       renderItem={(item) => (
-        <div className={cardClass}>
+        <div className={cardClass} style={cardStyle}>
           <DirectEditableText
             value={item.week as string}
             onChange={(value) => {
@@ -46,6 +48,7 @@ export function TimelineCardGrid({ items = TIMELINE_CARD_GRID_PLACEHOLDER.items,
             }}
             as="div"
             className={`text-xs font-semibold ${weekColor} mb-1`}
+            style={weekStyle}
           />
           <DirectEditableText
             value={item.title as string}

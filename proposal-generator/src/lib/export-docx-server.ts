@@ -14,7 +14,8 @@ import {
   PageBreak,
   ImageRun,
 } from 'docx';
-import { ProposalInputs, PAIN_POINT_LABELS, PainPoint, RFPCategory, RFP_CATEGORY_LABELS, resolveOtherValue, FAQSection } from '@/types/proposal';
+import { ProposalInputs, PAIN_POINT_LABELS, PainPoint, RFPCategory, RFP_CATEGORY_LABELS, resolveOtherValue, FAQSection, DEFAULT_COLOR_PALETTE } from '@/types/proposal';
+import { lightenHex } from '@/lib/theme';
 import { calculatePricing, formatCurrency } from '@/lib/pricing-calculator';
 import {
   calculateHROperationsROI,
@@ -29,9 +30,6 @@ import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
 
-// Brand color
-const BRAND_COLOR = '03143B';
-const BRAND_COLOR_LIGHT = 'E8EAF0';
 
 // Convert SVG to PNG buffer
 async function getLogoPngBuffer(): Promise<Buffer> {
@@ -58,6 +56,18 @@ async function getCustomerLogoPngBuffer(base64DataUri: string): Promise<Buffer> 
 }
 
 export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Promise<Document> {
+  // Resolve brand colors from palette
+  const palette = inputs.colorPalette || DEFAULT_COLOR_PALETTE;
+  const BC = palette.primary.replace('#', '');
+  const BCL = lightenHex(palette.primary, 0.9).replace('#', '');
+
+  // Bind helpers to the resolved brand colors
+  const sectionHeader = (text: string) => createSectionHeader(text, BC);
+  const subheader = (text: string) => createSubheader(text, BC);
+  const bulletPoint = (text: string) => createBulletPoint(text, BC);
+  const metricsTable = (metrics: { label: string; value: string; subtext?: string }[]) => createMetricsTable(metrics, BC, BCL);
+  const simpleTable = (rows: string[][]) => createSimpleTable(rows, BC);
+
   // Get logo as PNG buffer
   const logoBuffer = await getLogoPngBuffer();
   const customerLogoBuffer = inputs.company.customerLogoBase64
@@ -117,7 +127,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
           text: 'STRATEGIC PROPOSAL',
           bold: true,
           size: 28,
-          color: BRAND_COLOR,
+          color: BC,
           font: 'Arial',
         }),
       ],
@@ -133,7 +143,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
           text: `Transforming HR at ${inputs.company.companyName}`,
           bold: true,
           size: 80,
-          color: BRAND_COLOR,
+          color: BC,
           font: 'Arial',
         }),
       ],
@@ -145,7 +155,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
   children.push(
     new Paragraph({
       border: {
-        bottom: { style: BorderStyle.SINGLE, size: 30, color: BRAND_COLOR },
+        bottom: { style: BorderStyle.SINGLE, size: 30, color: BC },
       },
       spacing: { after: 800 },
     })
@@ -166,7 +176,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
         ],
         spacing: { before: 400, after: 1000 },
         border: {
-          left: { style: BorderStyle.SINGLE, size: 30, color: BRAND_COLOR },
+          left: { style: BorderStyle.SINGLE, size: 30, color: BC },
         },
         indent: { left: convertInchesToTwip(0.4) },
       })
@@ -224,7 +234,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
 
   // ===== EXECUTIVE SUMMARY =====
 
-  children.push(createSectionHeader('Executive Summary'));
+  children.push(sectionHeader('Executive Summary'));
 
   const execInsight = generatedContent?.execSummaryInsight ||
     `${inputs.company.companyName} has an opportunity to transform HR operations through intelligent automation, enabling your team to focus on strategic initiatives while delivering exceptional employee experiences.`;
@@ -244,7 +254,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
       children: [new TextRun({ text: execVision, italics: true, size: 24, color: '4B5563', font: 'Arial' })],
       spacing: { after: 400 },
       border: {
-        left: { style: BorderStyle.SINGLE, size: 16, color: BRAND_COLOR },
+        left: { style: BorderStyle.SINGLE, size: 16, color: BC },
       },
       indent: { left: convertInchesToTwip(0.2) },
     })
@@ -254,11 +264,11 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
   children.push(...createQuoteBlock(inputs, 'executive-summary'));
 
   // Key Outcomes Table
-  children.push(createSubheader('Key Outcomes'));
+  children.push(subheader('Key Outcomes'));
 
   children.push(
-    createMetricsTable([
-      { label: 'Year 1 ROI', value: `${summary.totalROI.toFixed(0)}%` },
+    metricsTable([
+      { label: 'Year 1 ROI', value: `${formatCurrency(summary.netAnnualBenefit)}/yr` },
       { label: 'Gross Annual Value', value: formatCurrency(summary.grossAnnualValue) },
       { label: 'Payback Period', value: `${summary.paybackPeriodMonths.toFixed(1)} months` },
       { label: 'Net Annual Benefit', value: formatCurrency(summary.netAnnualBenefit) },
@@ -269,7 +279,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
 
   // ===== CURRENT CHALLENGES =====
 
-  children.push(createSectionHeader('Current Challenges'));
+  children.push(sectionHeader('Current Challenges'));
 
   children.push(
     new Paragraph({
@@ -292,12 +302,12 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
   ppOrder.forEach((id) => {
     const predefinedLabel = (PAIN_POINT_LABELS as Record<string, string>)[id];
     if (predefinedLabel) {
-      children.push(createBulletPoint(predefinedLabel));
+      children.push(bulletPoint(predefinedLabel));
       return;
     }
     const custom = inputs.customPainPoints?.find(cp => cp.id === id);
     if (custom) {
-      children.push(createBulletPoint(`${custom.headline}: ${custom.impact}`));
+      children.push(bulletPoint(`${custom.headline}: ${custom.impact}`));
     }
   });
 
@@ -309,7 +319,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
 
   // ===== MEET HARPER =====
 
-  children.push(createSectionHeader('Meet Harper — Your AI HR Generalist'));
+  children.push(sectionHeader('Meet Harper — Your AI HR Generalist'));
 
   children.push(
     new Paragraph({
@@ -326,7 +336,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
 
   // Harper Stats Table
   children.push(
-    createMetricsTable([
+    metricsTable([
       { label: 'SHRM-CP Accuracy', value: '94%', subtext: '20-30 points above passing' },
       { label: 'Response Time', value: '< 8 sec', subtext: 'Average response' },
       { label: 'Autonomous Handling', value: '80%', subtext: 'Routine requests' },
@@ -341,7 +351,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
 
   // ===== VALUE DRIVERS =====
 
-  children.push(createSectionHeader('Value Drivers'));
+  children.push(sectionHeader('Value Drivers'));
 
   // Use generated content if available, otherwise use template content
   // All three value drivers are always shown, with primary emphasized
@@ -367,7 +377,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
       ? `${index + 1}. ${driver.headline} [PRIMARY FOCUS]`
       : `${index + 1}. ${driver.headline}`;
 
-    children.push(createSubheader(headerText));
+    children.push(subheader(headerText));
 
     children.push(
       new Paragraph({
@@ -380,11 +390,11 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
       children.push(
         new Paragraph({
           children: [
-            new TextRun({ text: 'Proof Point: ', bold: true, size: 22, font: 'Arial', color: BRAND_COLOR }),
+            new TextRun({ text: 'Proof Point: ', bold: true, size: 22, font: 'Arial', color: BC }),
             new TextRun({ text: driver.proof, size: 22, font: 'Arial', color: '4B5563' }),
           ],
           spacing: { after: 400 },
-          shading: { type: ShadingType.SOLID, color: driver.isPrimary ? BRAND_COLOR_LIGHT : BRAND_COLOR_LIGHT },
+          shading: { type: ShadingType.SOLID, color: driver.isPrimary ? BCL : BCL },
           indent: { left: convertInchesToTwip(0.2), right: convertInchesToTwip(0.2) },
         })
       );
@@ -397,10 +407,10 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
   // ===== INVESTMENT SUMMARY =====
 
   children.push(new Paragraph({ children: [new PageBreak()] }));
-  children.push(createSectionHeader('Investment Summary'));
+  children.push(sectionHeader('Investment Summary'));
 
   // Software Investment
-  children.push(createSubheader('Annual Software Investment'));
+  children.push(subheader('Annual Software Investment'));
 
   const investmentRows = [
     ['Item', 'Annual Cost'],
@@ -414,14 +424,14 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
     investmentRows.push(['Professional Services', formatCurrency(pricing.servicesNetPrice)]);
   }
 
-  children.push(createSimpleTable(investmentRows));
+  children.push(simpleTable(investmentRows));
   children.push(new Paragraph({ spacing: { after: 400 } }));
 
   // ROI Breakdown
-  children.push(createSubheader('Return on Investment'));
+  children.push(subheader('Return on Investment'));
 
   children.push(
-    createSimpleTable([
+    simpleTable([
       ['Value Category', 'Annual Savings'],
       ['HR Operations Efficiency (Net)', formatCurrency(summary.hrOpsSavings)],
       ['Legal & Compliance Risk Reduction', formatCurrency(summary.legalSavings)],
@@ -437,7 +447,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
     new Paragraph({
       children: [
         new TextRun({
-          text: `Total ROI: ${summary.totalROI.toFixed(0)}%  •  Payback: ${summary.paybackPeriodMonths.toFixed(1)} months  •  Net Benefit: ${formatCurrency(summary.netAnnualBenefit)}`,
+          text: `Annual ROI: ${formatCurrency(summary.netAnnualBenefit)}/yr  •  Payback: ${summary.paybackPeriodMonths.toFixed(1)} months  •  Gross Annual Value: ${formatCurrency(summary.grossAnnualValue)}`,
           bold: true,
           size: 26,
           color: 'FFFFFF',
@@ -445,7 +455,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
         }),
       ],
       alignment: AlignmentType.CENTER,
-      shading: { type: ShadingType.SOLID, color: BRAND_COLOR },
+      shading: { type: ShadingType.SOLID, color: BC },
       spacing: { before: 200, after: 400 },
       indent: { left: 0, right: 0 },
     })
@@ -457,7 +467,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
   // ===== WHY NOW =====
 
   children.push(new Paragraph({ children: [new PageBreak()] }));
-  children.push(createSectionHeader('Why Now'));
+  children.push(sectionHeader('Why Now'));
 
   const whyNowItems = generatedContent?.whyNowContent?.length
     ? generatedContent.whyNowContent
@@ -467,7 +477,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
     children.push(
       new Paragraph({
         children: [
-          new TextRun({ text: `${index + 1}. ${item.headline}`, bold: true, size: 26, color: BRAND_COLOR, font: 'Arial' }),
+          new TextRun({ text: `${index + 1}. ${item.headline}`, bold: true, size: 26, color: BC, font: 'Arial' }),
         ],
         spacing: { before: 300, after: 150 },
       })
@@ -487,7 +497,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
   // ===== NEXT STEPS =====
 
   children.push(new Paragraph({ children: [new PageBreak()] }));
-  children.push(createSectionHeader('Recommended Next Steps'));
+  children.push(sectionHeader('Recommended Next Steps'));
 
   // Build ordered next steps
   const nsOrder = inputs.nextStepOrder && inputs.nextStepOrder.length > 0
@@ -511,7 +521,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
     children.push(
       new Paragraph({
         children: [
-          new TextRun({ text: `Step ${index + 1}: `, bold: true, size: 24, color: BRAND_COLOR, font: 'Arial' }),
+          new TextRun({ text: `Step ${index + 1}: `, bold: true, size: 24, color: BC, font: 'Arial' }),
           new TextRun({ text: step.title, bold: true, size: 24, font: 'Arial' }),
         ],
         spacing: { before: 250, after: 100 },
@@ -536,7 +546,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
     const allFaqs = inputs.faqSections.filter(s => s.faqs.length > 0);
     if (allFaqs.length > 0) {
       children.push(new Paragraph({ children: [new PageBreak()] }));
-      children.push(createSectionHeader('Anticipated Questions'));
+      children.push(sectionHeader('Anticipated Questions'));
 
       children.push(
         new Paragraph({
@@ -561,7 +571,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
       };
 
       allFaqs.forEach((section) => {
-        children.push(createSubheader(pageLabels[section.pageId] || section.pageId));
+        children.push(subheader(pageLabels[section.pageId] || section.pageId));
 
         section.faqs.forEach((faq, index) => {
           children.push(
@@ -614,7 +624,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
 
     if (sortedCategories.length > 0) {
       children.push(new Paragraph({ children: [new PageBreak()] }));
-      children.push(createSectionHeader('Appendix: RFP Response'));
+      children.push(sectionHeader('Appendix: RFP Response'));
 
       const includedAnswers = answers.filter(a => questionMap.get(a.questionId)?.included);
       children.push(
@@ -632,7 +642,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
       sortedCategories.forEach((category) => {
         const items = answersByCategory[category];
         if (!items || items.length === 0) return;
-        children.push(createSubheader(RFP_CATEGORY_LABELS[category]));
+        children.push(subheader(RFP_CATEGORY_LABELS[category]));
 
         items.forEach(({ question, answer }, index) => {
           children.push(
@@ -678,7 +688,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
           text: "Ready to transform HR at your organization?",
           bold: true,
           size: 48,
-          color: BRAND_COLOR,
+          color: BC,
           font: 'Arial',
         }),
       ],
@@ -704,7 +714,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
   children.push(
     new Paragraph({
       border: {
-        bottom: { style: BorderStyle.SINGLE, size: 20, color: BRAND_COLOR },
+        bottom: { style: BorderStyle.SINGLE, size: 20, color: BC },
       },
       spacing: { after: 800 },
     })
@@ -721,7 +731,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
             text: aeName,
             bold: true,
             size: 36,
-            color: BRAND_COLOR,
+            color: BC,
             font: 'Arial',
           }),
         ],
@@ -734,7 +744,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
           new TextRun({
             text: aeEmail,
             size: 28,
-            color: BRAND_COLOR,
+            color: BC,
             font: 'Arial',
           }),
         ],
@@ -749,7 +759,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
             text: aeContact,
             bold: true,
             size: 36,
-            color: BRAND_COLOR,
+            color: BC,
             font: 'Arial',
           }),
         ],
@@ -783,7 +793,7 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
           text: 'wisq.com',
           bold: true,
           size: 32,
-          color: BRAND_COLOR,
+          color: BC,
           font: 'Arial',
         }),
       ],
@@ -820,33 +830,33 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
 }
 
 // Helper: Create section header
-function createSectionHeader(text: string): Paragraph {
+function createSectionHeader(text: string, brandColor = '03143B'): Paragraph {
   return new Paragraph({
     children: [
       new TextRun({
         text,
         bold: true,
         size: 40,
-        color: BRAND_COLOR,
+        color: brandColor,
         font: 'Arial',
       }),
     ],
     spacing: { before: 400, after: 300 },
     border: {
-      bottom: { style: BorderStyle.SINGLE, size: 8, color: BRAND_COLOR },
+      bottom: { style: BorderStyle.SINGLE, size: 8, color: brandColor },
     },
   });
 }
 
 // Helper: Create subheader
-function createSubheader(text: string): Paragraph {
+function createSubheader(text: string, brandColor = '03143B'): Paragraph {
   return new Paragraph({
     children: [
       new TextRun({
         text,
         bold: true,
         size: 28,
-        color: BRAND_COLOR,
+        color: brandColor,
         font: 'Arial',
       }),
     ],
@@ -859,6 +869,7 @@ function createQuoteBlock(inputs: ProposalInputs, section: QuoteSection): Paragr
   if (!inputs.selectedQuotes || inputs.selectedQuotes.length === 0) return [];
   const quote = getSelectedQuoteForSection(inputs.selectedQuotes, section);
   if (!quote) return [];
+  const accentColor = (inputs.colorPalette?.accent || DEFAULT_COLOR_PALETTE.accent).replace('#', '');
   return [
     new Paragraph({ spacing: { before: 200 } }),
     new Paragraph({
@@ -873,7 +884,7 @@ function createQuoteBlock(inputs: ProposalInputs, section: QuoteSection): Paragr
       ],
       spacing: { before: 200, after: 100 },
       border: {
-        left: { style: BorderStyle.SINGLE, size: 16, color: '4D65FF' },
+        left: { style: BorderStyle.SINGLE, size: 16, color: accentColor },
       },
       indent: { left: convertInchesToTwip(0.3) },
     }),
@@ -893,10 +904,10 @@ function createQuoteBlock(inputs: ProposalInputs, section: QuoteSection): Paragr
 }
 
 // Helper: Create bullet point
-function createBulletPoint(text: string): Paragraph {
+function createBulletPoint(text: string, brandColor = '03143B'): Paragraph {
   return new Paragraph({
     children: [
-      new TextRun({ text: '•  ', bold: true, size: 24, color: BRAND_COLOR, font: 'Arial' }),
+      new TextRun({ text: '•  ', bold: true, size: 24, color: brandColor, font: 'Arial' }),
       new TextRun({ text, size: 24, font: 'Arial' }),
     ],
     spacing: { after: 150 },
@@ -905,13 +916,13 @@ function createBulletPoint(text: string): Paragraph {
 }
 
 // Helper: Create metrics table (2x2 or 1x4 layout)
-function createMetricsTable(metrics: { label: string; value: string; subtext?: string }[]): Table {
+function createMetricsTable(metrics: { label: string; value: string; subtext?: string }[], brandColor = '03143B', brandColorLight = 'E8EAF0'): Table {
   const cells = metrics.map(metric =>
     new TableCell({
       children: [
         new Paragraph({
           children: [
-            new TextRun({ text: metric.value, bold: true, size: 36, color: BRAND_COLOR, font: 'Arial' }),
+            new TextRun({ text: metric.value, bold: true, size: 36, color: brandColor, font: 'Arial' }),
           ],
           alignment: AlignmentType.CENTER,
           spacing: { after: 100 },
@@ -933,7 +944,7 @@ function createMetricsTable(metrics: { label: string; value: string; subtext?: s
         ] : []),
       ],
       verticalAlign: VerticalAlign.CENTER,
-      shading: { type: ShadingType.SOLID, color: BRAND_COLOR_LIGHT },
+      shading: { type: ShadingType.SOLID, color: brandColorLight },
       margins: {
         top: convertInchesToTwip(0.25),
         bottom: convertInchesToTwip(0.25),
@@ -971,7 +982,7 @@ function createMetricsTable(metrics: { label: string; value: string; subtext?: s
 }
 
 // Helper: Create simple data table
-function createSimpleTable(rows: string[][]): Table {
+function createSimpleTable(rows: string[][], brandColor = '03143B'): Table {
   return new Table({
     rows: rows.map((row, rowIndex) =>
       new TableRow({
@@ -993,7 +1004,7 @@ function createSimpleTable(rows: string[][]): Table {
             ],
             shading: {
               type: ShadingType.SOLID,
-              color: rowIndex === 0 ? BRAND_COLOR : (rowIndex % 2 === 0 ? 'F9FAFB' : 'FFFFFF'),
+              color: rowIndex === 0 ? brandColor : (rowIndex % 2 === 0 ? 'F9FAFB' : 'FFFFFF'),
             },
             margins: {
               top: convertInchesToTwip(0.12),

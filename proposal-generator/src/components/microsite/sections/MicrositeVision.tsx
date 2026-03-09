@@ -47,18 +47,18 @@ export function MicrositeVision({ inputs }: Props) {
   return (
     <section id="vision" className="py-20 sm:py-28 bg-[#f3f4f6]" ref={sectionRef}>
       <div className="max-w-5xl mx-auto px-6 ms-fade-up">
-        <h2 className="text-3xl sm:text-4xl font-bold text-[#03143B] mb-2">
+        <h2 className="text-3xl sm:text-4xl font-bold mb-2" style={{ color: 'var(--theme-primary)' }}>
           The future of HR at {companyName}
         </h2>
-        <div className="w-16 h-0.5 bg-[#03143B] mb-8" />
+        <div className="w-16 h-0.5 mb-8" style={{ backgroundColor: 'var(--theme-primary)' }} />
 
         <div className="max-w-3xl mb-10">
           <p className="text-gray-700 text-lg leading-relaxed">{intro}</p>
         </div>
 
         <div ref={quoteRef} className="ms-fade-up mb-12">
-          <div className="border-l-4 border-[#03143B] pl-5 py-1 max-w-3xl">
-            <p className="text-xl font-semibold text-[#03143B] italic leading-relaxed">
+          <div className="border-l-4 pl-5 py-1 max-w-3xl" style={{ borderColor: 'var(--theme-primary)' }}>
+            <p className="text-xl font-semibold italic leading-relaxed" style={{ color: 'var(--theme-primary)' }}>
               {callout}
             </p>
           </div>
@@ -70,14 +70,14 @@ export function MicrositeVision({ inputs }: Props) {
               key={pillar.heading}
               className="bg-white rounded-xl p-6 border border-[#e0e3eb] hover:shadow-md transition-shadow"
             >
-              <h4 className="text-lg font-bold text-[#03143B] mb-3">{pillar.heading}</h4>
+              <h4 className="text-lg font-bold mb-3" style={{ color: 'var(--theme-primary)' }}>{pillar.heading}</h4>
               <p className="text-gray-600 text-sm leading-relaxed">{pillar.body}</p>
             </div>
           ))}
         </div>
 
         <div ref={closingRef} className="max-w-3xl ms-fade-up">
-          <p className="text-gray-700 text-lg font-medium leading-relaxed text-[#03143B]">
+          <p className="text-gray-700 text-lg font-medium leading-relaxed" style={{ color: 'var(--theme-primary)' }}>
             {closing}
           </p>
         </div>
