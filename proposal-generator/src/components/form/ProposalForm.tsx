@@ -34,6 +34,13 @@ import {
   DEFAULT_PRICING,
   ColorPalette,
   DEFAULT_COLOR_PALETTE,
+  WorkforceType,
+  OrgModel,
+  WORKFORCE_TYPES,
+  WORKFORCE_TYPE_DISPLAY,
+  ORG_MODELS,
+  ORG_MODEL_DISPLAY,
+  mapIndustryToBenchmark,
 } from '@/types/proposal';
 import { PricingCalculator } from '@/components/calculators/PricingCalculator';
 import { ROICalculator } from '@/components/calculators/ROICalculator';
@@ -807,6 +814,36 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Workforce Type
+                  </label>
+                  <select
+                    value={company.workforceType || 'mixed'}
+                    onChange={(e) => setCompany({ ...company, workforceType: e.target.value as WorkforceType })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#03143B]"
+                  >
+                    {WORKFORCE_TYPES.map((wt) => (
+                      <option key={wt} value={wt}>{WORKFORCE_TYPE_DISPLAY[wt]}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    HR Organization Model
+                  </label>
+                  <select
+                    value={company.orgModel || 'centralized'}
+                    onChange={(e) => setCompany({ ...company, orgModel: e.target.value as OrgModel })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#03143B]"
+                  >
+                    {ORG_MODELS.map((om) => (
+                      <option key={om} value={om}>{ORG_MODEL_DISPLAY[om]}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Headquarters
                   </label>
                   <input
@@ -1436,6 +1473,12 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
               onEmployeeChange={(updates) => setEmployeeExperience({ ...employeeExperience, ...updates })}
               estimateGenerated={roiEstimateGenerated}
               onEstimateGeneratedChange={setRoiEstimateGenerated}
+              initialCompanyProfile={{
+                employeeCount: pricing.employeeCount || undefined,
+                industry: mapIndustryToBenchmark(company.industry) as any,
+                workforceType: company.workforceType || undefined,
+                orgModel: company.orgModel || undefined,
+              }}
             />
           </div>
         )}

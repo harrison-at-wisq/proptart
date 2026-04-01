@@ -34,14 +34,13 @@ export function useROIScenarios(inputs: ProposalInputs) {
     const multipliers = SCENARIO_MULTIPLIERS[scenario];
     const pricing = calculatePricing(inputs.pricing);
 
-    // Adjust HR operations inputs (scale per-workflow deflection rates too)
+    // Adjust HR operations inputs — scale per-year deflection rates
     const adjustedHR: HROperationsInputs = {
       ...inputs.hrOperations,
-      tier01DeflectionRate: Math.min(100, inputs.hrOperations.tier01DeflectionRate * multipliers.deflection),
-      tier2PlusDeflectionRate: Math.min(100, inputs.hrOperations.tier2PlusDeflectionRate * multipliers.deflection),
+      tier01DeflectionByYear: (inputs.hrOperations.tier01DeflectionByYear || []).map(v => Math.min(100, v * multipliers.deflection)),
       tier2Workflows: inputs.hrOperations.tier2Workflows.map(wf => ({
         ...wf,
-        deflectionRate: wf.deflectionRate != null ? Math.min(100, wf.deflectionRate * multipliers.deflection) : undefined,
+        deflectionByYear: (wf.deflectionByYear || []).map(v => Math.min(100, v * multipliers.deflection)),
       })),
     };
 
@@ -55,7 +54,7 @@ export function useROIScenarios(inputs: ProposalInputs) {
     const tier2Cases = adjustedHR.tier2Workflows.reduce((sum, w) => sum + w.volumePerYear, 0);
     const legalOutput = calculateLegalComplianceROI(inputs.legalCompliance, tier2Cases);
     const eeOutput = calculateEmployeeExperienceROI(adjustedEE);
-    const summary = calculateROISummary(hrOutput, legalOutput, eeOutput, pricing.annualRecurringRevenue);
+    const summary = calculateROISummary(hrOutput, legalOutput, eeOutput, pricing.annualRecurringRevenue, adjustedHR.contractYears);
 
     return {
       hrOutput,

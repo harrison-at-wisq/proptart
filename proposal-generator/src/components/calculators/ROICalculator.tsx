@@ -1,19 +1,19 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   HROperationsInputs,
   LegalComplianceInputs,
   EmployeeExperienceInputs,
   Tier2Workflow,
-  SalaryRegion,
+  ContractYearSettings,
 } from '@/types/proposal';
 import {
   calculateHROperationsROI,
   calculateLegalComplianceROI,
   calculateEmployeeExperienceROI,
   calculateROISummary,
-  calculate3YearProjection,
+  calculateMultiYearProjection,
 } from '@/lib/roi-calculator';
 import {
   generateEstimates,
@@ -24,6 +24,8 @@ import {
   INDUSTRY_LABELS,
   WORKFORCE_TYPE_LABELS,
   ORG_MODEL_LABELS,
+  BENCHMARK_SOURCES,
+  FIELD_SOURCES,
 } from '@/lib/benchmarks';
 import { formatCurrency, formatCompactCurrency } from '@/lib/pricing-calculator';
 import {
@@ -41,10 +43,21 @@ interface ROICalculatorProps {
   onEmployeeChange: (inputs: Partial<EmployeeExperienceInputs>) => void;
   estimateGenerated: boolean;
   onEstimateGeneratedChange: (value: boolean) => void;
+  initialCompanyProfile?: Partial<CompanyProfile>;
 }
 
 type TabType = 'hr-operations' | 'legal-compliance' | 'employee-experience' | 'summary';
 type Mode = 'quick' | 'detailed';
+
+// Tier 2+ deflection: floor of 50%, scales up with effectiveness → 50 + (eff / 2)
+function scaledDeflection(effectiveness: number): number {
+  return Math.round(50 + effectiveness / 2);
+}
+
+// Tier 2+ effort reduction on remaining work: floor of 75%, scales up → 75 + (eff / 4)
+function scaledEffortReduction(effectiveness: number): number {
+  return Math.round(75 + effectiveness / 4);
+}
 
 export function ROICalculator({
   hrInputs,
@@ -55,18 +68,35 @@ export function ROICalculator({
   onEmployeeChange,
   estimateGenerated,
   onEstimateGeneratedChange,
+  initialCompanyProfile,
 }: ROICalculatorProps) {
   const [activeTab, setActiveTab] = useState<TabType>('hr-operations');
   const [mode, setMode] = useState<Mode>(estimateGenerated ? 'detailed' : 'quick');
   const [showStartOverDialog, setShowStartOverDialog] = useState(false);
   const [startOverInput, setStartOverInput] = useState('');
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
-    employeeCount: 5000,
-    industry: 'technology',
-    workforceType: 'mixed',
-    orgModel: 'centralized',
+    employeeCount: initialCompanyProfile?.employeeCount || 5000,
+    industry: initialCompanyProfile?.industry || 'technology',
+    workforceType: initialCompanyProfile?.workforceType || 'mixed',
+    orgModel: initialCompanyProfile?.orgModel || 'centralized',
   });
   const [estimatedFields, setEstimatedFields] = useState<Set<string>>(new Set());
+
+  // Keep Quick ROI profile in sync with Deal Info / Pricing values (before estimate is generated)
+  useEffect(() => {
+    if (!estimateGenerated && initialCompanyProfile) {
+      setCompanyProfile((prev) => ({
+        ...prev,
+        ...initialCompanyProfile,
+      }));
+    }
+  }, [
+    estimateGenerated,
+    initialCompanyProfile?.employeeCount,
+    initialCompanyProfile?.industry,
+    initialCompanyProfile?.workforceType,
+    initialCompanyProfile?.orgModel,
+  ]);
 
   // Calculate ROI outputs
   const hrOutput = useMemo(() => calculateHROperationsROI(hrInputs), [hrInputs]);
@@ -87,13 +117,13 @@ export function ROICalculator({
   );
 
   const summary = useMemo(
-    () => calculateROISummary(hrOutput, legalOutput, employeeOutput, hrInputs.wisqLicenseCost),
-    [hrOutput, legalOutput, employeeOutput, hrInputs.wisqLicenseCost]
+    () => calculateROISummary(hrOutput, legalOutput, employeeOutput, hrInputs.wisqLicenseCost, hrInputs.contractYears),
+    [hrOutput, legalOutput, employeeOutput, hrInputs.wisqLicenseCost, hrInputs.contractYears]
   );
 
   const projection = useMemo(
-    () => calculate3YearProjection(summary.grossAnnualValue, hrInputs.wisqLicenseCost),
-    [summary.grossAnnualValue, hrInputs.wisqLicenseCost]
+    () => calculateMultiYearProjection(hrOutput, legalOutput.totalAvoidedCosts, employeeOutput.totalMonetaryValue, hrInputs.wisqLicenseCost),
+    [hrOutput, legalOutput, employeeOutput, hrInputs.wisqLicenseCost]
   );
 
   const tabs = [
@@ -141,10 +171,10 @@ export function ROICalculator({
     onLegalChange(DEFAULT_LEGAL_COMPLIANCE);
     onEmployeeChange(DEFAULT_EMPLOYEE_EXPERIENCE);
     setCompanyProfile({
-      employeeCount: 5000,
-      industry: 'technology',
-      workforceType: 'mixed',
-      orgModel: 'centralized',
+      employeeCount: initialCompanyProfile?.employeeCount || 5000,
+      industry: initialCompanyProfile?.industry || 'technology',
+      workforceType: initialCompanyProfile?.workforceType || 'mixed',
+      orgModel: initialCompanyProfile?.orgModel || 'centralized',
     });
     setEstimatedFields(new Set());
     onEstimateGeneratedChange(false);
@@ -156,13 +186,19 @@ export function ROICalculator({
 
   // Workflow management
   const addWorkflow = () => {
+    // Seed per-year rates from base defaults × current effectiveness
+    const ys = hrInputs.yearSettings?.length ? hrInputs.yearSettings : [
+      { wisqEffectiveness: 30, workforceChange: 0 },
+      { wisqEffectiveness: 60, workforceChange: 5 },
+      { wisqEffectiveness: 75, workforceChange: 10 },
+    ];
     const newWorkflow: Tier2Workflow = {
       id: `workflow-${Date.now()}`,
       name: `Workflow ${hrInputs.tier2Workflows.length + 1}`,
       volumePerYear: 250,
       timePerWorkflowHours: 0.75,
-      deflectionRate: hrInputs.tier2PlusDeflectionRate,
-      effortReduction: hrInputs.tier2PlusEffortReduction,
+      deflectionByYear: ys.map(s => scaledDeflection(s.wisqEffectiveness)),
+      effortReductionByYear: ys.map(s => scaledEffortReduction(s.wisqEffectiveness)),
     };
     onHRChange({ tier2Workflows: [...hrInputs.tier2Workflows, newWorkflow] });
   };
@@ -292,6 +328,7 @@ export function ROICalculator({
           onAddWorkflow={addWorkflow}
           onRemoveWorkflow={removeWorkflow}
           onUpdateWorkflow={updateWorkflow}
+          estimatedFields={estimatedFields}
         />
       )}
 
@@ -301,6 +338,7 @@ export function ROICalculator({
           output={legalOutput}
           onChange={onLegalChange}
           tier2PlusConfiguredCases={tier2PlusConfiguredCases}
+          estimatedFields={estimatedFields}
         />
       )}
 
@@ -309,6 +347,7 @@ export function ROICalculator({
           inputs={employeeInputs}
           output={employeeOutput}
           onChange={onEmployeeChange}
+          estimatedFields={estimatedFields}
         />
       )}
 
@@ -500,6 +539,29 @@ function CollapsibleSection({
 // HR Operations Tab
 // ──────────────────────────────────────────────
 
+// Non-linear workforce change steps: fine increments near 0, wider as we go out
+const WORKFORCE_STEPS = [
+  -50, -40, -30, -25, -20, -15,
+  -10, -9, -8, -7, -6, -5, -4, -3, -2, -1,
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+  12, 15, 20, 25, 30, 40, 50, 60, 80, 100, 125, 150, 175, 200,
+];
+
+function workforceValueToSlider(value: number): number {
+  // Find the closest step
+  let bestIdx = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i < WORKFORCE_STEPS.length; i++) {
+    const dist = Math.abs(WORKFORCE_STEPS[i] - value);
+    if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
+function workforceSliderToValue(pos: number): number {
+  return WORKFORCE_STEPS[Math.max(0, Math.min(WORKFORCE_STEPS.length - 1, Math.round(pos)))];
+}
+
 function HROperationsTab({
   inputs,
   output,
@@ -507,6 +569,7 @@ function HROperationsTab({
   onAddWorkflow,
   onRemoveWorkflow,
   onUpdateWorkflow,
+  estimatedFields,
 }: {
   inputs: HROperationsInputs;
   output: ReturnType<typeof calculateHROperationsROI>;
@@ -514,52 +577,268 @@ function HROperationsTab({
   onAddWorkflow: () => void;
   onRemoveWorkflow: (id: string) => void;
   onUpdateWorkflow: (id: string, updates: Partial<Tier2Workflow>) => void;
+  estimatedFields: Set<string>;
 }) {
+  const YEAR_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
+
+  // Track which sliders the user has manually dragged (local to session)
+  const [modifiedFields, setModifiedFields] = useState<Set<string>>(new Set());
+
+  // Normalize for old data that may lack new fields
+  const contractYears = inputs.contractYears || 3;
+  const yearSettings = inputs.yearSettings?.length
+    ? inputs.yearSettings
+    : [
+        { wisqEffectiveness: 30, workforceChange: 0 },
+        { wisqEffectiveness: 60, workforceChange: 5 },
+        { wisqEffectiveness: 75, workforceChange: 10 },
+      ].slice(0, contractYears);
+
+  const tier01DeflectionByYear = inputs.tier01DeflectionByYear?.length
+    ? inputs.tier01DeflectionByYear
+    : yearSettings.map(s => 80 * s.wisqEffectiveness / 100);
+
+  // When effectiveness changes at top, propagate to all unmodified sliders
+  const updateYearSetting = (yearIndex: number, updates: Partial<ContractYearSettings>) => {
+    const newSettings = [...yearSettings];
+    // Monotonic clamping for effectiveness: year N cannot exceed year N+1
+    if ('wisqEffectiveness' in updates) {
+      const raw = updates.wisqEffectiveness!;
+      const lo = yearIndex > 0 ? newSettings[yearIndex - 1].wisqEffectiveness : 0;
+      const hi = yearIndex < newSettings.length - 1 ? newSettings[yearIndex + 1].wisqEffectiveness : 100;
+      updates = { ...updates, wisqEffectiveness: Math.max(lo, Math.min(hi, raw)) };
+    }
+    newSettings[yearIndex] = { ...newSettings[yearIndex], ...updates };
+
+    const batch: Partial<HROperationsInputs> = { yearSettings: newSettings };
+
+    if ('wisqEffectiveness' in updates) {
+      // Recompute unmodified sliders based on new effectiveness
+      // Tier 0-1 deflection
+      if (!modifiedFields.has('tier01Deflection')) {
+        const baseDef = 80; // base deflection ceiling
+        batch.tier01DeflectionByYear = newSettings.map(s => Math.round(baseDef * s.wisqEffectiveness / 100));
+      }
+
+      // Workflow deflection & effort reduction
+      const updatedWorkflows = inputs.tier2Workflows.map(wf => {
+        const updated = { ...wf };
+        if (!modifiedFields.has(`wf-defl-${wf.id}`)) {
+          updated.deflectionByYear = newSettings.map(s => scaledDeflection(s.wisqEffectiveness));
+        }
+        if (!modifiedFields.has(`wf-effort-${wf.id}`)) {
+          updated.effortReductionByYear = newSettings.map(s => scaledEffortReduction(s.wisqEffectiveness));
+        }
+        return updated;
+      });
+      batch.tier2Workflows = updatedWorkflows;
+    }
+
+    onChange(batch);
+  };
+
+  const handleContractYearsChange = (years: number) => {
+    const defaultEffectiveness = [30, 60, 75, 85, 90];
+    const defaultGrowth = [0, 5, 10, 12, 15];
+    const newSettings: ContractYearSettings[] = [];
+    for (let i = 0; i < years; i++) {
+      newSettings.push(
+        (inputs.yearSettings || [])[i] ?? {
+          wisqEffectiveness: defaultEffectiveness[i] ?? 90,
+          workforceChange: defaultGrowth[i] ?? 15,
+        }
+      );
+    }
+    // Resize all per-year arrays
+    const baseDef01 = 80;
+
+    const newTier01 = newSettings.map((s, i) =>
+      tier01DeflectionByYear[i] ?? Math.round(baseDef01 * s.wisqEffectiveness / 100)
+    );
+    const newWorkflows = inputs.tier2Workflows.map(wf => ({
+      ...wf,
+      deflectionByYear: newSettings.map((s, i) =>
+        wf.deflectionByYear?.[i] ?? scaledDeflection(s.wisqEffectiveness)
+      ),
+      effortReductionByYear: newSettings.map((s, i) =>
+        wf.effortReductionByYear?.[i] ?? scaledEffortReduction(s.wisqEffectiveness)
+      ),
+    }));
+
+    onChange({
+      contractYears: years,
+      yearSettings: newSettings,
+      tier01DeflectionByYear: newTier01,
+      tier2Workflows: newWorkflows,
+    });
+    setModifiedFields(new Set()); // reset on contract length change
+  };
+
   return (
     <div className="space-y-6">
       <p className="text-gray-600">
-        Calculate how Wisq reduces your cost per case through AI-powered deflection and effort
-        reduction across both simple (Tier 0-1) and complex (Tier 2+) cases.
+        Model how Wisq reduces workload across contract years, then translate hours saved into cost savings.
       </p>
 
+      {/* Section 1: Contract & Wisq Effectiveness */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h4 className="font-semibold text-[#03143B] mb-4">Contract & Wisq Effectiveness</h4>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Contract Length (Years)</label>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                onClick={() => handleContractYearsChange(n)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  contractYears === n
+                    ? 'bg-[#03143B] text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">Wisq Effectiveness by Year</p>
+            <p className="text-xs text-gray-500 mb-3">
+              How effective Wisq is at reaching max deflection/effort reduction rates each year
+            </p>
+            <div className="space-y-3">
+              {yearSettings.map((setting, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span
+                    className="text-sm font-medium w-14 shrink-0"
+                    style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}
+                  >
+                    Year {i + 1}
+                  </span>
+                  <div className="flex-1 relative">
+                    <input
+                      type="range"
+                      value={setting.wisqEffectiveness}
+                      onChange={(e) => updateYearSetting(i, { wisqEffectiveness: Number(e.target.value) })}
+                      min={0}
+                      max={100}
+                      className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                      style={{
+                        accentColor: YEAR_COLORS[i % YEAR_COLORS.length],
+                        background: `linear-gradient(to right, ${YEAR_COLORS[i % YEAR_COLORS.length]} ${setting.wisqEffectiveness}%, #e5e7eb ${setting.wisqEffectiveness}%)`,
+                      }}
+                    />
+                    {/* 80% soft cap marker */}
+                    <div
+                      className="absolute top-0 h-2 w-px bg-gray-400 pointer-events-none"
+                      style={{ left: '80%' }}
+                    />
+                    <div
+                      className="absolute text-[9px] text-gray-400 pointer-events-none -translate-x-1/2"
+                      style={{ left: '80%', top: '10px' }}
+                    >
+                      80%
+                    </div>
+                  </div>
+                  <span
+                    className="text-sm font-semibold w-10 text-right"
+                    style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}
+                  >
+                    {setting.wisqEffectiveness}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-gray-100">
+            <p className="text-sm font-medium text-gray-700 mb-2">Workforce Changes by Year</p>
+            <p className="text-xs text-gray-500 mb-3">
+              Expected growth or shrinkage relative to today (affects case volume)
+            </p>
+            <div className="space-y-3">
+              {yearSettings.map((setting, i) => {
+                const sliderPos = workforceValueToSlider(setting.workforceChange);
+                const color = YEAR_COLORS[i % YEAR_COLORS.length];
+                const fillPct = (sliderPos / (WORKFORCE_STEPS.length - 1)) * 100;
+                return (
+                  <div key={i} className="flex items-center gap-3">
+                    <span
+                      className="text-sm font-medium w-14 shrink-0"
+                      style={{ color }}
+                    >
+                      Year {i + 1}
+                    </span>
+                    <input
+                      type="range"
+                      value={sliderPos}
+                      onChange={(e) => {
+                        const val = workforceSliderToValue(Number(e.target.value));
+                        updateYearSetting(i, { workforceChange: val });
+                      }}
+                      min={0}
+                      max={WORKFORCE_STEPS.length - 1}
+                      step={1}
+                      className="flex-1 h-2 rounded-lg appearance-none cursor-pointer"
+                      style={{
+                        accentColor: color,
+                        background: `linear-gradient(to right, ${color} ${fillPct}%, #e5e7eb ${fillPct}%)`,
+                      }}
+                    />
+                    <span
+                      className="text-sm font-semibold w-14 text-right"
+                      style={{ color }}
+                    >
+                      {setting.workforceChange > 0 ? '+' : ''}{setting.workforceChange}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Section 2 & 3: Case Inputs */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Tier 0-1 Simple Cases */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h4 className="font-semibold text-[#03143B] mb-4">Tier 0-1: Simple Cases</h4>
           <div className="space-y-4">
             <InputField
-              label="Current HR Ops Headcount"
-              value={inputs.currentHeadcount}
-              onChange={(v) => onChange({ currentHeadcount: v })}
-              type="number"
-            />
-            <InputField
-              label="Total Case Volume per Year"
-              value={inputs.totalCasesPerYear}
-              onChange={(v) => onChange({ totalCasesPerYear: v })}
+              label="Tier 0-1 Cases per Year"
+              value={inputs.tier01CasesPerYear || 0}
+              onChange={(v) => onChange({ tier01CasesPerYear: v })}
               type="formatted-number"
             />
-            <SliderField
-              label="% Tier 0-1 Cases"
-              value={inputs.tier01Percent}
-              onChange={(v) => onChange({ tier01Percent: v })}
-              min={0}
-              max={100}
-              unit="%"
-            />
+            <SourceCitation fieldKey="tier01CasesPerYear" estimatedFields={estimatedFields} />
+            <div className="flex gap-3 flex-wrap -mt-2">
+              {output.yearResults.map((yr, i) => (
+                <span key={i} className="text-[10px] font-medium" style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}>
+                  Y{yr.year}: {Math.round(yr.tier01Cases).toLocaleString()} cases
+                </span>
+              ))}
+            </div>
             <InputField
               label="Avg Handle Time (minutes)"
               value={inputs.tier01AvgHandleTime}
               onChange={(v) => onChange({ tier01AvgHandleTime: v })}
               type="number"
             />
-            <SliderField
-              label="Tier 0-1 Deflection Rate"
-              value={inputs.tier01DeflectionRate}
-              onChange={(v) => onChange({ tier01DeflectionRate: v })}
-              min={0}
-              max={100}
-              unit="%"
+            <SourceCitation fieldKey="tier01AvgHandleTime" estimatedFields={estimatedFields} />
+            <MultiYearSlider
+              label="Deflection Rate by Year"
+              values={tier01DeflectionByYear}
+              onChange={(yearIdx, val) => {
+                setModifiedFields(prev => new Set(prev).add('tier01Deflection'));
+                const newArr = [...tier01DeflectionByYear];
+                newArr[yearIdx] = val;
+                onChange({ tier01DeflectionByYear: newArr });
+              }}
+              yearColors={YEAR_COLORS}
             />
           </div>
         </div>
@@ -638,104 +917,107 @@ function HROperationsTab({
                       />
                     </div>
                   </div>
+                  <div className="flex gap-3 flex-wrap -mt-0.5">
+                    {output.yearResults.map((yr, i) => (
+                      <span key={i} className="text-[10px] font-medium" style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}>
+                        Y{yr.year}: {Math.round(workflow.volumePerYear * yr.volumeMultiplier).toLocaleString()} cases
+                      </span>
+                    ))}
+                  </div>
                   <div className="grid grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <div className="flex justify-between mb-0.5">
-                        <label className="text-xs text-gray-500">Deflection Rate</label>
-                        <span className="text-xs font-medium text-[#03143B]">{workflow.deflectionRate ?? inputs.tier2PlusDeflectionRate}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        value={workflow.deflectionRate ?? inputs.tier2PlusDeflectionRate}
-                        onChange={(e) => onUpdateWorkflow(workflow.id, { deflectionRate: Number(e.target.value) })}
-                        min={0}
-                        max={100}
-                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#03143B]"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between mb-0.5">
-                        <label className="text-xs text-gray-500">Effort Reduction</label>
-                        <span className="text-xs font-medium text-[#03143B]">{workflow.effortReduction ?? inputs.tier2PlusEffortReduction}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        value={workflow.effortReduction ?? inputs.tier2PlusEffortReduction}
-                        onChange={(e) => onUpdateWorkflow(workflow.id, { effortReduction: Number(e.target.value) })}
-                        min={0}
-                        max={100}
-                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#03143B]"
-                      />
-                    </div>
+                    <MultiYearSlider
+                      label="Deflection Rate"
+                      values={workflow.deflectionByYear?.length ? workflow.deflectionByYear : yearSettings.map(s => 40 * s.wisqEffectiveness / 100)}
+                      onChange={(yearIdx, val) => {
+                        setModifiedFields(prev => new Set(prev).add(`wf-defl-${workflow.id}`));
+                        const newArr = [...(workflow.deflectionByYear || yearSettings.map(s => 40 * s.wisqEffectiveness / 100))];
+                        newArr[yearIdx] = val;
+                        onUpdateWorkflow(workflow.id, { deflectionByYear: newArr });
+                      }}
+                      yearColors={YEAR_COLORS}
+                    />
+                    <MultiYearSlider
+                      label="Effort Reduction"
+                      values={workflow.effortReductionByYear?.length ? workflow.effortReductionByYear : yearSettings.map(s => 80 * s.wisqEffectiveness / 100)}
+                      onChange={(yearIdx, val) => {
+                        setModifiedFields(prev => new Set(prev).add(`wf-effort-${workflow.id}`));
+                        const newArr = [...(workflow.effortReductionByYear || yearSettings.map(s => 80 * s.wisqEffectiveness / 100))];
+                        newArr[yearIdx] = val;
+                        onUpdateWorkflow(workflow.id, { effortReductionByYear: newArr });
+                      }}
+                      yearColors={YEAR_COLORS}
+                    />
                   </div>
                 </div>
               ))}
             </div>
           )}
-
-          <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
-            <p className="text-xs text-gray-500">Default rates for new workflows (existing workflows keep their own values)</p>
-            <SliderField
-              label="Default Deflection Rate"
-              value={inputs.tier2PlusDeflectionRate}
-              onChange={(v) => onChange({ tier2PlusDeflectionRate: v })}
-              min={0}
-              max={100}
-              unit="%"
-            />
-            <SliderField
-              label="Default Effort Reduction"
-              value={inputs.tier2PlusEffortReduction}
-              onChange={(v) => onChange({ tier2PlusEffortReduction: v })}
-              min={0}
-              max={100}
-              unit="%"
-            />
-          </div>
         </div>
       </div>
 
-      {/* Case Handling Overhead */}
-      <CollapsibleSection
-        title="Case Handling Overhead"
-        defaultOpen={(inputs.caseOverheadMultiplier ?? 1.5) !== 1.0}
-      >
-        <p className="text-sm text-gray-500">
-          Each case involves more than just handle time &mdash; documentation, triage, follow-up,
-          and knowledge lookups add overhead. The overhead multiplier accounts for this additional
-          time per case.
-        </p>
-        <SliderField
-          label="Case Overhead Multiplier"
-          value={inputs.caseOverheadMultiplier ?? 1.5}
-          onChange={(v) => onChange({ caseOverheadMultiplier: v })}
-          min={1.0}
-          max={2.5}
-          step={0.1}
-          unit="x"
-        />
-        <p className="text-xs text-gray-400">
-          1.0x = handle time only | 1.5x = typical (recommended) | 2.0x = high-touch
-        </p>
-      </CollapsibleSection>
+      {/* Hours Saved by Year (right after case inputs) */}
+      <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-[#03143B]/20 p-6">
+        <h4 className="font-semibold text-[#03143B] mb-4">Hours Saved by Year (Current vs. Wisq)</h4>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-2 pr-4 text-gray-600 font-medium">Year</th>
+                <th className="text-right py-2 px-4 text-gray-600 font-medium">Current Hours</th>
+                <th className="text-right py-2 px-4 text-gray-600 font-medium">With Wisq</th>
+                <th className="text-right py-2 px-4 text-gray-600 font-medium">Hours Saved</th>
+                <th className="text-right py-2 px-4 text-gray-600 font-medium">Cases Deflected</th>
+                <th className="text-right py-2 pl-4 text-gray-600 font-medium">Workload Reduction</th>
+              </tr>
+            </thead>
+            <tbody>
+              {output.yearResults.map((yr) => (
+                <tr key={yr.year} className="border-b border-gray-100">
+                  <td className="py-2 pr-4 font-medium" style={{ color: YEAR_COLORS[(yr.year - 1) % YEAR_COLORS.length] }}>
+                    Year {yr.year} <span className="text-gray-400 font-normal text-xs">({yr.volumeMultiplier.toFixed(2)}x)</span>
+                  </td>
+                  <td className="text-right py-2 px-4 text-gray-700">{Math.round(yr.currentTotalMinutes / 60).toLocaleString()}</td>
+                  <td className="text-right py-2 px-4 text-gray-700">{Math.round(yr.futureTotalMinutes / 60).toLocaleString()}</td>
+                  <td className="text-right py-2 px-4 font-semibold text-[#03143B]">{Math.round(yr.hoursSaved).toLocaleString()}</td>
+                  <td className="text-right py-2 px-4 text-gray-700">{Math.round(yr.casesDeflected).toLocaleString()}</td>
+                  <td className="text-right py-2 pl-4 font-semibold text-[#03143B]">{(yr.workloadReductionPercent * 100).toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-[#03143B]/20">
+                <td className="py-2 pr-4 font-semibold text-[#03143B]">Total</td>
+                <td className="text-right py-2 px-4" />
+                <td className="text-right py-2 px-4" />
+                <td className="text-right py-2 px-4 font-bold text-[#03143B]">{Math.round(output.totalHoursSavedOverContract).toLocaleString()}</td>
+                <td className="text-right py-2 px-4" />
+                <td className="text-right py-2 pl-4" />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
 
       {/* Cost Parameters */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h4 className="font-semibold text-[#03143B] mb-4">Cost Parameters</h4>
         <div className="grid md:grid-cols-2 gap-4">
           <InputField
-            label="Tier 0/1 Handler Salary"
+            label="Tier 0/1 HR Ops Fully Burdened Cost"
             value={inputs.tier01HandlerSalary}
             onChange={(v) => onChange({ tier01HandlerSalary: v })}
             type="currency"
           />
-          <InputField
-            label="Tier 2+ Handler Salary"
-            value={inputs.tier2PlusHandlerSalary}
-            onChange={(v) => onChange({ tier2PlusHandlerSalary: v })}
-            type="currency"
-          />
+          <div>
+            <InputField
+              label="Tier 2+ HR Ops Fully Burdened Cost"
+              value={inputs.tier2PlusHandlerSalary}
+              onChange={(v) => onChange({ tier2PlusHandlerSalary: v })}
+              type="currency"
+            />
+          </div>
         </div>
+        <SourceCitation fieldKey="tier01HandlerSalary" estimatedFields={estimatedFields} />
       </div>
 
       {/* Federated / Distributed Model */}
@@ -789,7 +1071,7 @@ function HROperationsTab({
                 type="number"
               />
               <InputField
-                label="Manager hourly cost"
+                label="Manager Fully Burdened Hourly Rate"
                 value={inputs.managerHRTime.managerHourlyCost}
                 onChange={(v) =>
                   onChange({
@@ -798,6 +1080,18 @@ function HROperationsTab({
                 }
                 type="currency"
               />
+            </div>
+          )}
+          {inputs.managerHRTime?.enabled && (
+            <div className="ml-6 space-y-1">
+              <div className="flex gap-3 flex-wrap">
+                {output.yearResults.map((yr, i) => (
+                  <span key={i} className="text-[10px] font-medium" style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}>
+                    Y{yr.year}: {Math.round(inputs.managerHRTime!.managersDoingHR * yr.volumeMultiplier).toLocaleString()} managers
+                  </span>
+                ))}
+              </div>
+              <SourceCitation fieldKey="managerHRTime" estimatedFields={estimatedFields} />
             </div>
           )}
         </div>
@@ -833,7 +1127,7 @@ function HROperationsTab({
                 type="number"
               />
               <InputField
-                label="Triage salary"
+                label="Triage Fully Burdened Cost"
                 value={inputs.triageRole.triageSalary}
                 onChange={(v) =>
                   onChange({ triageRole: { ...inputs.triageRole!, triageSalary: v } })
@@ -842,165 +1136,76 @@ function HROperationsTab({
               />
             </div>
           )}
-        </div>
-      </CollapsibleSection>
-
-      {/* Seepage & Unlogged Queries */}
-      <CollapsibleSection
-        title="Seepage & Unlogged Queries"
-        defaultOpen={(inputs.seepageMultiplier ?? 1.0) > 1.0}
-      >
-        <p className="text-sm text-gray-500">
-          Many HR queries happen informally (Slack, hallway, email) and never get logged. The
-          seepage multiplier captures this hidden workload.
-        </p>
-        <SliderField
-          label="Seepage Multiplier"
-          value={inputs.seepageMultiplier ?? 1.0}
-          onChange={(v) => onChange({ seepageMultiplier: v })}
-          min={1.0}
-          max={2.0}
-          step={0.1}
-          unit="x"
-        />
-        <p className="text-xs text-gray-400">
-          1.0x = all queries logged | 1.2x = 20% unlogged (typical centralized) | 1.4x = 40%
-          unlogged (typical federated)
-        </p>
-      </CollapsibleSection>
-
-      {/* Regional Salary Adjustments */}
-      <CollapsibleSection
-        title="Regional Salary Adjustments"
-        defaultOpen={(inputs.salaryRegions?.length ?? 0) > 0}
-      >
-        <p className="text-sm text-gray-500 mb-3">
-          If HR operations span multiple regions, add adjustments to blend salary costs.
-        </p>
-        {(inputs.salaryRegions ?? []).map((region) => (
-          <div key={region.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-            <input
-              type="text"
-              value={region.name}
-              onChange={(e) =>
-                onChange({
-                  salaryRegions: (inputs.salaryRegions ?? []).map((r) =>
-                    r.id === region.id ? { ...r, name: e.target.value } : r
-                  ),
-                })
-              }
-              className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
-              placeholder="Region name"
-            />
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                value={region.headcountPercent}
-                onChange={(e) =>
-                  onChange({
-                    salaryRegions: (inputs.salaryRegions ?? []).map((r) =>
-                      r.id === region.id ? { ...r, headcountPercent: Number(e.target.value) } : r
-                    ),
-                  })
-                }
-                className="w-16 px-2 py-1 text-sm border border-gray-300 rounded"
-              />
-              <span className="text-xs text-gray-500">%</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                value={region.salaryMultiplier}
-                onChange={(e) =>
-                  onChange({
-                    salaryRegions: (inputs.salaryRegions ?? []).map((r) =>
-                      r.id === region.id ? { ...r, salaryMultiplier: Number(e.target.value) } : r
-                    ),
-                  })
-                }
-                className="w-16 px-2 py-1 text-sm border border-gray-300 rounded"
-                step={0.1}
-              />
-              <span className="text-xs text-gray-500">x</span>
-            </div>
-            <button
-              onClick={() =>
-                onChange({
-                  salaryRegions: (inputs.salaryRegions ?? []).filter((r) => r.id !== region.id),
-                })
-              }
-              className="text-gray-400 hover:text-red-500 text-sm"
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-        <button
-          onClick={() => {
-            const newRegion: SalaryRegion = {
-              id: `region-${Date.now()}`,
-              name: '',
-              headcountPercent: 50,
-              salaryMultiplier: 1.0,
-            };
-            onChange({ salaryRegions: [...(inputs.salaryRegions ?? []), newRegion] });
-          }}
-          className="text-sm text-[#6b7fff] hover:text-[#03143B]"
-        >
-          + Add Region
-        </button>
-      </CollapsibleSection>
-
-      {/* Results */}
-      <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-[#03143B]/20 p-6">
-        <h4 className="font-semibold text-[#03143B] mb-4">HR Operations Results</h4>
-        <div className="grid md:grid-cols-4 gap-4">
-          <ResultCard
-            label="Headcount Reduction"
-            value={`${output.headcountReduction.toFixed(1)} FTE`}
-          />
-          <ResultCard
-            label="Workload Reduction"
-            value={`${(output.workloadReductionPercent * 100).toFixed(1)}%`}
-          />
-          <ResultCard label="Cases Deflected" value={output.totalDeflected.toLocaleString()} />
-          <ResultCard
-            label="Net Annual Savings"
-            value={formatCurrency(output.netSavings)}
-            highlight
-          />
-        </div>
-
-        {/* Sub-breakdowns for new value streams */}
-        {(output.managerTimeSavings > 0 || output.triageSavings > 0) && (
-          <div className="mt-4 pt-4 border-t border-[#03143B]/10 space-y-2">
-            <p className="text-sm font-medium text-gray-600">Savings Breakdown</p>
-            <div className="grid md:grid-cols-3 gap-3 text-sm">
-              <div className="bg-white/60 rounded p-3">
-                <p className="text-gray-500">HR Ops (Headcount)</p>
-                <p className="font-semibold text-[#03143B]">
-                  {formatCurrency(output.headcountReductionSavings)}
-                </p>
+          {inputs.triageRole?.enabled && (
+            <div className="ml-6 space-y-1">
+              <div className="flex gap-3 flex-wrap">
+                {output.yearResults.map((yr, i) => (
+                  <span key={i} className="text-[10px] font-medium" style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}>
+                    Y{yr.year}: {(inputs.triageRole!.triageFTEs * yr.volumeMultiplier).toFixed(1)} FTEs
+                  </span>
+                ))}
               </div>
-              {output.managerTimeSavings > 0 && (
-                <div className="bg-white/60 rounded p-3">
-                  <p className="text-gray-500">Manager Time Savings</p>
-                  <p className="font-semibold text-[#03143B]">
-                    {formatCurrency(output.managerTimeSavings)}
-                  </p>
-                </div>
-              )}
-              {output.triageSavings > 0 && (
-                <div className="bg-white/60 rounded p-3">
-                  <p className="text-gray-500">Triage Role Savings</p>
-                  <p className="font-semibold text-[#03143B]">
-                    {formatCurrency(output.triageSavings)}
-                  </p>
-                </div>
-              )}
+              <SourceCitation fieldKey="triageRole" estimatedFields={estimatedFields} />
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      </CollapsibleSection>
+
+      {/* Cost Savings by Year */}
+      <div className="bg-gradient-to-br from-gray-50 to-green-50 rounded-lg border border-[#03143B]/20 p-6">
+        <h4 className="font-semibold text-[#03143B] mb-4">Cost Savings by Year</h4>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-2 pr-4 text-gray-600 font-medium">Year</th>
+                <th className="text-right py-2 px-4 text-gray-600 font-medium">Headcount Savings</th>
+                {output.yearCostResults.some((yr) => yr.managerSavings > 0) && (
+                  <th className="text-right py-2 px-4 text-gray-600 font-medium">Manager Savings</th>
+                )}
+                {output.yearCostResults.some((yr) => yr.triageSavings > 0) && (
+                  <th className="text-right py-2 px-4 text-gray-600 font-medium">Triage Savings</th>
+                )}
+                <th className="text-right py-2 px-4 text-gray-600 font-medium">FTE Reduction</th>
+                <th className="text-right py-2 pl-4 text-gray-600 font-medium">Total Savings</th>
+              </tr>
+            </thead>
+            <tbody>
+              {output.yearCostResults.map((yr) => (
+                <tr key={yr.year} className="border-b border-gray-100">
+                  <td className="py-2 pr-4 font-medium" style={{ color: YEAR_COLORS[(yr.year - 1) % YEAR_COLORS.length] }}>
+                    Year {yr.year} <span className="text-gray-400 font-normal text-xs">({output.yearResults[yr.year - 1]?.volumeMultiplier.toFixed(2)}x)</span>
+                  </td>
+                  <td className="text-right py-2 px-4 text-gray-700">{formatCurrency(yr.headcountSavings)}</td>
+                  {output.yearCostResults.some((y) => y.managerSavings > 0) && (
+                    <td className="text-right py-2 px-4 text-gray-700">{formatCurrency(yr.managerSavings)}</td>
+                  )}
+                  {output.yearCostResults.some((y) => y.triageSavings > 0) && (
+                    <td className="text-right py-2 px-4 text-gray-700">{formatCurrency(yr.triageSavings)}</td>
+                  )}
+                  <td className="text-right py-2 px-4 text-gray-700">{yr.fteReduction.toFixed(1)} FTE</td>
+                  <td className="text-right py-2 pl-4 font-semibold text-[#03143B]">{formatCurrency(yr.totalSavings)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-[#03143B]/20">
+                <td className="py-2 pr-4 font-semibold text-[#03143B]">Contract Total</td>
+                <td className="text-right py-2 px-4 font-bold text-[#03143B]">{formatCurrency(output.headcountReductionSavings)}</td>
+                {output.yearCostResults.some((y) => y.managerSavings > 0) && (
+                  <td className="text-right py-2 px-4 font-bold text-[#03143B]">{formatCurrency(output.managerTimeSavings)}</td>
+                )}
+                {output.yearCostResults.some((y) => y.triageSavings > 0) && (
+                  <td className="text-right py-2 px-4 font-bold text-[#03143B]">{formatCurrency(output.triageSavings)}</td>
+                )}
+                <td className="text-right py-2 px-4" />
+                <td className="text-right py-2 pl-4 font-bold text-[#03143B]">
+                  {formatCurrency(output.headcountReductionSavings + output.managerTimeSavings + output.triageSavings)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -1015,11 +1220,13 @@ function LegalComplianceTab({
   output,
   onChange,
   tier2PlusConfiguredCases,
+  estimatedFields,
 }: {
   inputs: LegalComplianceInputs;
   output: ReturnType<typeof calculateLegalComplianceROI>;
   onChange: (inputs: Partial<LegalComplianceInputs>) => void;
   tier2PlusConfiguredCases: number;
+  estimatedFields: Set<string>;
 }) {
   return (
     <div className="space-y-6">
@@ -1072,6 +1279,7 @@ function LegalComplianceTab({
               onChange={(v) => onChange({ avgLegalCostPerIncident: v })}
               type="currency"
             />
+            <SourceCitation fieldKey="avgLegalCostPerIncident" estimatedFields={estimatedFields} />
           </div>
         </div>
 
@@ -1117,6 +1325,7 @@ function LegalComplianceTab({
             onChange={(v) => onChange({ adminHoursPerCase: v })}
             type="number"
           />
+          <SourceCitation fieldKey="adminHoursPerCase" estimatedFields={estimatedFields} />
           <InputField
             label="Admin Hourly Rate"
             value={inputs.adminHourlyRate}
@@ -1193,6 +1402,7 @@ function LegalComplianceTab({
                 unit="%"
               />
             </div>
+            <SourceCitation fieldKey="auditPrep" estimatedFields={estimatedFields} />
           </div>
         )}
       </CollapsibleSection>
@@ -1356,10 +1566,12 @@ function EmployeeExperienceTab({
   inputs,
   output,
   onChange,
+  estimatedFields,
 }: {
   inputs: EmployeeExperienceInputs;
   output: ReturnType<typeof calculateEmployeeExperienceROI>;
   onChange: (inputs: Partial<EmployeeExperienceInputs>) => void;
+  estimatedFields: Set<string>;
 }) {
   return (
     <div className="space-y-6">
@@ -1384,24 +1596,28 @@ function EmployeeExperienceTab({
               onChange={(v) => onChange({ inquiriesPerEmployeePerYear: v })}
               type="number"
             />
+            <SourceCitation fieldKey="inquiriesPerEmployeePerYear" estimatedFields={estimatedFields} />
             <InputField
               label="Avg Time per Inquiry (minutes)"
               value={inputs.avgTimePerInquiry}
               onChange={(v) => onChange({ avgTimePerInquiry: v })}
               type="number"
             />
+            <SourceCitation fieldKey="avgTimePerInquiry" estimatedFields={estimatedFields} />
             <InputField
               label="Avg Employee Hourly Rate"
               value={inputs.avgEmployeeHourlyRate}
               onChange={(v) => onChange({ avgEmployeeHourlyRate: v })}
               type="currency"
             />
+            <SourceCitation fieldKey="avgEmployeeHourlyRate" estimatedFields={estimatedFields} />
             <InputField
               label="Avg Manager Hourly Rate"
               value={inputs.avgManagerHourlyRate}
               onChange={(v) => onChange({ avgManagerHourlyRate: v })}
               type="currency"
             />
+            <SourceCitation fieldKey="avgManagerHourlyRate" estimatedFields={estimatedFields} />
           </div>
         </div>
 
@@ -1478,7 +1694,7 @@ function SummaryTab({
   narrative,
 }: {
   summary: ReturnType<typeof calculateROISummary>;
-  projection: ReturnType<typeof calculate3YearProjection>;
+  projection: ReturnType<typeof calculateMultiYearProjection>;
   hrOutput: ReturnType<typeof calculateHROperationsROI>;
   legalOutput: ReturnType<typeof calculateLegalComplianceROI>;
   employeeOutput: ReturnType<typeof calculateEmployeeExperienceROI>;
@@ -1532,23 +1748,23 @@ function SummaryTab({
             total={summary.totalAnnualValue}
             color="bg-[#03143B]"
           />
-          {/* Sub-items for HR Ops */}
+          {/* Sub-items for HR Ops (avg annual across contract) */}
           {(hrOutput.managerTimeSavings > 0 || hrOutput.triageSavings > 0) && (
             <div className="ml-8 space-y-1">
               <div className="flex justify-between text-sm text-gray-500 px-4">
-                <span>Headcount reduction</span>
-                <span>{formatCurrency(hrOutput.headcountReductionSavings)}</span>
+                <span>Headcount reduction (avg/yr)</span>
+                <span>{formatCurrency(hrOutput.headcountReductionSavings / (hrOutput.yearCostResults.length || 1))}</span>
               </div>
               {hrOutput.managerTimeSavings > 0 && (
                 <div className="flex justify-between text-sm text-gray-500 px-4">
-                  <span>Manager time savings</span>
-                  <span>{formatCurrency(hrOutput.managerTimeSavings)}</span>
+                  <span>Manager time savings (avg/yr)</span>
+                  <span>{formatCurrency(hrOutput.managerTimeSavings / (hrOutput.yearCostResults.length || 1))}</span>
                 </div>
               )}
               {hrOutput.triageSavings > 0 && (
                 <div className="flex justify-between text-sm text-gray-500 px-4">
-                  <span>Triage role savings</span>
-                  <span>{formatCurrency(hrOutput.triageSavings)}</span>
+                  <span>Triage role savings (avg/yr)</span>
+                  <span>{formatCurrency(hrOutput.triageSavings / (hrOutput.yearCostResults.length || 1))}</span>
                 </div>
               )}
             </div>
@@ -1603,19 +1819,24 @@ function SummaryTab({
         </div>
       </div>
 
-      {/* 3-Year Projection */}
+      {/* Multi-Year Projection */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h4 className="font-semibold text-[#03143B] mb-4">3-Year Projection</h4>
+        <h4 className="font-semibold text-[#03143B] mb-4">Multi-Year Projection</h4>
         <p className="text-sm text-gray-600 mb-4">
-          Value ramps up as more workflows get built: Year 1 (50%), Year 2 (75%), Year 3 (100%)
+          Combined value across HR operations, legal/compliance, and employee experience
         </p>
-        <div className="grid md:grid-cols-5 gap-4">
-          <ProjectionCard label="Year 1" value={projection.year1} sublabel="50% of workflows" />
-          <ProjectionCard label="Year 2" value={projection.year2} sublabel="75% of workflows" />
-          <ProjectionCard label="Year 3" value={projection.year3} sublabel="100% of workflows" />
-          <ProjectionCard label="3-Year Total" value={projection.total} sublabel="Gross value" />
+        <div className="grid md:grid-cols-{projection.years.length + 2} gap-4" style={{ gridTemplateColumns: `repeat(${projection.years.length + 2}, minmax(0, 1fr))` }}>
+          {projection.years.map((yr) => (
+            <ProjectionCard
+              key={yr.year}
+              label={`Year ${yr.year}`}
+              value={yr.value}
+              sublabel={`Net: ${formatCurrency(yr.net)}`}
+            />
+          ))}
+          <ProjectionCard label="Total Gross" value={projection.total} sublabel="All years" />
           <ProjectionCard
-            label="Net 3-Year Value"
+            label="Net Total"
             value={projection.netTotal}
             sublabel="After license costs"
             highlight
@@ -1643,7 +1864,9 @@ function generateBusinessCaseNarrative(
   const legalPercent = (legalSavings / totalAnnualValue) * 100;
   const prodPercent = (productivitySavings / totalAnnualValue) * 100;
 
-  const managerDriven = hrOutput.managerTimeSavings > hrOutput.headcountReductionSavings;
+  const avgAnnualManagerSavings = hrOutput.managerTimeSavings / (hrOutput.yearResults.length || 1);
+  const avgAnnualHeadcountSavings = hrOutput.headcountReductionSavings / (hrOutput.yearResults.length || 1);
+  const managerDriven = avgAnnualManagerSavings > avgAnnualHeadcountSavings;
 
   if (legalPercent > hrPercent && legalPercent > prodPercent) {
     return `Your primary value driver is risk reduction and compliance protection, accounting for ${legalPercent.toFixed(0)}% of total value. For ${INDUSTRY_LABELS[profile.industry]} organizations, reducing legal exposure and improving accuracy on high-stakes cases delivers the strongest ROI. Wisq's audit-ready documentation and proactive compliance alerts create a defensible system of record.`;
@@ -1654,7 +1877,8 @@ function generateBusinessCaseNarrative(
   }
 
   if (hrPercent > 50) {
-    return `HR operational efficiency is your strongest value lever at ${hrPercent.toFixed(0)}% of total value. Wisq's AI-powered deflection reduces your effective cost per case by automating Tier 0-1 responses and streamlining Tier 2+ workflows. This translates to ${hrOutput.headcountReduction.toFixed(1)} FTE in workload reduction.`;
+    const lastYearFTE = hrOutput.yearCostResults[hrOutput.yearCostResults.length - 1]?.fteReduction ?? 0;
+    return `HR operational efficiency is your strongest value lever at ${hrPercent.toFixed(0)}% of total value. Wisq's AI-powered deflection reduces your effective cost per case by automating Tier 0-1 responses and streamlining Tier 2+ workflows. This translates to ${lastYearFTE.toFixed(1)} FTE in workload reduction by the final contract year.`;
   }
 
   return `Wisq delivers balanced value across operations (${hrPercent.toFixed(0)}%), compliance (${legalPercent.toFixed(0)}%), and employee experience (${prodPercent.toFixed(0)}%). This diversified ROI means the business case holds up even if any single value stream performs below projections. Net annual benefit of ${formatCompactCurrency(summary.netAnnualBenefit)} annually.`;
@@ -1663,6 +1887,39 @@ function generateBusinessCaseNarrative(
 // ──────────────────────────────────────────────
 // Reusable Components
 // ──────────────────────────────────────────────
+
+/**
+ * Small citation shown below benchmark-estimated fields.
+ * Only renders if the field is in the estimatedFields set.
+ */
+function SourceCitation({ fieldKey, estimatedFields }: { fieldKey: string; estimatedFields: Set<string> }) {
+  if (!estimatedFields.has(fieldKey)) return null;
+  const fieldSource = FIELD_SOURCES[fieldKey];
+  if (!fieldSource) return null;
+
+  const sources = fieldSource.sourceIds
+    .map(id => BENCHMARK_SOURCES[id])
+    .filter(Boolean);
+
+  return (
+    <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">
+      {fieldSource.note}
+      {' — '}
+      {sources.map((src, i) => (
+        <span key={src.id}>
+          {i > 0 && ', '}
+          {src.url ? (
+            <a href={src.url} target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">
+              {src.name} ({src.year})
+            </a>
+          ) : (
+            <span>{src.name} ({src.year})</span>
+          )}
+        </span>
+      ))}
+    </p>
+  );
+}
 
 function InputField({
   label,
@@ -1746,6 +2003,129 @@ function SliderField({
         step={step}
         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#03143B]"
       />
+    </div>
+  );
+}
+
+/**
+ * Multi-year slider: one draggable colored thumb per year on a shared track.
+ * values[i] is the rate for year i. Each thumb drags independently.
+ */
+function MultiYearSlider({
+  label,
+  values,
+  onChange,
+  min = 0,
+  max = 100,
+  yearColors,
+}: {
+  label: string;
+  values: number[];
+  onChange: (yearIndex: number, value: number) => void;
+  min?: number;
+  max?: number;
+  yearColors: string[];
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef<number | null>(null);
+
+  const maxVal = Math.max(...values, min);
+  const fillPct = ((maxVal - min) / (max - min)) * 100;
+
+  const valueFromClientX = (clientX: number): number => {
+    const track = trackRef.current;
+    if (!track) return min;
+    const rect = track.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return Math.round(min + pct * (max - min));
+  };
+
+  const clampMonotonic = (i: number, raw: number): number => {
+    const lo = i > 0 ? values[i - 1] : min;
+    const hi = i < values.length - 1 ? values[i + 1] : max;
+    return Math.max(lo, Math.min(hi, raw));
+  };
+
+  const handlePointerDown = (i: number) => (e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    draggingRef.current = i;
+    const raw = valueFromClientX(e.clientX);
+    onChange(i, clampMonotonic(i, raw));
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (draggingRef.current === null) return;
+    const i = draggingRef.current;
+    const raw = valueFromClientX(e.clientX);
+    onChange(i, clampMonotonic(i, raw));
+  };
+
+  const handlePointerUp = () => {
+    draggingRef.current = null;
+  };
+
+  // Click on track to move nearest dot
+  const handleTrackClick = (e: React.MouseEvent) => {
+    if (draggingRef.current !== null) return;
+    const raw = valueFromClientX(e.clientX);
+    // Find nearest dot
+    let nearestIdx = 0;
+    let nearestDist = Infinity;
+    values.forEach((v, i) => {
+      const dist = Math.abs(v - raw);
+      if (dist < nearestDist) { nearestDist = dist; nearestIdx = i; }
+    });
+    onChange(nearestIdx, clampMonotonic(nearestIdx, raw));
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between mb-1">
+        <label className="text-xs font-medium text-gray-700">{label}</label>
+      </div>
+      <div
+        ref={trackRef}
+        className="relative h-6 cursor-pointer select-none touch-none"
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        onClick={handleTrackClick}
+      >
+        {/* Track background */}
+        <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 h-1.5 bg-gray-200 rounded-full" />
+        <div
+          className="absolute top-1/2 -translate-y-1/2 left-0 h-1.5 bg-gray-300 rounded-full"
+          style={{ width: `${fillPct}%` }}
+        />
+        {/* Draggable colored dots */}
+        {values.map((val, i) => {
+          const pct = ((val - min) / (max - min)) * 100;
+          const color = yearColors[i % yearColors.length];
+          return (
+            <div
+              key={i}
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing"
+              style={{ left: `${pct}%`, zIndex: 10 + i }}
+              onPointerDown={handlePointerDown(i)}
+              title={`Year ${i + 1}: ${Math.round(val)}%`}
+            >
+              <div
+                className="w-4 h-4 rounded-full border-2 border-white shadow-md transition-transform hover:scale-110"
+                style={{ backgroundColor: color }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      {/* Year labels below */}
+      <div className="flex gap-3 mt-0.5 flex-wrap">
+        {values.map((val, i) => (
+          <span key={i} className="text-[10px] font-medium" style={{ color: yearColors[i % yearColors.length] }}>
+            Y{i + 1}: {Math.round(val)}%
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

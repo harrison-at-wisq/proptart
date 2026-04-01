@@ -20,11 +20,11 @@ export interface PricingTier {
 }
 
 export const PRICING_TIERS: PricingTier[] = [
-  { minEmployees: 0, maxEmployees: 1000, platformPPEY: 80, workflowsPPEY: 20 },
-  { minEmployees: 1001, maxEmployees: 3000, platformPPEY: 48, workflowsPPEY: 12 },
-  { minEmployees: 3001, maxEmployees: 10000, platformPPEY: 32, workflowsPPEY: 8 },
-  { minEmployees: 10001, maxEmployees: 25000, platformPPEY: 28, workflowsPPEY: 7 },
-  { minEmployees: 25001, maxEmployees: Infinity, platformPPEY: 24, workflowsPPEY: 6 },
+  { minEmployees: 0, maxEmployees: 1000, platformPPEY: 88, workflowsPPEY: 22 },
+  { minEmployees: 1001, maxEmployees: 3000, platformPPEY: 52.80, workflowsPPEY: 13.20 },
+  { minEmployees: 3001, maxEmployees: 10000, platformPPEY: 35.20, workflowsPPEY: 8.80 },
+  { minEmployees: 10001, maxEmployees: 25000, platformPPEY: 30.80, workflowsPPEY: 7.70 },
+  { minEmployees: 25001, maxEmployees: Infinity, platformPPEY: 26.40, workflowsPPEY: 6.60 },
 ];
 
 // Line item configuration for independent discounting/waiving
@@ -142,8 +142,8 @@ export interface Tier2Workflow {
   name: string;
   volumePerYear: number;
   timePerWorkflowHours: number;
-  deflectionRate?: number;    // per-workflow override (0-100%), falls back to global tier2PlusDeflectionRate
-  effortReduction?: number;   // per-workflow override (0-100%), falls back to global tier2PlusEffortReduction
+  deflectionByYear: number[];     // per-year deflection rates (0-100%), one per contract year
+  effortReductionByYear: number[]; // per-year effort reduction rates (0-100%)
 }
 
 export interface ManagerHRTime {
@@ -159,43 +159,78 @@ export interface TriageRole {
   triageSalary: number;
 }
 
-export interface SalaryRegion {
-  id: string;
-  name: string;
-  headcountPercent: number;
-  salaryMultiplier: number;
+// REMOVED: SalaryRegion (no longer needed)
+
+// Per-year contract settings
+export interface ContractYearSettings {
+  wisqEffectiveness: number;  // 0-100%, how effective Wisq is in this year
+  workforceChange: number;    // % change relative to today (e.g. 0, +5, +10)
 }
 
 export interface HROperationsInputs {
-  currentHeadcount: number;
-  totalCasesPerYear: number;
-  tier01Percent: number;
+  // Contract & multi-year
+  contractYears: number;
+  yearSettings: ContractYearSettings[];
+
+  // Tier 0-1: Simple Cases
+  tier01CasesPerYear: number;
   tier01AvgHandleTime: number;
+  tier01DeflectionByYear: number[];  // per-year deflection rates, one per contract year
+
+  // Tier 2+: Complex Workflows
   tier2Workflows: Tier2Workflow[];
-  tier01DeflectionRate: number;
-  tier2PlusDeflectionRate: number;
-  tier2PlusEffortReduction: number;
+  tier2PlusDefaultDeflection: number;    // hidden base rate for seeding new workflows
+  tier2PlusDefaultEffortReduction: number; // hidden base rate for seeding new workflows
+
+  // Cost Parameters
   tier01HandlerSalary: number;
   tier2PlusHandlerSalary: number;
   wisqLicenseCost: number;
+
+  // Federated / Distributed
   managerHRTime?: ManagerHRTime;
   triageRole?: TriageRole;
-  seepageMultiplier?: number;
-  caseOverheadMultiplier?: number;
-  salaryRegions?: SalaryRegion[];
+}
+
+// Phase 1 output: per-year workload comparison (hours, no cost)
+export interface HROperationsYearResult {
+  year: number;
+  volumeMultiplier: number;
+  tier01Cases: number;
+  tier2Cases: number;
+  currentTotalMinutes: number;
+  futureTotalMinutes: number;
+  hoursSaved: number;
+  casesDeflected: number;
+  workloadReductionPercent: number;
+}
+
+// Phase 2 output: per-year cost translation
+export interface HROperationsYearCostResult {
+  year: number;
+  headcountSavings: number;
+  managerSavings: number;
+  triageSavings: number;
+  totalSavings: number;
+  netSavings: number;
+  fteReduction: number;
 }
 
 export interface HROperationsOutput {
-  headcountReduction: number;
-  workloadReductionPercent: number;
-  totalDeflected: number;
-  tier01TimeSavingsHours: number;
-  tier2PlusTotalTimeSavingsHours: number;
-  netSavings: number;
-  roi: number;
+  // Phase 1: hours saved per year
+  yearResults: HROperationsYearResult[];
+  totalHoursSavedOverContract: number;
+
+  // Phase 2: cost per year
+  yearCostResults: HROperationsYearCostResult[];
+  totalNetSavings: number;
+  contractROI: number;
+
+  // Convenience totals (sum across years for backward compat)
+  headcountReductionSavings: number;
   managerTimeSavings: number;
   triageSavings: number;
-  headcountReductionSavings: number;
+  netSavings: number;
 }
 
 export interface AuditPrep {
@@ -389,6 +424,22 @@ export type NextStepId =
   | 'implementation-kickoff';
 
 // Complete Proposal Input
+export type WorkforceType = 'frontline-heavy' | 'knowledge-worker' | 'mixed';
+export type OrgModel = 'centralized' | 'federated';
+
+export const WORKFORCE_TYPES: WorkforceType[] = ['frontline-heavy', 'knowledge-worker', 'mixed'];
+export const WORKFORCE_TYPE_DISPLAY: Record<WorkforceType, string> = {
+  'frontline-heavy': 'Frontline-Heavy',
+  'knowledge-worker': 'Knowledge Worker',
+  mixed: 'Mixed',
+};
+
+export const ORG_MODELS: OrgModel[] = ['centralized', 'federated'];
+export const ORG_MODEL_DISPLAY: Record<OrgModel, string> = {
+  centralized: 'Centralized HR Team',
+  federated: 'Federated / Distributed',
+};
+
 export interface CompanyInfo {
   companyName: string;
   industry: Industry;
@@ -401,6 +452,29 @@ export interface CompanyInfo {
   crmRecordId?: string;
   customerLogoBase64?: string; // data:image/png;base64,... URI of customer logo
   customerLogoDomain?: string; // Domain used to fetch the logo
+  workforceType?: WorkforceType;
+  orgModel?: OrgModel;
+}
+
+// Map Deal Info industry display names to benchmark slugs
+const INDUSTRY_TO_BENCHMARK: Record<string, string> = {
+  'Technology': 'technology',
+  'Financial Services': 'financial-services',
+  'Healthcare': 'healthcare',
+  'Manufacturing': 'manufacturing',
+  'Retail': 'retail',
+  'Professional Services': 'professional-services',
+  'Hospitality': 'hospitality',
+  'Education': 'other',
+  'Government': 'other',
+  'Transportation & Logistics': 'other',
+  'Energy & Utilities': 'other',
+  'Media & Entertainment': 'other',
+  'Other': 'other',
+};
+
+export function mapIndustryToBenchmark(industry: Industry): string {
+  return INDUSTRY_TO_BENCHMARK[industry] || 'other';
 }
 
 // Custom pain points added by the user
@@ -727,16 +801,20 @@ export const SLIDE_MAPPINGS: SlideMapping[] = [
 
 // Default Values
 export const DEFAULT_HR_OPERATIONS: HROperationsInputs = {
-  currentHeadcount: 5,
-  totalCasesPerYear: 12000,
-  tier01Percent: 65,
+  contractYears: 3,
+  yearSettings: [
+    { wisqEffectiveness: 30, workforceChange: 0 },
+    { wisqEffectiveness: 60, workforceChange: 5 },
+    { wisqEffectiveness: 75, workforceChange: 10 },
+  ],
+  tier01CasesPerYear: 9600,   // ~80% of 12000
   tier01AvgHandleTime: 9,
+  tier01DeflectionByYear: [24, 48, 60],  // 80% base × [30%, 60%, 75%] effectiveness
   tier2Workflows: [],
-  tier01DeflectionRate: 80,
-  tier2PlusDeflectionRate: 40,
-  tier2PlusEffortReduction: 80,
-  tier01HandlerSalary: 60000,
-  tier2PlusHandlerSalary: 100000,
+  tier2PlusDefaultDeflection: 40,
+  tier2PlusDefaultEffortReduction: 80,
+  tier01HandlerSalary: 84000,      // Fully burdened: base $60k × 1.4
+  tier2PlusHandlerSalary: 140000,  // Fully burdened: base $100k × 1.4
   wisqLicenseCost: 0,
 };
 
