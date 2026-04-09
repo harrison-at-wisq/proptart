@@ -28,6 +28,10 @@ import {
   FIELD_SOURCES,
 } from '@/lib/benchmarks';
 import { formatCurrency, formatCompactCurrency } from '@/lib/pricing-calculator';
+
+/** Round a number to at most 2 decimal places (avoids floating-point display noise). */
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
 import {
   DEFAULT_HR_OPERATIONS,
   DEFAULT_LEGAL_COMPLIANCE,
@@ -102,12 +106,34 @@ export function ROICalculator({
 
   // Contract years: inherit from pricing page, fall back to HR inputs
   const contractYears = externalContractYears || hrInputs.contractYears || 3;
-  const yearSettings = hrInputs.yearSettings?.length ? hrInputs.yearSettings : [];
+  const defaultYearSettingsTop = [
+    { wisqEffectiveness: 30, workforceChange: 0 },
+    { wisqEffectiveness: 60, workforceChange: 5 },
+    { wisqEffectiveness: 75, workforceChange: 10 },
+    { wisqEffectiveness: 85, workforceChange: 12 },
+    { wisqEffectiveness: 90, workforceChange: 15 },
+  ];
+  const yearSettings = Array.from({ length: contractYears }, (_, i) =>
+    (hrInputs.yearSettings || [])[i] ?? defaultYearSettingsTop[i] ?? { wisqEffectiveness: 90, workforceChange: 15 }
+  );
 
-  // Sync contractYears into hrInputs if changed externally
+  // Sync contractYears into hrInputs if changed externally — also ensure yearSettings has enough entries
   useEffect(() => {
     if (externalContractYears && externalContractYears !== hrInputs.contractYears) {
-      onHRChange({ contractYears: externalContractYears });
+      const MAX_YEARS = 5;
+      const defaultEffectiveness = [30, 60, 75, 85, 90];
+      const defaultGrowth = [0, 5, 10, 12, 15];
+      const existing = hrInputs.yearSettings || [];
+      const newSettings: typeof existing = [];
+      for (let i = 0; i < MAX_YEARS; i++) {
+        newSettings.push(
+          existing[i] ?? {
+            wisqEffectiveness: defaultEffectiveness[i] ?? 90,
+            workforceChange: defaultGrowth[i] ?? 15,
+          }
+        );
+      }
+      onHRChange({ contractYears: externalContractYears, yearSettings: newSettings });
     }
   }, [externalContractYears]);
 
@@ -344,6 +370,7 @@ export function ROICalculator({
           onRemoveWorkflow={removeWorkflow}
           onUpdateWorkflow={updateWorkflow}
           estimatedFields={estimatedFields}
+          employeeCount={companyProfile.employeeCount}
         />
       )}
 
@@ -805,10 +832,17 @@ function CaseloadDashboard({
   const [selectedYear, setSelectedYear] = useState(0);
   const [chartMode, setChartMode] = useState<ChartMode>('cases');
 
-  const yearSettings = inputs.yearSettings?.length
-    ? inputs.yearSettings
-    : [{ wisqEffectiveness: 30, workforceChange: 0 }];
   const contractYears = inputs.contractYears || 3;
+  const defaultYS = [
+    { wisqEffectiveness: 30, workforceChange: 0 },
+    { wisqEffectiveness: 60, workforceChange: 5 },
+    { wisqEffectiveness: 75, workforceChange: 10 },
+    { wisqEffectiveness: 85, workforceChange: 12 },
+    { wisqEffectiveness: 90, workforceChange: 15 },
+  ];
+  const yearSettings = Array.from({ length: contractYears }, (_, i) =>
+    (inputs.yearSettings || [])[i] ?? defaultYS[i] ?? { wisqEffectiveness: 90, workforceChange: 15 }
+  );
 
   // Configured workflow sum
   const configuredWorkflowSum = inputs.tier2Workflows.reduce((s, wf) => s + wf.volumePerYear, 0);
@@ -937,11 +971,14 @@ function CaseloadDashboard({
   const tier2TotalCases = Math.round(tier2PlusTotalCases * volMult);
   const totalCasesScaled = tier01TotalCases + tier2TotalCases;
 
-  const tier01TotalMin = tier01DeflectedMin + tier01RemainingMin;
-  const tier2TotalMin = wfBreakdowns.reduce((s, wf) => s + wf.deflectedMin + wf.remainingMin, 0) + otherTier2Min;
-  const totalHrs = Math.round(totalTimeMin / 60);
-  const tier01Hrs = Math.round(tier01TotalMin / 60);
-  const tier2Hrs = Math.round(tier2TotalMin / 60);
+  // Current baseline hours (no Wisq — all cases at full handle time)
+  const tier01CurrentMin = tier01Total * inputs.tier01AvgHandleTime;
+  const tier2CurrentMin = inputs.tier2Workflows.reduce(
+    (s, wf) => s + wf.volumePerYear * volMult * wf.timePerWorkflowHours * 60, 0
+  ) + otherTier2Min;
+  const totalHrs = Math.round((tier01CurrentMin + tier2CurrentMin) / 60);
+  const tier01Hrs = Math.round(tier01CurrentMin / 60);
+  const tier2Hrs = Math.round(tier2CurrentMin / 60);
 
   return (
     <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-[#03143B]/20 p-6">
@@ -1058,7 +1095,7 @@ function CaseloadDashboard({
 
                 {/* Total reduction */}
                 <div className="bg-[#03143B] rounded-lg px-3 py-2.5 text-center">
-                  <div className="text-[10px] text-white/60 font-medium uppercase tracking-wider">Total Reduction</div>
+                  <div className="text-[10px] text-white/60 font-medium uppercase tracking-wider">Overall Reduction</div>
                   <div className="text-xl font-bold text-white">−{totalRedPct}%</div>
                 </div>
               </div>
@@ -1200,6 +1237,7 @@ function HROperationsTab({
   onRemoveWorkflow,
   onUpdateWorkflow,
   estimatedFields,
+  employeeCount,
 }: {
   inputs: HROperationsInputs;
   output: ReturnType<typeof calculateHROperationsROI>;
@@ -1208,21 +1246,25 @@ function HROperationsTab({
   onRemoveWorkflow: (id: string) => void;
   onUpdateWorkflow: (id: string, updates: Partial<Tier2Workflow>) => void;
   estimatedFields: Set<string>;
+  employeeCount: number;
 }) {
   const YEAR_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
 
   // Track which sliders the user has manually dragged (local to session)
   const [modifiedFields, setModifiedFields] = useState<Set<string>>(new Set());
 
-  // Normalize for old data that may lack new fields
+  // Normalize for old data that may lack new fields — always ensure enough entries for contractYears
   const contractYears = inputs.contractYears || 3;
-  const yearSettings = inputs.yearSettings?.length
-    ? inputs.yearSettings
-    : [
-        { wisqEffectiveness: 30, workforceChange: 0 },
-        { wisqEffectiveness: 60, workforceChange: 5 },
-        { wisqEffectiveness: 75, workforceChange: 10 },
-      ].slice(0, contractYears);
+  const defaultYearSettings = [
+    { wisqEffectiveness: 30, workforceChange: 0 },
+    { wisqEffectiveness: 60, workforceChange: 5 },
+    { wisqEffectiveness: 75, workforceChange: 10 },
+    { wisqEffectiveness: 85, workforceChange: 12 },
+    { wisqEffectiveness: 90, workforceChange: 15 },
+  ];
+  const yearSettings = Array.from({ length: contractYears }, (_, i) =>
+    (inputs.yearSettings || [])[i] ?? defaultYearSettings[i] ?? { wisqEffectiveness: 90, workforceChange: 15 }
+  );
 
   const tier01DeflectionByYear = inputs.tier01DeflectionByYear?.length
     ? inputs.tier01DeflectionByYear
@@ -1452,17 +1494,20 @@ function HROperationsTab({
                   />
                 ))}
               </div>
-              {/* Value labels */}
+              {/* Value labels — show % and projected population */}
               <div className="flex flex-col gap-0 shrink-0">
-                {yearSettings.map((setting, i) => (
-                  <span
-                    key={i}
-                    className="text-xs font-semibold leading-tight"
-                    style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}
-                  >
-                    Y{i + 1}: {setting.workforceChange > 0 ? '+' : ''}{setting.workforceChange}%
-                  </span>
-                ))}
+                {yearSettings.map((setting, i) => {
+                  const pop = Math.round(employeeCount * (1 + setting.workforceChange / 100));
+                  return (
+                    <span
+                      key={i}
+                      className="text-xs font-semibold leading-tight"
+                      style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}
+                    >
+                      Y{i + 1}: {setting.workforceChange > 0 ? '+' : ''}{setting.workforceChange}% ({pop.toLocaleString()})
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -2019,13 +2064,13 @@ function LegalComplianceTab({
               {tier2PlusConfiguredCases === tier2PlusTotalCases ? (
                 inputs.useManualCaseVolume
                   ? <p>{Math.round(scaledHighStakes).toLocaleString()} high-stakes cases (manual) → Wisq handles all {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()}</p>
-                  : <p>{tier2PlusConfiguredCases.toLocaleString()} cases × {inputs.highStakesPercent}% = {Math.round(scaledHighStakes).toLocaleString()} high-stakes → Wisq handles all {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()}</p>
+                  : <p>{tier2PlusConfiguredCases.toLocaleString()} cases × {r2(inputs.highStakesPercent)}% = {Math.round(scaledHighStakes).toLocaleString()} high-stakes → Wisq handles all {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()}</p>
               ) : (
                 <>
                   <p>{tier2PlusConfiguredCases.toLocaleString()} configured / {tier2PlusTotalCases.toLocaleString()} total T2+ = {(wisqCoverage * 100).toFixed(0)}% coverage</p>
                   {inputs.useManualCaseVolume
                     ? <p>{Math.round(scaledHighStakes).toLocaleString()} high-stakes (manual) × {(wisqCoverage * 100).toFixed(0)}% = {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()} Wisq handles</p>
-                    : <p>{tier2PlusTotalCases.toLocaleString()} × {inputs.highStakesPercent}% = {Math.round(baseHighStakes).toLocaleString()} high-stakes{volMult !== 1 ? ` × ${volMult.toFixed(2)}x growth` : ''} × {(wisqCoverage * 100).toFixed(0)}% = {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()} Wisq handles</p>
+                    : <p>{tier2PlusTotalCases.toLocaleString()} × {r2(inputs.highStakesPercent)}% = {Math.round(baseHighStakes).toLocaleString()} high-stakes{volMult !== 1 ? ` × ${r2(volMult)}x growth` : ''} × {(wisqCoverage * 100).toFixed(0)}% = {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()} Wisq handles</p>
                   }
                 </>
               )}
@@ -2108,7 +2153,7 @@ function LegalComplianceTab({
           const wisqHandledYr = Math.round(yr.highStakesCases * wisqCoverage);
           return (
             <div className="mt-3 p-2 bg-blue-50 rounded text-xs text-gray-500 font-mono">
-              {wisqHandledYr.toLocaleString()} Wisq cases × {inputs.adminHoursPerCase} hrs × {formatCurrency(inputs.adminHourlyRate)}/hr = {formatCurrency(yr.adminCostSavings)}/yr
+              {wisqHandledYr.toLocaleString()} Wisq cases × {r2(inputs.adminHoursPerCase)} hrs × {formatCurrency(inputs.adminHourlyRate)}/hr = {formatCurrency(yr.adminCostSavings)}/yr
             </div>
           );
         })()}
@@ -2184,7 +2229,7 @@ function LegalComplianceTab({
             </div>
             <SourceCitation fieldKey="auditPrep" estimatedFields={estimatedFields} />
             <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-gray-500 font-mono">
-              {inputs.auditPrep.auditsPerYear} audits × {inputs.auditPrep.prepHoursPerAudit} hrs × {formatCurrency(inputs.auditPrep.prepHourlyRate)}/hr × {inputs.auditPrep.wisqReductionPercent}% reduction = {formatCurrency(yr?.auditPrepSavings ?? 0)}/yr
+              {r2(inputs.auditPrep.auditsPerYear)} audits × {r2(inputs.auditPrep.prepHoursPerAudit)} hrs × {formatCurrency(inputs.auditPrep.prepHourlyRate)}/hr × {r2(inputs.auditPrep.wisqReductionPercent)}% reduction = {formatCurrency(yr?.auditPrepSavings ?? 0)}/yr
             </div>
           </div>
         )}
@@ -2517,10 +2562,10 @@ function EmployeeExperienceTab({
         return (
           <div className="p-3 bg-blue-50 rounded-lg text-xs text-gray-600 font-mono space-y-1">
             <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1 font-sans">Year {selectedYear + 1} Calculation</div>
-            <p><span className="text-gray-400">1.</span> {inputs.totalEmployeePopulation.toLocaleString()} employees{volMult !== 1 ? ` × ${volMult.toFixed(2)}x growth` : ''} × {inputs.inquiriesPerEmployeePerYear} inquiries/yr = <strong>{totalInquiries.toLocaleString()}</strong> total inquiries</p>
-            <p><span className="text-gray-400">2.</span> {totalInquiries.toLocaleString()} inquiries × {inputs.avgTimePerInquiry} min each = <strong>{baselineHrs.toLocaleString()} hrs</strong> baseline time spent</p>
-            <p><span className="text-gray-400">3.</span> Wisq reduces {inputs.timeReductionPercent}% of inquiry time × {inputs.adoptionRate}% adoption = <strong>{(inputs.timeReductionPercent * inputs.adoptionRate / 100).toFixed(1)}%</strong> effective savings</p>
-            <p><span className="text-gray-400">4.</span> {baselineHrs.toLocaleString()} hrs × {(inputs.timeReductionPercent * inputs.adoptionRate / 100).toFixed(1)}% = <strong>{Math.round(yr.hoursSaved).toLocaleString()} hrs</strong> saved</p>
+            <p><span className="text-gray-400">1.</span> {inputs.totalEmployeePopulation.toLocaleString()} employees{volMult !== 1 ? ` × ${r2(volMult)}x growth` : ''} × {r2(inputs.inquiriesPerEmployeePerYear)} inquiries/yr = <strong>{totalInquiries.toLocaleString()}</strong> total inquiries</p>
+            <p><span className="text-gray-400">2.</span> {totalInquiries.toLocaleString()} inquiries × {r2(inputs.avgTimePerInquiry)} min each = <strong>{baselineHrs.toLocaleString()} hrs</strong> baseline time spent</p>
+            <p><span className="text-gray-400">3.</span> Wisq reduces {r2(inputs.timeReductionPercent)}% of inquiry time × {r2(inputs.adoptionRate)}% adoption = <strong>{r2(inputs.timeReductionPercent * inputs.adoptionRate / 100)}%</strong> effective savings</p>
+            <p><span className="text-gray-400">4.</span> {baselineHrs.toLocaleString()} hrs × {r2(inputs.timeReductionPercent * inputs.adoptionRate / 100)}% = <strong>{Math.round(yr.hoursSaved).toLocaleString()} hrs</strong> saved</p>
             <p><span className="text-gray-400">5.</span> {Math.round(yr.hoursSaved).toLocaleString()} hrs × {formatCurrency(hourlyRate)}/hr = <strong className="text-[#03143B]">{formatCurrency(yr.totalMonetaryValue)}/yr</strong></p>
           </div>
         );
@@ -3178,10 +3223,11 @@ function InputField({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
 
+  const rounded = Math.round(value * 100) / 100;
   const formattedValue =
     type === 'currency' || type === 'formatted-number'
-      ? value.toLocaleString()
-      : String(value);
+      ? rounded.toLocaleString()
+      : String(rounded);
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     setEditing(true);
@@ -3253,7 +3299,7 @@ function SliderField({
       <div className="flex justify-between mb-1">
         <label className="text-sm font-medium text-gray-700">{label}</label>
         <span className="text-sm font-medium text-[#03143B]">
-          {value}
+          {Math.round(value * 100) / 100}
           {unit}
         </span>
       </div>
