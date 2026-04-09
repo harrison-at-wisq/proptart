@@ -2986,9 +2986,14 @@ function SummaryTab({
           {/* HR Ops items */}
           <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium px-3 pt-2">HR Operations</div>
           <HoverBreakdownRow
-            label="Headcount / Workload Reduction"
-            avgValue={hrOutput.headcountReductionSavings / nYrs}
-            yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.headcountSavings }))}
+            label="Tier 0/1 Workload Savings"
+            avgValue={hrYearCosts.reduce((s, yr) => s + yr.tier01Savings, 0) / nYrs}
+            yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.tier01Savings }))}
+          />
+          <HoverBreakdownRow
+            label="Tier 2+ Workload Savings"
+            avgValue={hrYearCosts.reduce((s, yr) => s + yr.tier2Savings, 0) / nYrs}
+            yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.tier2Savings }))}
           />
           {hrOutput.managerTimeSavings > 0 && (
             <HoverBreakdownRow
