@@ -3,15 +3,18 @@ import {
   HROperationsOutput,
   HROperationsYearResult,
   HROperationsYearCostResult,
+  ContractYearSettings,
   LegalComplianceInputs,
   LegalComplianceOutput,
+  LegalComplianceYearResult,
   EmployeeExperienceInputs,
   EmployeeExperienceOutput,
+  EmployeeExperienceYearResult,
   ROISummary,
+  ROISummaryYearResult,
 } from '@/types/proposal';
 
 const HOURS_PER_FTE_PER_YEAR = 2080;
-const ADMIN_TIME_SAVINGS_PERCENT = 60;
 
 /**
  * Calculate HR Operations ROI — multi-year, two-phase model
@@ -30,10 +33,10 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
         { wisqEffectiveness: 75, workforceChange: 10 },
       ];
   const tier01CasesPerYear = inputs.tier01CasesPerYear || (inputs as any).totalCasesPerYear * ((inputs as any).tier01Percent || 80) / 100 || 9600;
-  // Per-year deflection: use byYear array, fall back to old maxDeflection × effectiveness, or old deflectionRate
+  // Per-year deflection: use byYear array, fall back to effectiveness directly
   const tier01DeflectionByYear = inputs.tier01DeflectionByYear?.length
     ? inputs.tier01DeflectionByYear
-    : yearSettings.map(s => ((inputs as any).tier01MaxDeflection ?? (inputs as any).tier01DeflectionRate ?? 80) * s.wisqEffectiveness / 100);
+    : yearSettings.map(s => s.wisqEffectiveness);
 
   const tier01HourlyRate = inputs.tier01HandlerSalary / HOURS_PER_FTE_PER_YEAR;
   const tier2HourlyRate = inputs.tier2PlusHandlerSalary / HOURS_PER_FTE_PER_YEAR;
@@ -50,18 +53,31 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
       (sum, wf) => sum + wf.volumePerYear * volumeMultiplier, 0
     );
 
+    // Unconfigured Tier 2+ cases (exist but Wisq doesn't handle them)
+    const configuredT2Volume = inputs.tier2Workflows.reduce(
+      (sum, wf) => sum + wf.volumePerYear * volumeMultiplier, 0
+    );
+    const totalT2Volume = (inputs.tier2PlusTotalCases || 0) * volumeMultiplier;
+    const unconfiguredT2Cases = Math.max(0, totalT2Volume - configuredT2Volume);
+    const configuredWfSum = inputs.tier2Workflows.reduce((s, wf) => s + wf.volumePerYear, 0);
+    const weightedAvgHours = configuredWfSum > 0
+      ? inputs.tier2Workflows.reduce((s, wf) => s + wf.timePerWorkflowHours * wf.volumePerYear, 0) / configuredWfSum
+      : 0.75;
+    const unconfiguredHoursPerCase = inputs.tier2PlusAvgTimePerCase ?? weightedAvgHours;
+    const unconfiguredT2Min = unconfiguredT2Cases * unconfiguredHoursPerCase * 60;
+
     // Current state (no Wisq)
     const currentTier01Min = tier01Cases * inputs.tier01AvgHandleTime;
     const currentTier2Min = inputs.tier2Workflows.reduce(
       (sum, wf) => sum + wf.volumePerYear * volumeMultiplier * wf.timePerWorkflowHours * 60, 0
-    );
+    ) + unconfiguredT2Min;
     const currentTotalMinutes = currentTier01Min + currentTier2Min;
 
     // Future state — use per-year rates directly from the stored arrays
     const tier01Deflection = (tier01DeflectionByYear[y] ?? 0) / 100;
     const futureTier01Min = tier01Cases * (1 - tier01Deflection) * inputs.tier01AvgHandleTime;
 
-    let futureTier2Min = 0;
+    let futureTier2Min = unconfiguredT2Min; // unconfigured cases stay at full time
     let casesDeflected = tier01Cases * tier01Deflection;
     for (const wf of inputs.tier2Workflows) {
       const wfCases = wf.volumePerYear * volumeMultiplier;
@@ -77,6 +93,8 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
 
     const futureTotalMinutes = futureTier01Min + futureTier2Min;
     const hoursSaved = (currentTotalMinutes - futureTotalMinutes) / 60;
+    const tier01HoursSaved = (currentTier01Min - futureTier01Min) / 60;
+    const tier2HoursSaved = (currentTier2Min - futureTier2Min) / 60;
     const workloadReductionPercent = currentTotalMinutes > 0
       ? (currentTotalMinutes - futureTotalMinutes) / currentTotalMinutes : 0;
 
@@ -88,15 +106,16 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
       currentTotalMinutes,
       futureTotalMinutes,
       hoursSaved,
+      tier01HoursSaved,
+      tier2HoursSaved,
       casesDeflected,
       workloadReductionPercent,
     });
 
     // --- Phase 2: Cost translation ---
-
-    const tier01HoursSaved = (currentTier01Min - futureTier01Min) / 60;
-    const tier2HoursSaved = (currentTier2Min - futureTier2Min) / 60;
-    const headcountSavings = tier01HoursSaved * tier01HourlyRate + tier2HoursSaved * tier2HourlyRate;
+    const tier01Savings = tier01HoursSaved * tier01HourlyRate;
+    const tier2Savings = tier2HoursSaved * tier2HourlyRate;
+    const headcountSavings = tier01Savings + tier2Savings;
     const fteReduction = hoursSaved / HOURS_PER_FTE_PER_YEAR;
 
     // Manager savings (if enabled) — manager count scales with workforce
@@ -122,6 +141,8 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
     yearCostResults.push({
       year: y + 1,
       headcountSavings,
+      tier01Savings,
+      tier2Savings,
       managerSavings,
       triageSavings: triageSavingsYear,
       totalSavings,
@@ -155,88 +176,144 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
 }
 
 /**
- * Calculate Legal Compliance ROI
+ * Calculate Legal Compliance ROI — multi-year, coverage-based model
+ *
+ * High-stakes cases come from Tier 2+ volume (scaled by headcount growth).
+ * Wisq accuracy is a fixed rate — what changes per year is how many cases
+ * Wisq actually handles (configured workflow coverage of total T2+).
+ * Cases Wisq touches get Wisq accuracy; untouched cases stay at baseline.
  */
 export function calculateLegalComplianceROI(
   inputs: LegalComplianceInputs,
-  tier2PlusConfiguredCases: number
+  tier2PlusConfiguredCases: number,
+  yearSettings?: ContractYearSettings[],
+  contractYears?: number,
+  tier2PlusTotalCases?: number
 ): LegalComplianceOutput {
-  const highStakesCases = inputs.useManualCaseVolume
+  const years = contractYears || yearSettings?.length || 1;
+  const settings = yearSettings?.length ? yearSettings : [{ wisqEffectiveness: 75, workforceChange: 0 }];
+
+  // Wisq coverage: what fraction of T2+ cases are configured workflows (Wisq handles them)
+  const totalT2 = tier2PlusTotalCases || tier2PlusConfiguredCases || 1;
+  const wisqCoverage = Math.min(1, tier2PlusConfiguredCases / totalT2);
+
+  // Base high-stakes cases (before workforce scaling)
+  const baseHighStakesCases = inputs.useManualCaseVolume
     ? inputs.manualHighStakesCases
-    : tier2PlusConfiguredCases * (inputs.highStakesPercent / 100);
+    : totalT2 * (inputs.highStakesPercent / 100);
 
-  const incorrectAnswersBaseline = highStakesCases * (1 - inputs.currentAccuracyRate / 100);
-  const incorrectAnswersWisq = highStakesCases * (1 - inputs.wisqAccuracyRate / 100);
-  const avoidedIncidents = incorrectAnswersBaseline - incorrectAnswersWisq;
-  const avoidedLegalCosts = avoidedIncidents * inputs.avgLegalCostPerIncident;
+  const yearResults: LegalComplianceYearResult[] = [];
 
-  const totalAdminHoursBaseline = highStakesCases * inputs.adminHoursPerCase;
-  const totalAdminHoursWisq = totalAdminHoursBaseline * (1 - ADMIN_TIME_SAVINGS_PERCENT / 100);
-  const adminHoursSaved = totalAdminHoursBaseline - totalAdminHoursWisq;
-  const adminCostSavings = adminHoursSaved * inputs.adminHourlyRate;
+  for (let y = 0; y < years; y++) {
+    const s = settings[y] ?? settings[settings.length - 1];
+    const volMult = 1 + s.workforceChange / 100;
 
-  // Audit preparation savings
-  let auditPrepSavings = 0;
-  const audit = inputs.auditPrep;
-  if (audit?.enabled) {
-    const totalAuditPrepHours = audit.auditsPerYear * audit.prepHoursPerAudit;
-    auditPrepSavings = totalAuditPrepHours * audit.prepHourlyRate * (audit.wisqReductionPercent / 100);
+    // Total high-stakes cases this year (scaled by headcount)
+    const highStakesCases = baseHighStakesCases * volMult;
+
+    // Split: cases Wisq handles vs. cases it doesn't
+    const wisqHandled = highStakesCases * wisqCoverage;
+    const notHandled = highStakesCases - wisqHandled;
+
+    // Wisq accuracy is fixed — incidents avoided only on cases Wisq touches
+    const baselineErrorRate = 1 - inputs.currentAccuracyRate / 100;
+    const wisqErrorRate = 1 - inputs.wisqAccuracyRate / 100;
+    const baselineIncidents = highStakesCases * baselineErrorRate;
+    const wisqIncidents = wisqHandled * wisqErrorRate + notHandled * baselineErrorRate;
+    const avoidedIncidents = baselineIncidents - wisqIncidents;
+    const avoidedLegalCosts = avoidedIncidents * inputs.avgLegalCostPerIncident;
+
+    // Admin savings: only on cases Wisq handles (full admin hours saved per case)
+    const adminHoursSaved = wisqHandled * inputs.adminHoursPerCase;
+    const adminCostSavings = adminHoursSaved * inputs.adminHourlyRate;
+
+    // Audit prep — flat annual value, not scaled by coverage
+    let auditPrepSavings = 0;
+    const audit = inputs.auditPrep;
+    if (audit?.enabled) {
+      const totalAuditPrepHours = audit.auditsPerYear * audit.prepHoursPerAudit;
+      auditPrepSavings = totalAuditPrepHours * audit.prepHourlyRate * (audit.wisqReductionPercent / 100);
+    }
+
+    // Risk + proactive — flat annual values, not scaled by coverage
+    const riskValue = inputs.riskPatternDetection?.enabled
+      ? (inputs.riskPatternDetection.estimatedAnnualValue ?? 0) : 0;
+    const proactiveValue = inputs.proactiveAlerts?.enabled
+      ? (inputs.proactiveAlerts.estimatedAnnualValue ?? 0) : 0;
+
+    const totalAvoidedCosts = avoidedLegalCosts + adminCostSavings + auditPrepSavings + riskValue + proactiveValue;
+
+    yearResults.push({
+      year: y + 1,
+      highStakesCases,
+      avoidedIncidents,
+      avoidedLegalCosts,
+      adminCostSavings,
+      auditPrepSavings,
+      riskValue,
+      proactiveValue,
+      totalAvoidedCosts,
+    });
   }
 
-  // Risk pattern detection value
-  const riskValue = inputs.riskPatternDetection?.enabled
-    ? (inputs.riskPatternDetection.estimatedAnnualValue ?? 0) : 0;
-
-  // Proactive compliance alerts value
-  const proactiveValue = inputs.proactiveAlerts?.enabled
-    ? (inputs.proactiveAlerts.estimatedAnnualValue ?? 0) : 0;
-
-  const totalAvoidedCosts = avoidedLegalCosts + adminCostSavings + auditPrepSavings + riskValue + proactiveValue;
-
+  // Contract totals
   return {
-    highStakesCases,
-    avoidedIncidents,
-    avoidedLegalCosts,
-    adminCostSavings,
-    auditPrepSavings,
-    riskValue,
-    proactiveValue,
-    totalAvoidedCosts,
+    yearResults,
+    highStakesCases: yearResults.reduce((s, yr) => s + yr.highStakesCases, 0) / years,
+    avoidedIncidents: yearResults.reduce((s, yr) => s + yr.avoidedIncidents, 0),
+    avoidedLegalCosts: yearResults.reduce((s, yr) => s + yr.avoidedLegalCosts, 0),
+    adminCostSavings: yearResults.reduce((s, yr) => s + yr.adminCostSavings, 0),
+    auditPrepSavings: yearResults.reduce((s, yr) => s + yr.auditPrepSavings, 0),
+    riskValue: yearResults.reduce((s, yr) => s + yr.riskValue, 0),
+    proactiveValue: yearResults.reduce((s, yr) => s + yr.proactiveValue, 0),
+    totalAvoidedCosts: yearResults.reduce((s, yr) => s + yr.totalAvoidedCosts, 0),
   };
 }
 
 /**
- * Calculate Employee Experience ROI
+ * Calculate Employee Experience ROI — multi-year model
+ * Scales adoption and time reduction with Wisq effectiveness, workforce with growth
  */
 export function calculateEmployeeExperienceROI(
-  inputs: EmployeeExperienceInputs
+  inputs: EmployeeExperienceInputs,
+  yearSettings?: ContractYearSettings[],
+  contractYears?: number
 ): EmployeeExperienceOutput {
-  const totalInquiries = inputs.totalEmployeePopulation * inputs.inquiriesPerEmployeePerYear;
-  const baselineMinutesSpent = totalInquiries * inputs.avgTimePerInquiry;
+  const years = contractYears || yearSettings?.length || 1;
+  const settings = yearSettings?.length ? yearSettings : [{ wisqEffectiveness: 75, workforceChange: 0 }];
 
-  const minutesSaved =
-    baselineMinutesSpent * (inputs.timeReductionPercent / 100) * (inputs.adoptionRate / 100);
-  const hoursSaved = minutesSaved / 60;
+  // Fallback for old data that had avgEmployeeHourlyRate / avgManagerHourlyRate
+  const hourlyRate = inputs.avgHourlyRate ?? (inputs as any).avgEmployeeHourlyRate ?? 55;
 
-  const employeeHoursSaved = hoursSaved * 0.7;
-  const managerHoursSaved = hoursSaved * 0.3;
+  const yearResults: EmployeeExperienceYearResult[] = [];
 
-  const employeeTimeSavings = employeeHoursSaved * inputs.avgEmployeeHourlyRate;
-  const managerTimeSavings = managerHoursSaved * inputs.avgManagerHourlyRate;
-  const totalMonetaryValue = employeeTimeSavings + managerTimeSavings;
+  for (let y = 0; y < years; y++) {
+    const s = settings[y] ?? settings[settings.length - 1];
+    const volMult = 1 + s.workforceChange / 100;
 
+    const scaledPopulation = inputs.totalEmployeePopulation * volMult;
+    const totalInquiries = scaledPopulation * inputs.inquiriesPerEmployeePerYear;
+    const baselineMinutes = totalInquiries * inputs.avgTimePerInquiry;
+
+    // Adoption and time reduction are direct user inputs — no effectiveness scaling
+    const minutesSaved = baselineMinutes * (inputs.timeReductionPercent / 100) * (inputs.adoptionRate / 100);
+    const hoursSaved = minutesSaved / 60;
+    const totalMonetaryValue = hoursSaved * hourlyRate;
+
+    yearResults.push({ year: y + 1, totalInquiries, hoursSaved, totalMonetaryValue });
+  }
+
+  // Contract totals
   return {
-    totalInquiries,
-    hoursSaved,
-    employeeTimeSavings,
-    managerTimeSavings,
-    totalMonetaryValue,
+    yearResults,
+    totalInquiries: yearResults.reduce((s, yr) => s + yr.totalInquiries, 0) / years,
+    hoursSaved: yearResults.reduce((s, yr) => s + yr.hoursSaved, 0),
+    totalMonetaryValue: yearResults.reduce((s, yr) => s + yr.totalMonetaryValue, 0),
   };
 }
 
 /**
- * Calculate complete ROI summary
- * Uses average annual HR ops savings for annualized summary display
+ * Calculate complete ROI summary — true per-year totals from all three pillars
  */
 export function calculateROISummary(
   hrOpsOutput: HROperationsOutput,
@@ -245,29 +322,53 @@ export function calculateROISummary(
   wisqLicenseCost: number,
   contractYears: number = 3
 ): ROISummary {
-  // Average annual HR ops values across contract
-  const avgAnnualHRGross = (hrOpsOutput.headcountReductionSavings + hrOpsOutput.managerTimeSavings + hrOpsOutput.triageSavings) / contractYears;
-  const avgAnnualHRNet = hrOpsOutput.netSavings / contractYears;
-  const legalSavings = legalOutput.totalAvoidedCosts;
-  const productivitySavings = employeeExpOutput.totalMonetaryValue;
+  // Build per-year breakdown by zipping all three
+  const yearResults: ROISummaryYearResult[] = [];
+  for (let y = 0; y < contractYears; y++) {
+    const hrYr = hrOpsOutput.yearCostResults[y];
+    const legalYr = legalOutput.yearResults?.[y];
+    const exYr = employeeExpOutput.yearResults?.[y];
 
-  const grossAnnualValue = avgAnnualHRGross + legalSavings + productivitySavings;
-  const totalAnnualValue = avgAnnualHRNet + legalSavings + productivitySavings;
+    const hrSavings = hrYr?.totalSavings ?? 0;
+    const legalSavings = legalYr?.totalAvoidedCosts ?? 0;
+    const prodSavings = exYr?.totalMonetaryValue ?? 0;
+    const gross = hrSavings + legalSavings + prodSavings;
+
+    yearResults.push({
+      year: y + 1,
+      hrOpsSavings: hrSavings,
+      legalSavings,
+      productivitySavings: prodSavings,
+      grossValue: gross,
+      netValue: gross - wisqLicenseCost,
+    });
+  }
+
+  // Averages for annualized summary display
+  const totalGross = yearResults.reduce((s, yr) => s + yr.grossValue, 0);
+  const totalNet = yearResults.reduce((s, yr) => s + yr.netValue, 0);
+  const grossAnnualValue = totalGross / contractYears;
+  const totalAnnualValue = totalNet / contractYears;
   const netAnnualBenefit = totalAnnualValue;
   const totalROI = wisqLicenseCost > 0 ? (netAnnualBenefit / wisqLicenseCost) * 100 : 0;
 
   const monthlyGrossValue = grossAnnualValue / 12;
   const paybackPeriodMonths = monthlyGrossValue > 0 ? wisqLicenseCost / monthlyGrossValue + 3 : 3;
 
+  const avgHR = yearResults.reduce((s, yr) => s + yr.hrOpsSavings, 0) / contractYears;
+  const avgLegal = yearResults.reduce((s, yr) => s + yr.legalSavings, 0) / contractYears;
+  const avgProd = yearResults.reduce((s, yr) => s + yr.productivitySavings, 0) / contractYears;
+
   return {
+    yearResults,
     grossAnnualValue,
     totalAnnualValue,
     totalROI,
     paybackPeriodMonths,
     netAnnualBenefit,
-    hrOpsSavings: avgAnnualHRNet,
-    legalSavings,
-    productivitySavings,
+    hrOpsSavings: avgHR,
+    legalSavings: avgLegal,
+    productivitySavings: avgProd,
   };
 }
 
@@ -287,16 +388,18 @@ export function calculate3YearProjection(
 }
 
 /**
- * Calculate multi-year projection using HR ops per-year data + annual legal/emp values
+ * Calculate multi-year projection using per-year data from all three pillars
  */
 export function calculateMultiYearProjection(
   hrOpsOutput: HROperationsOutput,
-  legalAnnual: number,
-  employeeAnnual: number,
+  legalOutput: LegalComplianceOutput,
+  employeeOutput: EmployeeExperienceOutput,
   wisqLicenseCost: number
 ): { years: { year: number; value: number; net: number }[]; total: number; netTotal: number } {
-  const years = hrOpsOutput.yearCostResults.map((yr) => {
-    const grossValue = yr.totalSavings + legalAnnual + employeeAnnual;
+  const years = hrOpsOutput.yearCostResults.map((yr, i) => {
+    const legalYr = legalOutput.yearResults?.[i]?.totalAvoidedCosts ?? (legalOutput.totalAvoidedCosts / (hrOpsOutput.yearCostResults.length || 1));
+    const exYr = employeeOutput.yearResults?.[i]?.totalMonetaryValue ?? (employeeOutput.totalMonetaryValue / (hrOpsOutput.yearCostResults.length || 1));
+    const grossValue = yr.totalSavings + legalYr + exYr;
     return {
       year: yr.year,
       value: grossValue,

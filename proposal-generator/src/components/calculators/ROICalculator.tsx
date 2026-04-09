@@ -44,6 +44,7 @@ interface ROICalculatorProps {
   estimateGenerated: boolean;
   onEstimateGeneratedChange: (value: boolean) => void;
   initialCompanyProfile?: Partial<CompanyProfile>;
+  contractTermYears?: number;
 }
 
 type TabType = 'hr-operations' | 'legal-compliance' | 'employee-experience' | 'summary';
@@ -69,6 +70,7 @@ export function ROICalculator({
   estimateGenerated,
   onEstimateGeneratedChange,
   initialCompanyProfile,
+  contractTermYears: externalContractYears,
 }: ROICalculatorProps) {
   const [activeTab, setActiveTab] = useState<TabType>('hr-operations');
   const [mode, setMode] = useState<Mode>(estimateGenerated ? 'detailed' : 'quick');
@@ -98,6 +100,17 @@ export function ROICalculator({
     initialCompanyProfile?.orgModel,
   ]);
 
+  // Contract years: inherit from pricing page, fall back to HR inputs
+  const contractYears = externalContractYears || hrInputs.contractYears || 3;
+  const yearSettings = hrInputs.yearSettings?.length ? hrInputs.yearSettings : [];
+
+  // Sync contractYears into hrInputs if changed externally
+  useEffect(() => {
+    if (externalContractYears && externalContractYears !== hrInputs.contractYears) {
+      onHRChange({ contractYears: externalContractYears });
+    }
+  }, [externalContractYears]);
+
   // Calculate ROI outputs
   const hrOutput = useMemo(() => calculateHROperationsROI(hrInputs), [hrInputs]);
 
@@ -106,23 +119,25 @@ export function ROICalculator({
     0
   );
 
+  const tier2PlusTotalCases = hrInputs.tier2PlusTotalCases || Math.round(tier2PlusConfiguredCases * 1.5);
+
   const legalOutput = useMemo(
-    () => calculateLegalComplianceROI(legalInputs, tier2PlusConfiguredCases),
-    [legalInputs, tier2PlusConfiguredCases]
+    () => calculateLegalComplianceROI(legalInputs, tier2PlusConfiguredCases, yearSettings, contractYears, tier2PlusTotalCases),
+    [legalInputs, tier2PlusConfiguredCases, yearSettings, contractYears, tier2PlusTotalCases]
   );
 
   const employeeOutput = useMemo(
-    () => calculateEmployeeExperienceROI(employeeInputs),
-    [employeeInputs]
+    () => calculateEmployeeExperienceROI(employeeInputs, yearSettings, contractYears),
+    [employeeInputs, yearSettings, contractYears]
   );
 
   const summary = useMemo(
-    () => calculateROISummary(hrOutput, legalOutput, employeeOutput, hrInputs.wisqLicenseCost, hrInputs.contractYears),
-    [hrOutput, legalOutput, employeeOutput, hrInputs.wisqLicenseCost, hrInputs.contractYears]
+    () => calculateROISummary(hrOutput, legalOutput, employeeOutput, hrInputs.wisqLicenseCost, contractYears),
+    [hrOutput, legalOutput, employeeOutput, hrInputs.wisqLicenseCost, contractYears]
   );
 
   const projection = useMemo(
-    () => calculateMultiYearProjection(hrOutput, legalOutput.totalAvoidedCosts, employeeOutput.totalMonetaryValue, hrInputs.wisqLicenseCost),
+    () => calculateMultiYearProjection(hrOutput, legalOutput, employeeOutput, hrInputs.wisqLicenseCost),
     [hrOutput, legalOutput, employeeOutput, hrInputs.wisqLicenseCost]
   );
 
@@ -338,6 +353,9 @@ export function ROICalculator({
           output={legalOutput}
           onChange={onLegalChange}
           tier2PlusConfiguredCases={tier2PlusConfiguredCases}
+          tier2PlusTotalCases={tier2PlusTotalCases}
+          yearSettings={yearSettings}
+          contractYears={contractYears}
           estimatedFields={estimatedFields}
         />
       )}
@@ -348,6 +366,8 @@ export function ROICalculator({
           output={employeeOutput}
           onChange={onEmployeeChange}
           estimatedFields={estimatedFields}
+          contractYears={contractYears}
+          yearSettings={yearSettings}
         />
       )}
 
@@ -360,6 +380,7 @@ export function ROICalculator({
           employeeOutput={employeeOutput}
           wisqLicenseCost={hrInputs.wisqLicenseCost}
           narrative={narrative}
+          contractYears={contractYears}
         />
       )}
 
@@ -515,10 +536,12 @@ function CollapsibleSection({
   title,
   children,
   defaultOpen = false,
+  badge,
 }: {
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  badge?: string;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
@@ -527,7 +550,14 @@ function CollapsibleSection({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between p-4 text-left"
       >
-        <h4 className="font-semibold text-[#03143B] text-sm">{title}</h4>
+        <div className="flex items-center gap-2">
+          <h4 className="font-semibold text-[#03143B] text-sm">{title}</h4>
+          {badge && (
+            <span className="text-sm font-bold text-white bg-[#2563eb] px-3 py-1 rounded-full">
+              {badge}
+            </span>
+          )}
+        </div>
         <span className="text-gray-400 text-sm">{isOpen ? '▼' : '▶'}</span>
       </button>
       {isOpen && <div className="px-4 pb-4 space-y-4 border-t border-gray-100 pt-4">{children}</div>}
@@ -560,6 +590,606 @@ function workforceValueToSlider(value: number): number {
 
 function workforceSliderToValue(pos: number): number {
   return WORKFORCE_STEPS[Math.max(0, Math.min(WORKFORCE_STEPS.length - 1, Math.round(pos)))];
+}
+
+// Pastel palette for workflow segments (deflected uses darker version)
+const WORKFLOW_COLORS = [
+  { pastel: '#a5b4fc', dark: '#4f46e5' }, // indigo
+  { pastel: '#86efac', dark: '#16a34a' }, // green
+  { pastel: '#fcd34d', dark: '#d97706' }, // amber
+  { pastel: '#f9a8d4', dark: '#db2777' }, // pink
+  { pastel: '#67e8f9', dark: '#0891b2' }, // cyan
+  { pastel: '#c4b5fd', dark: '#7c3aed' }, // violet
+  { pastel: '#fca5a5', dark: '#dc2626' }, // red
+  { pastel: '#fdba74', dark: '#ea580c' }, // orange
+];
+
+const TIER01_COLORS = { pastel: '#bfdbfe', dark: '#1e40af' }; // blue
+const OTHER_TIER2_COLOR = { pastel: '#e5e7eb', dark: '#6b7280' }; // gray
+
+interface RingSegment {
+  label: string;
+  value: number;
+  color: string;
+  detail: string; // formatted value shown in tooltip
+  tier: 'tier01' | 'tier2';
+}
+
+/** Inner ring segment with radial split: deflected (outer) + remaining (inner, gray) */
+interface InnerSlice {
+  name: string;
+  totalValue: number; // total determines angular share
+  deflectedValue: number;
+  remainingValue: number;
+  deflectedColor: string;
+  remainingColor: string;
+  deflectedDetail: string;
+  remainingDetail: string;
+}
+
+// Builds an arc/wedge path. When innerR is 0, draws a pie wedge to center.
+function arcPath(cx: number, cy: number, outerR: number, innerR: number, startAngle: number, endAngle: number): string {
+  const largeArc = (endAngle - startAngle) > Math.PI ? 1 : 0;
+  const x1o = cx + outerR * Math.cos(startAngle);
+  const y1o = cy + outerR * Math.sin(startAngle);
+  const x2o = cx + outerR * Math.cos(endAngle);
+  const y2o = cy + outerR * Math.sin(endAngle);
+
+  if (innerR < 0.5) {
+    // Pie wedge to center
+    return [
+      `M ${cx} ${cy}`,
+      `L ${x1o} ${y1o}`,
+      `A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2o} ${y2o}`,
+      'Z',
+    ].join(' ');
+  }
+
+  return [
+    `M ${x1o} ${y1o}`,
+    `A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2o} ${y2o}`,
+    `L ${cx + innerR * Math.cos(endAngle)} ${cy + innerR * Math.sin(endAngle)}`,
+    `A ${innerR} ${innerR} 0 ${largeArc} 0 ${cx + innerR * Math.cos(startAngle)} ${cy + innerR * Math.sin(startAngle)}`,
+    'Z',
+  ].join(' ');
+}
+
+function TwoRingChart({
+  outerSegments,
+  innerSlices,
+  size = 200,
+}: {
+  outerSegments: RingSegment[];
+  innerSlices: InnerSlice[];
+  size?: number;
+}) {
+  const [hover, setHover] = useState<{ label: string; detail: string; tier: 'tier01' | 'tier2'; x: number; y: number } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const cx = size / 2;
+  const cy = size / 2;
+  const R = size / 2 - 4; // full radius
+
+  // Compute area-proportional boundary between outer and inner rings.
+  const outerTotal = outerSegments.reduce((s, seg) => s + seg.value, 0);
+  const innerTotal = innerSlices.reduce((s, sl) => s + sl.totalValue, 0);
+  const grandTotal = outerTotal + innerTotal;
+
+  // midR is the boundary: inner disc goes from 0 to midR, outer ring from midR to R
+  const innerFrac = grandTotal > 0 ? innerTotal / grandTotal : 0;
+  const midR = R * Math.sqrt(innerFrac);
+
+  const handleMouseMove = (e: React.MouseEvent, label: string, detail: string, tier: 'tier01' | 'tier2') => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    setHover({ label, detail, tier, x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  // Render outer ring (Tier 0/1) — simple sequential segments
+  const renderOuterRing = () => {
+    const total = outerSegments.reduce((s, seg) => s + seg.value, 0);
+    if (total === 0) return null;
+    let cum = -Math.PI / 2;
+    return outerSegments.filter(s => s.value > 0).map((seg) => {
+      const angle = (seg.value / total) * Math.PI * 2;
+      const start = cum;
+      cum += angle;
+      return (
+        <path
+          key={seg.label}
+          d={arcPath(cx, cy, R, midR, start, cum)}
+          fill={seg.color}
+          stroke="white"
+          strokeWidth="1"
+          onMouseMove={(e) => handleMouseMove(e, seg.label, seg.detail, seg.tier)}
+          onMouseLeave={() => setHover(null)}
+          className="cursor-pointer transition-opacity hover:opacity-80"
+        />
+      );
+    });
+  };
+
+  // Render inner disc (Tier 2+) — each slice is split radially:
+  //   outer part (deflected, colored) + inner part (remaining, gray)
+  const renderInnerDisc = () => {
+    if (innerTotal === 0) return null;
+    let cum = -Math.PI / 2;
+    const paths: React.ReactNode[] = [];
+    for (const slice of innerSlices) {
+      if (slice.totalValue <= 0) continue;
+      const angle = (slice.totalValue / innerTotal) * Math.PI * 2;
+      const startAngle = cum;
+      const endAngle = cum + angle;
+      cum = endAngle;
+
+      // Radial split: remaining (gray) in inner area, deflected (colored) in outer area
+      // Area-proportional: splitR² - 0² = remainingFrac * midR²
+      const remainingFrac = slice.totalValue > 0 ? slice.remainingValue / slice.totalValue : 0;
+      const splitR = midR * Math.sqrt(remainingFrac);
+
+      // Remaining (gray, inner) — from 0 to splitR
+      if (slice.remainingValue > 0) {
+        paths.push(
+          <path
+            key={`${slice.name}-remaining`}
+            d={arcPath(cx, cy, splitR, 0, startAngle, endAngle)}
+            fill={slice.remainingColor}
+            stroke="white"
+            strokeWidth="1"
+            onMouseMove={(e) => handleMouseMove(e, `${slice.name} — Remaining`, slice.remainingDetail, 'tier2')}
+            onMouseLeave={() => setHover(null)}
+            className="cursor-pointer transition-opacity hover:opacity-80"
+          />
+        );
+      }
+
+      // Deflected (colored, outer) — from splitR to midR
+      if (slice.deflectedValue > 0) {
+        paths.push(
+          <path
+            key={`${slice.name}-deflected`}
+            d={arcPath(cx, cy, midR, splitR, startAngle, endAngle)}
+            fill={slice.deflectedColor}
+            stroke="white"
+            strokeWidth="1"
+            onMouseMove={(e) => handleMouseMove(e, `${slice.name} — Deflected`, slice.deflectedDetail, 'tier2')}
+            onMouseLeave={() => setHover(null)}
+            className="cursor-pointer transition-opacity hover:opacity-80"
+          />
+        );
+      }
+    }
+    return paths;
+  };
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg ref={svgRef} width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {/* Outer ring: Tier 0/1 (from midR to R) */}
+        {outerTotal > 0 && renderOuterRing()}
+        {/* Inner disc: Tier 2+ (from 0 to midR) — radially split per workflow */}
+        {innerTotal > 0 && renderInnerDisc()}
+      </svg>
+      {/* Tooltip */}
+      {hover && (
+        <div
+          className="absolute z-20 pointer-events-none bg-[#03143B] text-white text-xs rounded-md px-2.5 py-1.5 shadow-lg whitespace-nowrap"
+          style={{ left: hover.x + 12, top: hover.y - 8, transform: 'translateY(-100%)' }}
+        >
+          <div className="text-gray-400 text-[10px] mb-0.5">
+            {hover.tier === 'tier01' ? '◉ Simple Cases (Tier 0/1)' : '◈ Complex Workflows (Tier 2+)'}
+          </div>
+          <div className="font-semibold">{hover.label}</div>
+          <div className="text-gray-300">{hover.detail}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type ChartMode = 'cases' | 'time';
+
+function CaseloadDashboard({
+  inputs,
+  output,
+  onChange,
+  estimatedFields,
+  yearColors,
+}: {
+  inputs: HROperationsInputs;
+  output: ReturnType<typeof calculateHROperationsROI>;
+  onChange: (inputs: Partial<HROperationsInputs>) => void;
+  estimatedFields: Set<string>;
+  yearColors: string[];
+}) {
+  const [selectedYear, setSelectedYear] = useState(0);
+  const [chartMode, setChartMode] = useState<ChartMode>('cases');
+
+  const yearSettings = inputs.yearSettings?.length
+    ? inputs.yearSettings
+    : [{ wisqEffectiveness: 30, workforceChange: 0 }];
+  const contractYears = inputs.contractYears || 3;
+
+  // Configured workflow sum
+  const configuredWorkflowSum = inputs.tier2Workflows.reduce((s, wf) => s + wf.volumePerYear, 0);
+
+  // Auto-default tier2PlusTotalCases if not set or 0
+  const tier2PlusTotalCases = inputs.tier2PlusTotalCases || Math.round(configuredWorkflowSum * 1.5);
+  const totalCases = (inputs.tier01CasesPerYear || 0) + tier2PlusTotalCases;
+
+  // Reconciliation warning
+  const warningThreshold = Math.round(configuredWorkflowSum * 1.25);
+  const showWarning = tier2PlusTotalCases > 0 && configuredWorkflowSum > 0 && tier2PlusTotalCases < warningThreshold;
+
+  // Data for selected year
+  const yr = output.yearResults[selectedYear];
+  const volMult = yr?.volumeMultiplier ?? 1;
+
+  // --- Tier 0/1 breakdown ---
+  const tier01Total = (inputs.tier01CasesPerYear || 0) * volMult;
+  const tier01DeflectionByYear = inputs.tier01DeflectionByYear?.length
+    ? inputs.tier01DeflectionByYear
+    : yearSettings.map(s => s.wisqEffectiveness);
+  const tier01DeflRate = (tier01DeflectionByYear[selectedYear] ?? 0) / 100;
+  const tier01DeflectedCases = Math.round(tier01Total * tier01DeflRate);
+  const tier01RemainingCases = Math.round(tier01Total - tier01DeflectedCases);
+
+  // Time for Tier 0/1 (minutes)
+  const tier01DeflectedMin = tier01DeflectedCases * inputs.tier01AvgHandleTime;
+  const tier01RemainingMin = tier01RemainingCases * inputs.tier01AvgHandleTime;
+
+  // --- Tier 2+ per-workflow breakdown ---
+  interface WfBreakdown { name: string; deflectedCases: number; remainingCases: number; deflectedMin: number; remainingMin: number; colorIdx: number; }
+  const wfBreakdowns: WfBreakdown[] = [];
+  let configuredCasesScaled = 0;
+  inputs.tier2Workflows.forEach((wf, i) => {
+    const wfCases = wf.volumePerYear * volMult;
+    configuredCasesScaled += wfCases;
+    const deflArr = wf.deflectionByYear?.length ? wf.deflectionByYear : null;
+    const deflRate = (deflArr ? (deflArr[selectedYear] ?? 0) : 50) / 100;
+    const effArr = wf.effortReductionByYear?.length ? wf.effortReductionByYear : null;
+    const effRate = (effArr ? (effArr[selectedYear] ?? 0) : 75) / 100;
+    const deflected = Math.round(wfCases * deflRate);
+    const remaining = Math.round(wfCases - deflected);
+    // Time: deflected cases take 0 time; remaining cases are reduced by effort reduction
+    const remainingMin = remaining * wf.timePerWorkflowHours * 60 * (1 - effRate);
+    const deflectedMin = deflected * wf.timePerWorkflowHours * 60; // time that would have been spent
+    wfBreakdowns.push({ name: wf.name, deflectedCases: deflected, remainingCases: remaining, deflectedMin, remainingMin, colorIdx: i });
+  });
+
+  // Other unconfigured Tier 2+ cases
+  const otherTier2Cases = Math.max(0, Math.round(tier2PlusTotalCases * volMult - configuredCasesScaled));
+  // Use stored avg time per case, or fall back to weighted average of configured workflows
+  const weightedAvgHours = configuredWorkflowSum > 0
+    ? inputs.tier2Workflows.reduce((s, wf) => s + wf.timePerWorkflowHours * wf.volumePerYear, 0) / configuredWorkflowSum
+    : 0.75;
+  const avgWfHours = inputs.tier2PlusAvgTimePerCase ?? weightedAvgHours;
+  const otherTier2Min = otherTier2Cases * avgWfHours * 60;
+
+  // Total time across everything (for percentage mode)
+  const totalTimeMin = tier01DeflectedMin + tier01RemainingMin
+    + wfBreakdowns.reduce((s, wf) => s + wf.deflectedMin + wf.remainingMin, 0)
+    + otherTier2Min;
+
+  const fmtCases = (n: number) => `${n.toLocaleString()} cases`;
+  const fmtTime = (min: number) => {
+    const hrs = min / 60;
+    if (totalTimeMin === 0) return '0%';
+    return `${(min / totalTimeMin * 100).toFixed(1)}% (${Math.round(hrs).toLocaleString()} hrs)`;
+  };
+
+  // Build ring segments based on mode
+  const isCases = chartMode === 'cases';
+
+  // Gray shades for non-Wisq remaining work
+  const REMAINING_GRAY_LIGHT = '#d1d5db'; // T0/1 remaining
+  const REMAINING_GRAY_DARK = '#9ca3af';  // T2+ remaining
+
+  const outerSegments: RingSegment[] = [
+    {
+      label: 'Deflected by Wisq',
+      value: isCases ? tier01DeflectedCases : tier01DeflectedMin,
+      color: TIER01_COLORS.dark,
+      detail: isCases ? fmtCases(tier01DeflectedCases) : fmtTime(tier01DeflectedMin),
+      tier: 'tier01',
+    },
+    {
+      label: 'Remaining (human-handled)',
+      value: isCases ? tier01RemainingCases : tier01RemainingMin,
+      color: REMAINING_GRAY_LIGHT,
+      detail: isCases ? fmtCases(tier01RemainingCases) : fmtTime(tier01RemainingMin),
+      tier: 'tier01',
+    },
+  ];
+
+  const innerSlices: InnerSlice[] = [];
+  wfBreakdowns.forEach((wf) => {
+    const colors = WORKFLOW_COLORS[wf.colorIdx % WORKFLOW_COLORS.length];
+    const deflVal = isCases ? wf.deflectedCases : wf.deflectedMin;
+    const remVal = isCases ? wf.remainingCases : wf.remainingMin;
+    innerSlices.push({
+      name: wf.name,
+      totalValue: deflVal + remVal,
+      deflectedValue: deflVal,
+      remainingValue: remVal,
+      deflectedColor: colors.dark,
+      remainingColor: REMAINING_GRAY_DARK,
+      deflectedDetail: isCases ? fmtCases(wf.deflectedCases) : fmtTime(wf.deflectedMin),
+      remainingDetail: isCases ? fmtCases(wf.remainingCases) : fmtTime(wf.remainingMin),
+    });
+  });
+  if (otherTier2Cases > 0) {
+    // Unconfigured: all remaining (gray), no deflection
+    innerSlices.push({
+      name: 'Other (unconfigured)',
+      totalValue: isCases ? otherTier2Cases : otherTier2Min,
+      deflectedValue: 0,
+      remainingValue: isCases ? otherTier2Cases : otherTier2Min,
+      deflectedColor: REMAINING_GRAY_DARK,
+      remainingColor: REMAINING_GRAY_DARK,
+      deflectedDetail: '',
+      remainingDetail: isCases ? fmtCases(otherTier2Cases) : fmtTime(otherTier2Min),
+    });
+  }
+
+  // Tier-level totals for summary bubbles
+  const tier01TotalCases = Math.round(tier01Total);
+  const tier2TotalCases = Math.round(tier2PlusTotalCases * volMult);
+  const totalCasesScaled = tier01TotalCases + tier2TotalCases;
+
+  const tier01TotalMin = tier01DeflectedMin + tier01RemainingMin;
+  const tier2TotalMin = wfBreakdowns.reduce((s, wf) => s + wf.deflectedMin + wf.remainingMin, 0) + otherTier2Min;
+  const totalHrs = Math.round(totalTimeMin / 60);
+  const tier01Hrs = Math.round(tier01TotalMin / 60);
+  const tier2Hrs = Math.round(tier2TotalMin / 60);
+
+  return (
+    <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-[#03143B]/20 p-6">
+      {/* Top bar: title + year pills + mode toggle */}
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="font-semibold text-[#03143B]">Caseload & Hours Saved Dashboard</h4>
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1">
+            {Array.from({ length: contractYears }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedYear(i)}
+                className={`px-2 py-0.5 rounded text-xs font-medium transition-all ${
+                  selectedYear === i ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                style={selectedYear === i ? { backgroundColor: yearColors[i % yearColors.length] } : {}}
+              >
+                Y{i + 1}
+              </button>
+            ))}
+          </div>
+          <div className="flex bg-gray-100 rounded-md p-0.5">
+            <button
+              onClick={() => setChartMode('cases')}
+              className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
+                chartMode === 'cases' ? 'bg-white text-[#03143B] shadow-sm' : 'text-gray-500'
+              }`}
+            >
+              Cases
+            </button>
+            <button
+              onClick={() => setChartMode('time')}
+              className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
+                chartMode === 'time' ? 'bg-white text-[#03143B] shadow-sm' : 'text-gray-500'
+              }`}
+            >
+              % Time
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-6">
+        {/* LEFT: Chart (40%) */}
+        <div className="w-[40%] shrink-0 space-y-3">
+          {/* Two-ring chart */}
+          <div className="flex justify-center">
+            <TwoRingChart
+              outerSegments={outerSegments}
+              innerSlices={innerSlices}
+            />
+          </div>
+
+          {/* Tier breakdown below chart */}
+          {(() => {
+            const yr = output.yearResults[selectedYear];
+            const outerVal = outerSegments.reduce((s, seg) => s + seg.value, 0);
+            const innerVal = innerSlices.reduce((s, sl) => s + sl.totalValue, 0);
+            const gTotal = outerVal + innerVal;
+            const t01Pct = gTotal > 0 ? (outerVal / gTotal * 100).toFixed(1) : '0';
+            const t2Pct = gTotal > 0 ? (innerVal / gTotal * 100).toFixed(1) : '0';
+
+            // Tier-specific reduction %
+            const t01CurrentMin = tier01DeflectedMin + tier01RemainingMin;
+            const t01FutureMin = tier01RemainingMin; // remaining is what's left after Wisq
+            const t01RedPct = t01CurrentMin > 0 ? ((t01CurrentMin - t01FutureMin) / t01CurrentMin * 100).toFixed(0) : '0';
+
+            const t2CurrentMin = wfBreakdowns.reduce((s, wf) => s + wf.deflectedMin + wf.remainingMin, 0) + otherTier2Min;
+            const t2FutureMin = wfBreakdowns.reduce((s, wf) => s + wf.remainingMin, 0) + otherTier2Min;
+            const t2RedPct = t2CurrentMin > 0 ? ((t2CurrentMin - t2FutureMin) / t2CurrentMin * 100).toFixed(0) : '0';
+
+            const totalRedPct = yr ? (yr.workloadReductionPercent * 100).toFixed(1) : '0';
+
+            return (
+              <div className="space-y-2">
+                {/* Header row: T0/1 | T2+ */}
+                <div className="grid grid-cols-[auto_1fr_1fr] gap-x-2 items-center">
+                  <div />
+                  <div className="text-[10px] text-gray-400 font-medium text-center">◉ Simple T0/1</div>
+                  <div className="text-[10px] text-gray-400 font-medium text-center">◈ Complex T2+</div>
+                </div>
+
+                {/* Current Breakdown row */}
+                <div className="grid grid-cols-[auto_1fr_1fr] gap-x-2 gap-y-0 items-center">
+                  <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium pr-1 [writing-mode:vertical-lr] rotate-180 row-span-1 self-center"
+                  >Current</div>
+                  <div className="bg-white rounded px-3 py-1.5 text-center border border-gray-100">
+                    <div className="text-sm font-bold text-[#03143B]">{t01Pct}%</div>
+                    <div className="text-[10px] text-gray-500">
+                      {isCases ? `${tier01TotalCases.toLocaleString()} cases` : `${tier01Hrs.toLocaleString()} hrs`}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded px-3 py-1.5 text-center border border-gray-100">
+                    <div className="text-sm font-bold text-[#03143B]">{t2Pct}%</div>
+                    <div className="text-[10px] text-gray-500">
+                      {isCases ? `${tier2TotalCases.toLocaleString()} cases` : `${tier2Hrs.toLocaleString()} hrs`}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Wisq Reduction row */}
+                <div className="grid grid-cols-[auto_1fr_1fr] gap-x-2 gap-y-0 items-center">
+                  <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium pr-1 [writing-mode:vertical-lr] rotate-180 row-span-1 self-center"
+                  >Wisq</div>
+                  <div className="bg-white rounded px-3 py-1.5 text-center border border-gray-100">
+                    <div className="text-sm font-bold text-emerald-600">−{t01RedPct}%</div>
+                    <div className="text-[10px] text-gray-500">{Math.round(yr?.tier01HoursSaved ?? 0).toLocaleString()} hrs saved</div>
+                  </div>
+                  <div className="bg-white rounded px-3 py-1.5 text-center border border-gray-100">
+                    <div className="text-sm font-bold text-emerald-600">−{t2RedPct}%</div>
+                    <div className="text-[10px] text-gray-500">{Math.round(yr?.tier2HoursSaved ?? 0).toLocaleString()} hrs saved</div>
+                  </div>
+                </div>
+
+                {/* Total reduction */}
+                <div className="bg-[#03143B] rounded-lg px-3 py-2.5 text-center">
+                  <div className="text-[10px] text-white/60 font-medium uppercase tracking-wider">Total Reduction</div>
+                  <div className="text-xl font-bold text-white">−{totalRedPct}%</div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* RIGHT: Summary bubbles + Hours Saved table (60%) */}
+        <div className="flex-1 min-w-0 space-y-4">
+          {/* Summary bubbles */}
+          <div className="grid grid-cols-3 gap-3">
+            {isCases ? (
+              <>
+                <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Total Cases</p>
+                  <p className="text-xl font-bold text-[#03143B]">{totalCasesScaled.toLocaleString()}</p>
+                </div>
+                <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">◉ Tier 0/1</p>
+                  <p className="text-xl font-bold text-[#03143B]">{tier01TotalCases.toLocaleString()}</p>
+                </div>
+                <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">◈ Tier 2+</p>
+                  <p className="text-xl font-bold text-[#03143B]">{tier2TotalCases.toLocaleString()}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Total Hours</p>
+                  <p className="text-xl font-bold text-[#03143B]">{totalHrs.toLocaleString()}</p>
+                </div>
+                <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">◉ Tier 0/1</p>
+                  <p className="text-xl font-bold text-[#03143B]">{tier01Hrs.toLocaleString()} hrs</p>
+                </div>
+                <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">◈ Tier 2+</p>
+                  <p className="text-xl font-bold text-[#03143B]">{tier2Hrs.toLocaleString()} hrs</p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Hours Saved table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-2 pr-4 text-gray-600 font-medium">Year</th>
+                  <th className="text-right py-2 px-3 text-gray-600 font-medium">Current Hrs</th>
+                  <th className="text-right py-2 px-3 text-gray-600 font-medium">With Wisq</th>
+                  <th className="text-right py-2 px-3 text-gray-600 font-medium">◉ T0/1 Saved</th>
+                  <th className="text-right py-2 px-3 text-gray-600 font-medium">◈ T2+ Saved</th>
+                  <th className="text-right py-2 pl-3 text-gray-600 font-medium">Reduction</th>
+                </tr>
+              </thead>
+              <tbody>
+                {output.yearResults.map((yr) => {
+                  const isSelected = selectedYear === yr.year - 1;
+                  return (
+                    <tr
+                      key={yr.year}
+                      className={`cursor-pointer transition-colors ${isSelected ? 'ring-2 ring-[#2563eb] bg-blue-50' : 'border-b border-gray-100 hover:bg-gray-50'}`}
+                      onClick={() => setSelectedYear(yr.year - 1)}
+                      style={isSelected ? { borderLeft: `3px solid ${yearColors[(yr.year - 1) % yearColors.length]}` } : {}}
+                    >
+                      <td className={`py-2 pr-4 font-medium ${isSelected ? 'pl-2' : ''}`} style={{ color: yearColors[(yr.year - 1) % yearColors.length] }}>
+                        Year {yr.year} {isSelected && '◀'} <span className="text-gray-400 font-normal text-xs">({yr.volumeMultiplier.toFixed(2)}x)</span>
+                      </td>
+                      <td className={`text-right py-2 px-3 ${isSelected ? 'text-[#03143B] font-medium' : 'text-gray-700'}`}>{Math.round(yr.currentTotalMinutes / 60).toLocaleString()}</td>
+                      <td className={`text-right py-2 px-3 ${isSelected ? 'text-[#03143B] font-medium' : 'text-gray-700'}`}>{Math.round(yr.futureTotalMinutes / 60).toLocaleString()}</td>
+                      <td className="text-right py-2 px-3 font-semibold text-[#03143B]">{Math.round(yr.tier01HoursSaved).toLocaleString()}</td>
+                      <td className="text-right py-2 px-3 font-semibold text-[#03143B]">{Math.round(yr.tier2HoursSaved).toLocaleString()}</td>
+                      <td className="text-right py-2 pl-3 font-semibold text-[#03143B]">{(yr.workloadReductionPercent * 100).toFixed(1)}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-[#03143B]/20">
+                  <td className="py-2 pr-4 font-semibold text-[#03143B]">Total</td>
+                  <td className="text-right py-2 px-3" />
+                  <td className="text-right py-2 px-3" />
+                  <td className="text-right py-2 px-3 font-bold text-[#03143B]">{Math.round(output.yearResults.reduce((s, yr) => s + yr.tier01HoursSaved, 0)).toLocaleString()}</td>
+                  <td className="text-right py-2 px-3 font-bold text-[#03143B]">{Math.round(output.yearResults.reduce((s, yr) => s + yr.tier2HoursSaved, 0)).toLocaleString()}</td>
+                  <td className="text-right py-2 pl-3" />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditableWorkflowName({ name, onChange }: { name: string; onChange: (name: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type="text"
+        value={name}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={() => setEditing(false)}
+        onKeyDown={(e) => { if (e.key === 'Enter') setEditing(false); }}
+        className="text-sm font-medium text-gray-700 bg-white px-2 py-0.5 border border-gray-300 rounded outline-none focus:ring-2 focus:ring-[#03143B]"
+      />
+    );
+  }
+
+  return (
+    <span
+      onClick={() => setEditing(true)}
+      className="text-sm font-medium text-gray-700 cursor-pointer hover:text-[#03143B] hover:underline"
+      title="Click to rename"
+    >
+      {name}
+    </span>
+  );
 }
 
 function HROperationsTab({
@@ -596,7 +1226,7 @@ function HROperationsTab({
 
   const tier01DeflectionByYear = inputs.tier01DeflectionByYear?.length
     ? inputs.tier01DeflectionByYear
-    : yearSettings.map(s => 80 * s.wisqEffectiveness / 100);
+    : yearSettings.map(s => s.wisqEffectiveness);
 
   // When effectiveness changes at top, propagate to all unmodified sliders
   const updateYearSetting = (yearIndex: number, updates: Partial<ContractYearSettings>) => {
@@ -614,10 +1244,9 @@ function HROperationsTab({
 
     if ('wisqEffectiveness' in updates) {
       // Recompute unmodified sliders based on new effectiveness
-      // Tier 0-1 deflection
+      // Tier 0-1 deflection = effectiveness directly
       if (!modifiedFields.has('tier01Deflection')) {
-        const baseDef = 80; // base deflection ceiling
-        batch.tier01DeflectionByYear = newSettings.map(s => Math.round(baseDef * s.wisqEffectiveness / 100));
+        batch.tier01DeflectionByYear = newSettings.map(s => s.wisqEffectiveness);
       }
 
       // Workflow deflection & effort reduction
@@ -637,11 +1266,13 @@ function HROperationsTab({
     onChange(batch);
   };
 
+  // Always maintain 5 years of settings — contract length only controls display, never deletes data
   const handleContractYearsChange = (years: number) => {
+    const MAX_YEARS = 5;
     const defaultEffectiveness = [30, 60, 75, 85, 90];
     const defaultGrowth = [0, 5, 10, 12, 15];
     const newSettings: ContractYearSettings[] = [];
-    for (let i = 0; i < years; i++) {
+    for (let i = 0; i < MAX_YEARS; i++) {
       newSettings.push(
         (inputs.yearSettings || [])[i] ?? {
           wisqEffectiveness: defaultEffectiveness[i] ?? 90,
@@ -649,11 +1280,9 @@ function HROperationsTab({
         }
       );
     }
-    // Resize all per-year arrays
-    const baseDef01 = 80;
-
+    // Always keep all 5 years of per-year arrays
     const newTier01 = newSettings.map((s, i) =>
-      tier01DeflectionByYear[i] ?? Math.round(baseDef01 * s.wisqEffectiveness / 100)
+      tier01DeflectionByYear[i] ?? s.wisqEffectiveness
     );
     const newWorkflows = inputs.tier2Workflows.map(wf => ({
       ...wf,
@@ -671,7 +1300,7 @@ function HROperationsTab({
       tier01DeflectionByYear: newTier01,
       tier2Workflows: newWorkflows,
     });
-    setModifiedFields(new Set()); // reset on contract length change
+    setModifiedFields(new Set());
   };
 
   return (
@@ -684,21 +1313,20 @@ function HROperationsTab({
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h4 className="font-semibold text-[#03143B] mb-4">Contract & Wisq Effectiveness</h4>
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Contract Length (Years)</label>
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <button
-                key={n}
-                onClick={() => handleContractYearsChange(n)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  contractYears === n
-                    ? 'bg-[#03143B] text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {n}
-              </button>
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700">{contractYears}-Year Contract</span>
+          <span className="text-xs text-gray-400">(set on Pricing page)</span>
+          <div className="flex items-center gap-2 ml-4">
+            {yearSettings.map((_, i) => (
+              <div key={i} className="flex items-center gap-1">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: YEAR_COLORS[i % YEAR_COLORS.length] }}
+                />
+                <span className="text-xs font-medium" style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}>
+                  Y{i + 1}
+                </span>
+              </div>
             ))}
           </div>
         </div>
@@ -707,50 +1335,74 @@ function HROperationsTab({
           <div>
             <p className="text-sm font-medium text-gray-700 mb-2">Wisq Effectiveness by Year</p>
             <p className="text-xs text-gray-500 mb-3">
-              How effective Wisq is at reaching max deflection/effort reduction rates each year
+              How effective Wisq is at reaching max deflection/effort reduction rates each year. Drag each year&apos;s handle along the single track.
             </p>
-            <div className="space-y-3">
-              {yearSettings.map((setting, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <span
-                    className="text-sm font-medium w-14 shrink-0"
-                    style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}
-                  >
-                    Year {i + 1}
-                  </span>
-                  <div className="flex-1 relative">
-                    <input
-                      type="range"
-                      value={setting.wisqEffectiveness}
-                      onChange={(e) => updateYearSetting(i, { wisqEffectiveness: Number(e.target.value) })}
-                      min={0}
-                      max={100}
-                      className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                      style={{
-                        accentColor: YEAR_COLORS[i % YEAR_COLORS.length],
-                        background: `linear-gradient(to right, ${YEAR_COLORS[i % YEAR_COLORS.length]} ${setting.wisqEffectiveness}%, #e5e7eb ${setting.wisqEffectiveness}%)`,
-                      }}
-                    />
-                    {/* 80% soft cap marker */}
-                    <div
-                      className="absolute top-0 h-2 w-px bg-gray-400 pointer-events-none"
-                      style={{ left: '80%' }}
-                    />
-                    <div
-                      className="absolute text-[9px] text-gray-400 pointer-events-none -translate-x-1/2"
-                      style={{ left: '80%', top: '10px' }}
-                    >
-                      80%
-                    </div>
-                  </div>
-                  <span
-                    className="text-sm font-semibold w-10 text-right"
-                    style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}
-                  >
-                    {setting.wisqEffectiveness}%
-                  </span>
+            {/* Single-track multi-thumb slider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 relative h-5">
+                {/* Track background */}
+                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-2 rounded-lg bg-gray-200" />
+                {/* 80% soft cap marker */}
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 h-2 w-px bg-gray-400 pointer-events-none z-10"
+                  style={{ left: '80%' }}
+                />
+                <div
+                  className="absolute text-[9px] text-gray-400 pointer-events-none -translate-x-1/2 z-10"
+                  style={{ left: '80%', top: '16px' }}
+                >
+                  80%
                 </div>
-              ))}
+                {/* Colored fill from 0 to max effectiveness */}
+                {(() => {
+                  const sorted = yearSettings
+                    .map((s, i) => ({ eff: s.wisqEffectiveness, color: YEAR_COLORS[i % YEAR_COLORS.length] }))
+                    .sort((a, b) => a.eff - b.eff);
+                  let prev = 0;
+                  return sorted.map((seg, idx) => {
+                    const el = (
+                      <div
+                        key={idx}
+                        className="absolute top-1/2 -translate-y-1/2 h-2"
+                        style={{
+                          left: `${prev}%`,
+                          width: `${seg.eff - prev}%`,
+                          backgroundColor: seg.color,
+                          borderRadius: prev === 0 ? '4px 0 0 4px' : idx === sorted.length - 1 ? '0 4px 4px 0' : '0',
+                          opacity: 0.35,
+                        }}
+                      />
+                    );
+                    prev = seg.eff;
+                    return el;
+                  });
+                })()}
+                {/* Range inputs stacked on the same track */}
+                {yearSettings.map((setting, i) => (
+                  <input
+                    key={i}
+                    type="range"
+                    value={setting.wisqEffectiveness}
+                    onChange={(e) => updateYearSetting(i, { wisqEffectiveness: Number(e.target.value) })}
+                    min={0}
+                    max={100}
+                    className="year-thumb"
+                    style={{ '--thumb-color': YEAR_COLORS[i % YEAR_COLORS.length] } as React.CSSProperties}
+                  />
+                ))}
+              </div>
+              {/* Value labels */}
+              <div className="flex flex-col gap-0 shrink-0">
+                {yearSettings.map((setting, i) => (
+                  <span
+                    key={i}
+                    className="text-xs font-semibold leading-tight"
+                    style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}
+                  >
+                    Y{i + 1}: {setting.wisqEffectiveness}%
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -759,69 +1411,87 @@ function HROperationsTab({
             <p className="text-xs text-gray-500 mb-3">
               Expected growth or shrinkage relative to today (affects case volume)
             </p>
-            <div className="space-y-3">
-              {yearSettings.map((setting, i) => {
-                const sliderPos = workforceValueToSlider(setting.workforceChange);
-                const color = YEAR_COLORS[i % YEAR_COLORS.length];
-                const fillPct = (sliderPos / (WORKFORCE_STEPS.length - 1)) * 100;
-                return (
-                  <div key={i} className="flex items-center gap-3">
-                    <span
-                      className="text-sm font-medium w-14 shrink-0"
-                      style={{ color }}
-                    >
-                      Year {i + 1}
-                    </span>
-                    <input
-                      type="range"
-                      value={sliderPos}
-                      onChange={(e) => {
-                        const val = workforceSliderToValue(Number(e.target.value));
-                        updateYearSetting(i, { workforceChange: val });
-                      }}
-                      min={0}
-                      max={WORKFORCE_STEPS.length - 1}
-                      step={1}
-                      className="flex-1 h-2 rounded-lg appearance-none cursor-pointer"
-                      style={{
-                        accentColor: color,
-                        background: `linear-gradient(to right, ${color} ${fillPct}%, #e5e7eb ${fillPct}%)`,
-                      }}
-                    />
-                    <span
-                      className="text-sm font-semibold w-14 text-right"
-                      style={{ color }}
-                    >
-                      {setting.workforceChange > 0 ? '+' : ''}{setting.workforceChange}%
-                    </span>
-                  </div>
-                );
-              })}
+            {/* Single-track multi-thumb slider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 relative h-5">
+                {/* Track background */}
+                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-2 rounded-lg bg-gray-200" />
+                {/* 0% center marker */}
+                {(() => {
+                  const zeroPct = (workforceValueToSlider(0) / (WORKFORCE_STEPS.length - 1)) * 100;
+                  return (
+                    <>
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 h-2 w-px bg-gray-400 pointer-events-none z-10"
+                        style={{ left: `${zeroPct}%` }}
+                      />
+                      <div
+                        className="absolute text-[9px] text-gray-400 pointer-events-none -translate-x-1/2 z-10"
+                        style={{ left: `${zeroPct}%`, top: '16px' }}
+                      >
+                        0%
+                      </div>
+                    </>
+                  );
+                })()}
+                {/* Range inputs stacked on the same track */}
+                {yearSettings.map((setting, i) => (
+                  <input
+                    key={i}
+                    type="range"
+                    value={workforceValueToSlider(setting.workforceChange)}
+                    onChange={(e) => {
+                      const val = workforceSliderToValue(Number(e.target.value));
+                      updateYearSetting(i, { workforceChange: val });
+                    }}
+                    min={0}
+                    max={WORKFORCE_STEPS.length - 1}
+                    step={1}
+                    className="year-thumb"
+                    style={{ '--thumb-color': YEAR_COLORS[i % YEAR_COLORS.length] } as React.CSSProperties}
+                  />
+                ))}
+              </div>
+              {/* Value labels */}
+              <div className="flex flex-col gap-0 shrink-0">
+                {yearSettings.map((setting, i) => (
+                  <span
+                    key={i}
+                    className="text-xs font-semibold leading-tight"
+                    style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}
+                  >
+                    Y{i + 1}: {setting.workforceChange > 0 ? '+' : ''}{setting.workforceChange}%
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Section 2 & 3: Case Inputs */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Tier 0-1 Simple Cases */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h4 className="font-semibold text-[#03143B] mb-4">Tier 0-1: Simple Cases</h4>
-          <div className="space-y-4">
+      {/* Caseload Dashboard: Donut chart (30%) + Hours Saved (70%) */}
+      <CaseloadDashboard
+        inputs={inputs}
+        output={output}
+        onChange={onChange}
+        estimatedFields={estimatedFields}
+        yearColors={YEAR_COLORS}
+      />
+
+      {/* Tier 0-1: Parameters (full width) */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h4 className="font-semibold text-[#03143B] mb-4">Tier 0-1: Simple Cases</h4>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
             <InputField
-              label="Tier 0-1 Cases per Year"
+              label="Tier 0/1 Cases per Year"
               value={inputs.tier01CasesPerYear || 0}
               onChange={(v) => onChange({ tier01CasesPerYear: v })}
               type="formatted-number"
             />
             <SourceCitation fieldKey="tier01CasesPerYear" estimatedFields={estimatedFields} />
-            <div className="flex gap-3 flex-wrap -mt-2">
-              {output.yearResults.map((yr, i) => (
-                <span key={i} className="text-[10px] font-medium" style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}>
-                  Y{yr.year}: {Math.round(yr.tier01Cases).toLocaleString()} cases
-                </span>
-              ))}
-            </div>
+          </div>
+          <div>
             <InputField
               label="Avg Handle Time (minutes)"
               value={inputs.tier01AvgHandleTime}
@@ -829,173 +1499,192 @@ function HROperationsTab({
               type="number"
             />
             <SourceCitation fieldKey="tier01AvgHandleTime" estimatedFields={estimatedFields} />
-            <MultiYearSlider
-              label="Deflection Rate by Year"
-              values={tier01DeflectionByYear}
-              onChange={(yearIdx, val) => {
-                setModifiedFields(prev => new Set(prev).add('tier01Deflection'));
-                const newArr = [...tier01DeflectionByYear];
-                newArr[yearIdx] = val;
-                onChange({ tier01DeflectionByYear: newArr });
-              }}
-              yearColors={YEAR_COLORS}
-            />
           </div>
         </div>
+        <MultiYearSlider
+          label="Deflection Rate by Year"
+          values={tier01DeflectionByYear}
+          onChange={(yearIdx, val) => {
+            setModifiedFields(prev => new Set(prev).add('tier01Deflection'));
+            const newArr = [...tier01DeflectionByYear];
+            newArr[yearIdx] = val;
+            onChange({ tier01DeflectionByYear: newArr });
+          }}
+          yearColors={YEAR_COLORS}
+        />
+      </div>
 
-        {/* Tier 2+ Complex Workflows */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h4 className="font-semibold text-[#03143B]">Tier 2+: Complex Workflows</h4>
+      {/* Tier 2+: Complex Workflows (full width) */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h4 className="font-semibold text-[#03143B]">Tier 2+: Complex Workflows</h4>
+          <button
+            onClick={onAddWorkflow}
+            className="px-3 py-1 text-sm bg-[#03143B] text-white rounded-md hover:bg-[#020e29] transition-colors"
+          >
+            + Add Workflow
+          </button>
+        </div>
+
+        {/* Top row: Total cases + Avg time per case */}
+        {(() => {
+          const wfSum = inputs.tier2Workflows.reduce((s, wf) => s + wf.volumePerYear, 0);
+          const t2Total = inputs.tier2PlusTotalCases || Math.round(wfSum * 1.5);
+          const isExactMatch = wfSum > 0 && t2Total === wfSum;
+          const ratio = wfSum > 0 ? t2Total / wfSum : 0;
+          const weightedAvg = wfSum > 0
+            ? inputs.tier2Workflows.reduce((s, wf) => s + wf.timePerWorkflowHours * wf.volumePerYear, 0) / wfSum
+            : 0.75;
+          const currentAvg = inputs.tier2PlusAvgTimePerCase ?? weightedAvg;
+          return (
+            <div className="mb-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <InputField
+                    label="Total Tier 2+ Cases per Year"
+                    value={t2Total}
+                    onChange={(v) => onChange({ tier2PlusTotalCases: v })}
+                    type="formatted-number"
+                  />
+                  {wfSum > 0 && (() => {
+                    if (isExactMatch) {
+                      return (
+                        <p className="text-[10px] text-emerald-600 mt-1">
+                          ✓ Total equals configured cases — estimating based on current Wisq workflows.
+                        </p>
+                      );
+                    }
+                    if (ratio >= 1.5) {
+                      return (
+                        <p className="text-[10px] text-emerald-600 mt-1">
+                          ✓ Total ({t2Total.toLocaleString()}) is {Math.round(ratio * 100)}% of configured ({wfSum.toLocaleString()}) — good coverage estimate.
+                        </p>
+                      );
+                    }
+                    if (ratio >= 1.25) {
+                      return (
+                        <p className="text-[10px] text-amber-500 mt-1">
+                          ⚠ Total ({t2Total.toLocaleString()}) is only {Math.round(ratio * 100)}% of configured ({wfSum.toLocaleString()}). You likely have more unconfigured T2+ cases.
+                        </p>
+                      );
+                    }
+                    return (
+                      <p className="text-[10px] text-red-600 mt-1">
+                        ⚠ Total ({t2Total.toLocaleString()}) is only {Math.round(ratio * 100)}% of configured ({wfSum.toLocaleString()}). This should be higher — total must include all T2+ cases, not just configured ones.
+                      </p>
+                    );
+                  })()}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Avg Time per Case (hours)</label>
+                  <input
+                    type="number"
+                    value={currentAvg}
+                    onChange={(e) => onChange({ tier2PlusAvgTimePerCase: Number(e.target.value) || 0 })}
+                    step={0.25}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#03143B]"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    Weighted avg: {weightedAvg.toFixed(2)} hrs ({Math.round(weightedAvg * 60)} min)
+                    {inputs.tier2PlusAvgTimePerCase != null && Math.abs(inputs.tier2PlusAvgTimePerCase - weightedAvg) > 0.01 && (
+                      <button
+                        onClick={() => onChange({ tier2PlusAvgTimePerCase: undefined })}
+                        className="ml-2 text-[#4d65ff] hover:underline"
+                      >
+                        Reset to weighted avg
+                      </button>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Workflow panels */}
+        {inputs.tier2Workflows.length === 0 ? (
+          <div className="text-center p-8 border-2 border-dashed border-gray-200 rounded-lg">
+            <p className="text-gray-500 mb-3">No Tier 2+ workflows configured</p>
             <button
               onClick={onAddWorkflow}
-              className="px-3 py-1 text-sm bg-[#03143B] text-white rounded-md hover:bg-[#020e29] transition-colors"
+              className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
             >
-              + Add Workflow
+              Add Your First Workflow
             </button>
           </div>
-
-          {inputs.tier2Workflows.length === 0 ? (
-            <div className="text-center p-8 border-2 border-dashed border-gray-200 rounded-lg">
-              <p className="text-gray-500 mb-3">No Tier 2+ workflows configured</p>
-              <button
-                onClick={onAddWorkflow}
-                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-              >
-                Add Your First Workflow
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {inputs.tier2Workflows.map((workflow, index) => (
-                <div key={workflow.id} className="p-3 bg-gray-50 rounded-lg space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-700">Workflow {index + 1}</span>
-                    <button
-                      onClick={() => onRemoveWorkflow(workflow.id)}
-                      className="text-gray-400 hover:text-red-500 transition-colors"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Name</label>
-                      <input
-                        type="text"
-                        value={workflow.name}
-                        onChange={(e) => onUpdateWorkflow(workflow.id, { name: e.target.value })}
-                        placeholder="Name"
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Volume/Year</label>
-                      <input
-                        type="number"
-                        value={workflow.volumePerYear}
-                        onChange={(e) =>
-                          onUpdateWorkflow(workflow.id, { volumePerYear: Number(e.target.value) })
-                        }
-                        placeholder="Volume/yr"
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Hours/Case</label>
-                      <input
-                        type="number"
-                        value={workflow.timePerWorkflowHours}
-                        onChange={(e) =>
-                          onUpdateWorkflow(workflow.id, {
-                            timePerWorkflowHours: Number(e.target.value),
-                          })
-                        }
-                        placeholder="Hours"
-                        step={0.25}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-3 flex-wrap -mt-0.5">
-                    {output.yearResults.map((yr, i) => (
-                      <span key={i} className="text-[10px] font-medium" style={{ color: YEAR_COLORS[i % YEAR_COLORS.length] }}>
-                        Y{yr.year}: {Math.round(workflow.volumePerYear * yr.volumeMultiplier).toLocaleString()} cases
-                      </span>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    <MultiYearSlider
-                      label="Deflection Rate"
-                      values={workflow.deflectionByYear?.length ? workflow.deflectionByYear : yearSettings.map(s => 40 * s.wisqEffectiveness / 100)}
-                      onChange={(yearIdx, val) => {
-                        setModifiedFields(prev => new Set(prev).add(`wf-defl-${workflow.id}`));
-                        const newArr = [...(workflow.deflectionByYear || yearSettings.map(s => 40 * s.wisqEffectiveness / 100))];
-                        newArr[yearIdx] = val;
-                        onUpdateWorkflow(workflow.id, { deflectionByYear: newArr });
-                      }}
-                      yearColors={YEAR_COLORS}
+        ) : (
+          <div className={`grid gap-3 ${inputs.tier2Workflows.length >= 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {inputs.tier2Workflows.map((workflow) => (
+              <div key={workflow.id} className="p-3 bg-gray-50 rounded-lg space-y-2">
+                <div className="flex justify-between items-center">
+                  <EditableWorkflowName
+                    name={workflow.name}
+                    onChange={(name) => onUpdateWorkflow(workflow.id, { name })}
+                  />
+                  <button
+                    onClick={() => onRemoveWorkflow(workflow.id)}
+                    className="text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Volume/Year</label>
+                    <input
+                      type="number"
+                      value={workflow.volumePerYear}
+                      onChange={(e) =>
+                        onUpdateWorkflow(workflow.id, { volumePerYear: Number(e.target.value) })
+                      }
+                      placeholder="Volume/yr"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                     />
-                    <MultiYearSlider
-                      label="Effort Reduction"
-                      values={workflow.effortReductionByYear?.length ? workflow.effortReductionByYear : yearSettings.map(s => 80 * s.wisqEffectiveness / 100)}
-                      onChange={(yearIdx, val) => {
-                        setModifiedFields(prev => new Set(prev).add(`wf-effort-${workflow.id}`));
-                        const newArr = [...(workflow.effortReductionByYear || yearSettings.map(s => 80 * s.wisqEffectiveness / 100))];
-                        newArr[yearIdx] = val;
-                        onUpdateWorkflow(workflow.id, { effortReductionByYear: newArr });
-                      }}
-                      yearColors={YEAR_COLORS}
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Hours/Case</label>
+                    <input
+                      type="number"
+                      value={workflow.timePerWorkflowHours}
+                      onChange={(e) =>
+                        onUpdateWorkflow(workflow.id, {
+                          timePerWorkflowHours: Number(e.target.value),
+                        })
+                      }
+                      placeholder="Hours"
+                      step={0.25}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                     />
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Hours Saved by Year (right after case inputs) */}
-      <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-[#03143B]/20 p-6">
-        <h4 className="font-semibold text-[#03143B] mb-4">Hours Saved by Year (Current vs. Wisq)</h4>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-2 pr-4 text-gray-600 font-medium">Year</th>
-                <th className="text-right py-2 px-4 text-gray-600 font-medium">Current Hours</th>
-                <th className="text-right py-2 px-4 text-gray-600 font-medium">With Wisq</th>
-                <th className="text-right py-2 px-4 text-gray-600 font-medium">Hours Saved</th>
-                <th className="text-right py-2 px-4 text-gray-600 font-medium">Cases Deflected</th>
-                <th className="text-right py-2 pl-4 text-gray-600 font-medium">Workload Reduction</th>
-              </tr>
-            </thead>
-            <tbody>
-              {output.yearResults.map((yr) => (
-                <tr key={yr.year} className="border-b border-gray-100">
-                  <td className="py-2 pr-4 font-medium" style={{ color: YEAR_COLORS[(yr.year - 1) % YEAR_COLORS.length] }}>
-                    Year {yr.year} <span className="text-gray-400 font-normal text-xs">({yr.volumeMultiplier.toFixed(2)}x)</span>
-                  </td>
-                  <td className="text-right py-2 px-4 text-gray-700">{Math.round(yr.currentTotalMinutes / 60).toLocaleString()}</td>
-                  <td className="text-right py-2 px-4 text-gray-700">{Math.round(yr.futureTotalMinutes / 60).toLocaleString()}</td>
-                  <td className="text-right py-2 px-4 font-semibold text-[#03143B]">{Math.round(yr.hoursSaved).toLocaleString()}</td>
-                  <td className="text-right py-2 px-4 text-gray-700">{Math.round(yr.casesDeflected).toLocaleString()}</td>
-                  <td className="text-right py-2 pl-4 font-semibold text-[#03143B]">{(yr.workloadReductionPercent * 100).toFixed(1)}%</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-[#03143B]/20">
-                <td className="py-2 pr-4 font-semibold text-[#03143B]">Total</td>
-                <td className="text-right py-2 px-4" />
-                <td className="text-right py-2 px-4" />
-                <td className="text-right py-2 px-4 font-bold text-[#03143B]">{Math.round(output.totalHoursSavedOverContract).toLocaleString()}</td>
-                <td className="text-right py-2 px-4" />
-                <td className="text-right py-2 pl-4" />
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <MultiYearSlider
+                    label="Deflection Rate"
+                    values={workflow.deflectionByYear?.length ? workflow.deflectionByYear : yearSettings.map(s => 40 * s.wisqEffectiveness / 100)}
+                    onChange={(yearIdx, val) => {
+                      setModifiedFields(prev => new Set(prev).add(`wf-defl-${workflow.id}`));
+                      const newArr = [...(workflow.deflectionByYear || yearSettings.map(s => 40 * s.wisqEffectiveness / 100))];
+                      newArr[yearIdx] = val;
+                      onUpdateWorkflow(workflow.id, { deflectionByYear: newArr });
+                    }}
+                    yearColors={YEAR_COLORS}
+                  />
+                  <MultiYearSlider
+                    label="Effort Reduction"
+                    values={workflow.effortReductionByYear?.length ? workflow.effortReductionByYear : yearSettings.map(s => 80 * s.wisqEffectiveness / 100)}
+                    onChange={(yearIdx, val) => {
+                      setModifiedFields(prev => new Set(prev).add(`wf-effort-${workflow.id}`));
+                      const newArr = [...(workflow.effortReductionByYear || yearSettings.map(s => 80 * s.wisqEffectiveness / 100))];
+                      newArr[yearIdx] = val;
+                      onUpdateWorkflow(workflow.id, { effortReductionByYear: newArr });
+                    }}
+                    yearColors={YEAR_COLORS}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Cost Parameters */}
@@ -1159,14 +1848,14 @@ function HROperationsTab({
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-2 pr-4 text-gray-600 font-medium">Year</th>
-                <th className="text-right py-2 px-4 text-gray-600 font-medium">Headcount Savings</th>
+                <th className="text-right py-2 px-4 text-gray-600 font-medium">◉ T0/1 Savings</th>
+                <th className="text-right py-2 px-4 text-gray-600 font-medium">◈ T2+ Savings</th>
                 {output.yearCostResults.some((yr) => yr.managerSavings > 0) && (
                   <th className="text-right py-2 px-4 text-gray-600 font-medium">Manager Savings</th>
                 )}
                 {output.yearCostResults.some((yr) => yr.triageSavings > 0) && (
                   <th className="text-right py-2 px-4 text-gray-600 font-medium">Triage Savings</th>
                 )}
-                <th className="text-right py-2 px-4 text-gray-600 font-medium">FTE Reduction</th>
                 <th className="text-right py-2 pl-4 text-gray-600 font-medium">Total Savings</th>
               </tr>
             </thead>
@@ -1176,14 +1865,14 @@ function HROperationsTab({
                   <td className="py-2 pr-4 font-medium" style={{ color: YEAR_COLORS[(yr.year - 1) % YEAR_COLORS.length] }}>
                     Year {yr.year} <span className="text-gray-400 font-normal text-xs">({output.yearResults[yr.year - 1]?.volumeMultiplier.toFixed(2)}x)</span>
                   </td>
-                  <td className="text-right py-2 px-4 text-gray-700">{formatCurrency(yr.headcountSavings)}</td>
+                  <td className="text-right py-2 px-4 text-gray-700">{formatCurrency(yr.tier01Savings)}</td>
+                  <td className="text-right py-2 px-4 text-gray-700">{formatCurrency(yr.tier2Savings)}</td>
                   {output.yearCostResults.some((y) => y.managerSavings > 0) && (
                     <td className="text-right py-2 px-4 text-gray-700">{formatCurrency(yr.managerSavings)}</td>
                   )}
                   {output.yearCostResults.some((y) => y.triageSavings > 0) && (
                     <td className="text-right py-2 px-4 text-gray-700">{formatCurrency(yr.triageSavings)}</td>
                   )}
-                  <td className="text-right py-2 px-4 text-gray-700">{yr.fteReduction.toFixed(1)} FTE</td>
                   <td className="text-right py-2 pl-4 font-semibold text-[#03143B]">{formatCurrency(yr.totalSavings)}</td>
                 </tr>
               ))}
@@ -1191,14 +1880,14 @@ function HROperationsTab({
             <tfoot>
               <tr className="border-t-2 border-[#03143B]/20">
                 <td className="py-2 pr-4 font-semibold text-[#03143B]">Contract Total</td>
-                <td className="text-right py-2 px-4 font-bold text-[#03143B]">{formatCurrency(output.headcountReductionSavings)}</td>
+                <td className="text-right py-2 px-4 font-bold text-[#03143B]">{formatCurrency(output.yearCostResults.reduce((s, yr) => s + yr.tier01Savings, 0))}</td>
+                <td className="text-right py-2 px-4 font-bold text-[#03143B]">{formatCurrency(output.yearCostResults.reduce((s, yr) => s + yr.tier2Savings, 0))}</td>
                 {output.yearCostResults.some((y) => y.managerSavings > 0) && (
                   <td className="text-right py-2 px-4 font-bold text-[#03143B]">{formatCurrency(output.managerTimeSavings)}</td>
                 )}
                 {output.yearCostResults.some((y) => y.triageSavings > 0) && (
                   <td className="text-right py-2 px-4 font-bold text-[#03143B]">{formatCurrency(output.triageSavings)}</td>
                 )}
-                <td className="text-right py-2 px-4" />
                 <td className="text-right py-2 pl-4 font-bold text-[#03143B]">
                   {formatCurrency(output.headcountReductionSavings + output.managerTimeSavings + output.triageSavings)}
                 </td>
@@ -1220,24 +1909,70 @@ function LegalComplianceTab({
   output,
   onChange,
   tier2PlusConfiguredCases,
+  tier2PlusTotalCases,
+  yearSettings,
+  contractYears,
   estimatedFields,
 }: {
   inputs: LegalComplianceInputs;
   output: ReturnType<typeof calculateLegalComplianceROI>;
   onChange: (inputs: Partial<LegalComplianceInputs>) => void;
   tier2PlusConfiguredCases: number;
+  tier2PlusTotalCases: number;
+  yearSettings: ContractYearSettings[];
+  contractYears: number;
   estimatedFields: Set<string>;
 }) {
+  const [selectedYear, setSelectedYear] = useState(0);
+  const yearColors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
+
+  const wisqCoverage = tier2PlusTotalCases > 0 ? Math.min(1, tier2PlusConfiguredCases / tier2PlusTotalCases) : 0;
+  const s = yearSettings[selectedYear] ?? yearSettings[yearSettings.length - 1] ?? { workforceChange: 0 };
+  const volMult = 1 + s.workforceChange / 100;
+  const baseHighStakes = inputs.useManualCaseVolume
+    ? inputs.manualHighStakesCases
+    : tier2PlusTotalCases * (inputs.highStakesPercent / 100);
+  const scaledHighStakes = baseHighStakes * volMult;
+  const yr = output.yearResults?.[selectedYear] ?? output.yearResults?.[0];
+
   return (
     <div className="space-y-6">
-      <p className="text-gray-600">
-        Quantify the financial impact of accurate, compliant HR guidance. Every incorrect answer in
-        high-stakes situations carries legal and compliance risk.
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-gray-600">
+          Quantify the financial impact of accurate, compliant HR guidance. Every incorrect answer in
+          high-stakes situations carries legal and compliance risk.
+        </p>
+        {contractYears > 1 && (
+          <div className="flex items-center gap-1 ml-4 shrink-0">
+            {Array.from({ length: contractYears }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedYear(i)}
+                className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                  selectedYear === i ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                style={selectedYear === i ? { backgroundColor: yearColors[i % yearColors.length] } : {}}
+              >
+                Y{i + 1}
+                {(yearSettings[i]?.workforceChange ?? 0) !== 0 && (
+                  <span className="ml-0.5 opacity-70">
+                    ({yearSettings[i].workforceChange > 0 ? '+' : ''}{yearSettings[i].workforceChange}%)
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h4 className="font-semibold text-[#03143B] mb-4">Case Volume & Risk Inputs</h4>
+          <div className="flex items-center gap-3 mb-4">
+            <h4 className="font-semibold text-[#03143B]">Case Volume & Risk Inputs</h4>
+            <span className="text-sm font-bold text-white bg-[#2563eb] px-3 py-1 rounded-full">
+              {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()} Wisq cases
+            </span>
+          </div>
           <div className="space-y-4">
             <div className="p-3 bg-gray-50 rounded">
               <p className="text-sm text-gray-600">Configured Tier 2+ Cases</p>
@@ -1280,11 +2015,31 @@ function LegalComplianceTab({
               type="currency"
             />
             <SourceCitation fieldKey="avgLegalCostPerIncident" estimatedFields={estimatedFields} />
+            <div className="mt-3 p-2 bg-blue-50 rounded text-xs text-gray-500 font-mono space-y-0.5">
+              {tier2PlusConfiguredCases === tier2PlusTotalCases ? (
+                inputs.useManualCaseVolume
+                  ? <p>{Math.round(scaledHighStakes).toLocaleString()} high-stakes cases (manual) → Wisq handles all {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()}</p>
+                  : <p>{tier2PlusConfiguredCases.toLocaleString()} cases × {inputs.highStakesPercent}% = {Math.round(scaledHighStakes).toLocaleString()} high-stakes → Wisq handles all {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()}</p>
+              ) : (
+                <>
+                  <p>{tier2PlusConfiguredCases.toLocaleString()} configured / {tier2PlusTotalCases.toLocaleString()} total T2+ = {(wisqCoverage * 100).toFixed(0)}% coverage</p>
+                  {inputs.useManualCaseVolume
+                    ? <p>{Math.round(scaledHighStakes).toLocaleString()} high-stakes (manual) × {(wisqCoverage * 100).toFixed(0)}% = {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()} Wisq handles</p>
+                    : <p>{tier2PlusTotalCases.toLocaleString()} × {inputs.highStakesPercent}% = {Math.round(baseHighStakes).toLocaleString()} high-stakes{volMult !== 1 ? ` × ${volMult.toFixed(2)}x growth` : ''} × {(wisqCoverage * 100).toFixed(0)}% = {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()} Wisq handles</p>
+                  }
+                </>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h4 className="font-semibold text-[#03143B] mb-4">Accuracy Comparison</h4>
+          <div className="flex items-center gap-3 mb-4">
+            <h4 className="font-semibold text-[#03143B]">Accuracy Comparison</h4>
+            <span className="text-sm font-bold text-white bg-[#2563eb] px-3 py-1 rounded-full">
+              {formatCurrency(yr?.avoidedLegalCosts ?? 0)}/yr
+            </span>
+          </div>
           <div className="space-y-4">
             <SliderField
               label="Current HR Accuracy Rate"
@@ -1308,13 +2063,29 @@ function LegalComplianceTab({
                 +{(inputs.wisqAccuracyRate - inputs.currentAccuracyRate).toFixed(1)}%
               </p>
             </div>
+            {yr && (() => {
+              const wisqHandledYr = Math.round(yr.highStakesCases * wisqCoverage);
+              const baseErr = (100 - inputs.currentAccuracyRate).toFixed(1);
+              const wisqErr = (100 - inputs.wisqAccuracyRate).toFixed(1);
+              return (
+                <div className="mt-3 p-2 bg-blue-50 rounded text-xs text-gray-500 font-mono space-y-0.5">
+                  <p>{wisqHandledYr.toLocaleString()} cases × ({baseErr}% baseline − {wisqErr}% Wisq) error rate = {yr.avoidedIncidents.toFixed(1)} incidents avoided</p>
+                  <p>{yr.avoidedIncidents.toFixed(1)} incidents × {formatCurrency(inputs.avgLegalCostPerIncident)}/incident = {formatCurrency(yr.avoidedLegalCosts)}/yr</p>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
 
       {/* Admin Cost Component */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h4 className="font-semibold text-[#03143B] mb-4">Administrative Cost Component</h4>
+        <div className="flex items-center gap-3 mb-4">
+          <h4 className="font-semibold text-[#03143B]">Administrative Cost Component</h4>
+          <span className="text-sm font-bold text-white bg-[#2563eb] px-3 py-1 rounded-full">
+            {formatCurrency(yr?.adminCostSavings ?? 0)}/yr
+          </span>
+        </div>
         <p className="text-sm text-gray-600 mb-4">
           Wisq reduces administrative overhead with audit-tight documentation and case tracking.
         </p>
@@ -1333,12 +2104,21 @@ function LegalComplianceTab({
             type="currency"
           />
         </div>
+        {yr && (() => {
+          const wisqHandledYr = Math.round(yr.highStakesCases * wisqCoverage);
+          return (
+            <div className="mt-3 p-2 bg-blue-50 rounded text-xs text-gray-500 font-mono">
+              {wisqHandledYr.toLocaleString()} Wisq cases × {inputs.adminHoursPerCase} hrs × {formatCurrency(inputs.adminHourlyRate)}/hr = {formatCurrency(yr.adminCostSavings)}/yr
+            </div>
+          );
+        })()}
       </div>
 
       {/* Audit Preparation & Remediation */}
       <CollapsibleSection
         title="Audit Preparation & Remediation"
         defaultOpen={inputs.auditPrep?.enabled ?? false}
+        badge={inputs.auditPrep?.enabled ? `${formatCurrency(yr?.auditPrepSavings ?? 0)}/yr` : undefined}
       >
         <label className="flex items-center gap-2">
           <input
@@ -1403,6 +2183,9 @@ function LegalComplianceTab({
               />
             </div>
             <SourceCitation fieldKey="auditPrep" estimatedFields={estimatedFields} />
+            <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-gray-500 font-mono">
+              {inputs.auditPrep.auditsPerYear} audits × {inputs.auditPrep.prepHoursPerAudit} hrs × {formatCurrency(inputs.auditPrep.prepHourlyRate)}/hr × {inputs.auditPrep.wisqReductionPercent}% reduction = {formatCurrency(yr?.auditPrepSavings ?? 0)}/yr
+            </div>
           </div>
         )}
       </CollapsibleSection>
@@ -1411,6 +2194,7 @@ function LegalComplianceTab({
       <CollapsibleSection
         title="Risk Pattern Detection"
         defaultOpen={inputs.riskPatternDetection?.enabled ?? false}
+        badge={inputs.riskPatternDetection?.enabled ? `${formatCurrency(yr?.riskValue ?? 0)}/yr` : undefined}
       >
         <p className="text-sm text-gray-500 mb-3">
           Wisq surfaces patterns like leave abuse, exhausted benefits, and PTO anomalies &mdash;
@@ -1436,7 +2220,7 @@ function LegalComplianceTab({
           </span>
         </label>
         {inputs.riskPatternDetection?.enabled && (
-          <div className="ml-6">
+          <div className="ml-6 space-y-2">
             <InputField
               label="Estimated annual value"
               value={inputs.riskPatternDetection.estimatedAnnualValue}
@@ -1447,6 +2231,9 @@ function LegalComplianceTab({
               }
               type="currency"
             />
+            <div className="p-2 bg-blue-50 rounded text-xs text-gray-500 font-mono">
+              {formatCurrency(yr?.riskValue ?? 0)}/yr
+            </div>
           </div>
         )}
       </CollapsibleSection>
@@ -1455,6 +2242,7 @@ function LegalComplianceTab({
       <CollapsibleSection
         title="Proactive Compliance Alerts"
         defaultOpen={inputs.proactiveAlerts?.enabled ?? false}
+        badge={inputs.proactiveAlerts?.enabled ? `${formatCurrency(yr?.proactiveValue ?? 0)}/yr` : undefined}
       >
         <p className="text-sm text-gray-500 mb-3">
           Automated risk flags, 30/60/90-day check-ins, and eligibility checks applied across
@@ -1480,7 +2268,7 @@ function LegalComplianceTab({
           </span>
         </label>
         {inputs.proactiveAlerts?.enabled && (
-          <div className="ml-6">
+          <div className="ml-6 space-y-2">
             <InputField
               label="Estimated annual value"
               value={inputs.proactiveAlerts.estimatedAnnualValue}
@@ -1491,69 +2279,112 @@ function LegalComplianceTab({
               }
               type="currency"
             />
+            <div className="p-2 bg-blue-50 rounded text-xs text-gray-500 font-mono">
+              {formatCurrency(yr?.proactiveValue ?? 0)}/yr
+            </div>
           </div>
         )}
       </CollapsibleSection>
 
-      {/* Results */}
-      <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-[#03143B]/20 p-6">
-        <h4 className="font-semibold text-[#03143B] mb-4">Legal & Compliance Results</h4>
-        <div className="grid md:grid-cols-4 gap-4">
-          <ResultCard label="High-Stakes Cases/Year" value={output.highStakesCases.toLocaleString()} />
-          <ResultCard label="Incidents Avoided" value={output.avoidedIncidents.toFixed(1)} />
-          <ResultCard label="Avoided Legal Costs" value={formatCurrency(output.avoidedLegalCosts)} />
-          <ResultCard
-            label="Total Avoided Costs"
-            value={formatCurrency(output.totalAvoidedCosts)}
-            highlight
-          />
-        </div>
-
-        {/* Compliance sub-breakdown */}
-        {(output.auditPrepSavings > 0 || output.riskValue > 0 || output.proactiveValue > 0) && (
-          <div className="mt-4 pt-4 border-t border-[#03143B]/10 space-y-2">
-            <p className="text-sm font-medium text-gray-600">Value Stream Breakdown</p>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-              <div className="bg-white/60 rounded p-3">
-                <p className="text-gray-500">Legal Cost Avoidance</p>
-                <p className="font-semibold text-[#03143B]">
-                  {formatCurrency(output.avoidedLegalCosts)}
-                </p>
-              </div>
-              <div className="bg-white/60 rounded p-3">
-                <p className="text-gray-500">Admin Savings</p>
-                <p className="font-semibold text-[#03143B]">
-                  {formatCurrency(output.adminCostSavings)}
-                </p>
-              </div>
-              {output.auditPrepSavings > 0 && (
-                <div className="bg-white/60 rounded p-3">
-                  <p className="text-gray-500">Audit Prep Savings</p>
-                  <p className="font-semibold text-[#03143B]">
-                    {formatCurrency(output.auditPrepSavings)}
-                  </p>
-                </div>
-              )}
-              {output.riskValue > 0 && (
-                <div className="bg-white/60 rounded p-3">
-                  <p className="text-gray-500">Risk Detection Value</p>
-                  <p className="font-semibold text-[#03143B]">
-                    {formatCurrency(output.riskValue)}
-                  </p>
-                </div>
-              )}
-              {output.proactiveValue > 0 && (
-                <div className="bg-white/60 rounded p-3">
-                  <p className="text-gray-500">Proactive Alerts Value</p>
-                  <p className="font-semibold text-[#03143B]">
-                    {formatCurrency(output.proactiveValue)}
-                  </p>
-                </div>
-              )}
+      {/* Annual Averages */}
+      {(() => {
+        const yrs = output.yearResults?.length || 1;
+        const avgAvoided = output.avoidedLegalCosts / yrs;
+        const avgAdmin = output.adminCostSavings / yrs;
+        const avgAudit = output.auditPrepSavings / yrs;
+        const avgRisk = output.riskValue / yrs;
+        const avgProactive = output.proactiveValue / yrs;
+        const avgTotal = output.totalAvoidedCosts / yrs;
+        return (
+          <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-[#03143B]/20 p-6">
+            <h4 className="font-semibold text-[#03143B] mb-4">Annual Savings (avg)</h4>
+            <div className="grid md:grid-cols-4 gap-4">
+              <ResultCard label="Legal Cost Avoidance" value={formatCurrency(avgAvoided)} />
+              <ResultCard label="Admin Savings" value={formatCurrency(avgAdmin)} />
+              <ResultCard label="Incidents Avoided/Year" value={(output.avoidedIncidents / yrs).toFixed(1)} />
+              <ResultCard
+                label="Total Annual Savings"
+                value={formatCurrency(avgTotal)}
+                highlight
+              />
             </div>
+
+            {(avgAudit > 0 || avgRisk > 0 || avgProactive > 0) && (
+              <div className="mt-4 pt-4 border-t border-[#03143B]/10 grid md:grid-cols-3 gap-3 text-sm">
+                {avgAudit > 0 && (
+                  <div className="bg-white/60 rounded p-3">
+                    <p className="text-gray-500">Audit Prep Savings</p>
+                    <p className="font-semibold text-[#03143B]">{formatCurrency(avgAudit)}</p>
+                  </div>
+                )}
+                {avgRisk > 0 && (
+                  <div className="bg-white/60 rounded p-3">
+                    <p className="text-gray-500">Risk Detection Value</p>
+                    <p className="font-semibold text-[#03143B]">{formatCurrency(avgRisk)}</p>
+                  </div>
+                )}
+                {avgProactive > 0 && (
+                  <div className="bg-white/60 rounded p-3">
+                    <p className="text-gray-500">Proactive Alerts Value</p>
+                    <p className="font-semibold text-[#03143B]">{formatCurrency(avgProactive)}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        );
+      })()}
+
+      {/* Savings by Year */}
+      {output.yearResults && output.yearResults.length > 1 && (
+        <div className="bg-gradient-to-br from-gray-50 to-green-50 rounded-lg border border-[#03143B]/20 p-6">
+          <h4 className="font-semibold text-[#03143B] mb-4">Savings by Year</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-2 pr-4 text-gray-600 font-medium">Year</th>
+                  <th className="text-right py-2 px-4 text-gray-600 font-medium">Legal Avoidance</th>
+                  <th className="text-right py-2 px-4 text-gray-600 font-medium">Admin Savings</th>
+                  {output.yearResults.some(yr => yr.auditPrepSavings > 0 || yr.riskValue > 0 || yr.proactiveValue > 0) && (
+                    <th className="text-right py-2 px-4 text-gray-600 font-medium">Other Savings</th>
+                  )}
+                  <th className="text-right py-2 pl-4 text-gray-600 font-medium">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {output.yearResults.map((yr) => {
+                  const colors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
+                  return (
+                    <tr key={yr.year} className="border-b border-gray-100">
+                      <td className="py-2 pr-4 font-medium" style={{ color: colors[(yr.year - 1) % colors.length] }}>
+                        Year {yr.year}
+                      </td>
+                      <td className="text-right py-2 px-4 text-gray-700">{formatCurrency(yr.avoidedLegalCosts)}</td>
+                      <td className="text-right py-2 px-4 text-gray-700">{formatCurrency(yr.adminCostSavings)}</td>
+                      {output.yearResults.some(y => y.auditPrepSavings > 0 || y.riskValue > 0 || y.proactiveValue > 0) && (
+                        <td className="text-right py-2 px-4 text-gray-700">{formatCurrency(yr.auditPrepSavings + yr.riskValue + yr.proactiveValue)}</td>
+                      )}
+                      <td className="text-right py-2 pl-4 font-semibold text-[#03143B]">{formatCurrency(yr.totalAvoidedCosts)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-[#03143B]/20">
+                  <td className="py-2 pr-4 font-semibold text-[#03143B]">Contract Total</td>
+                  <td className="text-right py-2 px-4 font-bold text-[#03143B]">{formatCurrency(output.avoidedLegalCosts)}</td>
+                  <td className="text-right py-2 px-4 font-bold text-[#03143B]">{formatCurrency(output.adminCostSavings)}</td>
+                  {output.yearResults.some(y => y.auditPrepSavings > 0 || y.riskValue > 0 || y.proactiveValue > 0) && (
+                    <td className="text-right py-2 px-4 font-bold text-[#03143B]">{formatCurrency(output.auditPrepSavings + output.riskValue + output.proactiveValue)}</td>
+                  )}
+                  <td className="text-right py-2 pl-4 font-bold text-[#03143B]">{formatCurrency(output.totalAvoidedCosts)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1567,22 +2398,55 @@ function EmployeeExperienceTab({
   output,
   onChange,
   estimatedFields,
+  contractYears,
+  yearSettings,
 }: {
   inputs: EmployeeExperienceInputs;
   output: ReturnType<typeof calculateEmployeeExperienceROI>;
   onChange: (inputs: Partial<EmployeeExperienceInputs>) => void;
   estimatedFields: Set<string>;
+  contractYears: number;
+  yearSettings: ContractYearSettings[];
 }) {
+  const [selectedYear, setSelectedYear] = useState(0);
+  const yearColors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
+  const yr = output.yearResults?.[selectedYear] ?? output.yearResults?.[0];
+
   return (
     <div className="space-y-6">
-      <p className="text-gray-600">
-        Every HR inquiry costs your organization in lost productivity. Wisq provides instant,
-        personalized answers that save time for employees and managers.
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-gray-600">
+          Every HR inquiry costs your organization in lost productivity. Wisq provides instant,
+          personalized answers that save time for employees and managers.
+        </p>
+        {contractYears > 1 && (
+          <div className="flex items-center gap-1 ml-4 shrink-0">
+            {Array.from({ length: contractYears }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedYear(i)}
+                className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                  selectedYear === i ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                style={selectedYear === i ? { backgroundColor: yearColors[i % yearColors.length] } : {}}
+              >
+                Y{i + 1}
+                {(yearSettings[i]?.workforceChange ?? 0) !== 0 && (
+                  <span className="ml-0.5 opacity-70">
+                    ({yearSettings[i].workforceChange > 0 ? '+' : ''}{yearSettings[i].workforceChange}%)
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h4 className="font-semibold text-[#03143B] mb-4">Workforce & Inquiry Inputs</h4>
+          <div className="flex items-center gap-3 mb-4">
+            <h4 className="font-semibold text-[#03143B]">Workforce & Inquiry Inputs</h4>
+          </div>
           <div className="space-y-4">
             <InputField
               label="Total Employee Population"
@@ -1605,24 +2469,22 @@ function EmployeeExperienceTab({
             />
             <SourceCitation fieldKey="avgTimePerInquiry" estimatedFields={estimatedFields} />
             <InputField
-              label="Avg Employee Hourly Rate"
-              value={inputs.avgEmployeeHourlyRate}
-              onChange={(v) => onChange({ avgEmployeeHourlyRate: v })}
+              label="Avg Hourly Rate (all employees)"
+              value={inputs.avgHourlyRate ?? (inputs as any).avgEmployeeHourlyRate ?? 55}
+              onChange={(v) => onChange({ avgHourlyRate: v })}
               type="currency"
             />
-            <SourceCitation fieldKey="avgEmployeeHourlyRate" estimatedFields={estimatedFields} />
-            <InputField
-              label="Avg Manager Hourly Rate"
-              value={inputs.avgManagerHourlyRate}
-              onChange={(v) => onChange({ avgManagerHourlyRate: v })}
-              type="currency"
-            />
-            <SourceCitation fieldKey="avgManagerHourlyRate" estimatedFields={estimatedFields} />
+            <SourceCitation fieldKey="avgHourlyRate" estimatedFields={estimatedFields} />
           </div>
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h4 className="font-semibold text-[#03143B] mb-4">Wisq Impact Parameters</h4>
+          <div className="flex items-center gap-3 mb-4">
+            <h4 className="font-semibold text-[#03143B]">Wisq Impact Parameters</h4>
+            <span className="text-sm font-bold text-white bg-[#2563eb] px-3 py-1 rounded-full">
+              {formatCurrency(yr?.totalMonetaryValue ?? 0)}/yr
+            </span>
+          </div>
           <div className="space-y-4">
             <SliderField
               label="Time Reduction per Inquiry"
@@ -1640,42 +2502,96 @@ function EmployeeExperienceTab({
               max={100}
               unit="%"
             />
-            <SliderField
-              label="Expected Satisfaction Improvement"
-              value={inputs.employeeSatisfactionImprovement}
-              onChange={(v) => onChange({ employeeSatisfactionImprovement: v })}
-              min={0}
-              max={100}
-              unit="%"
-            />
-            <div className="p-3 bg-gray-50 rounded">
-              <p className="text-sm text-gray-600">Total Inquiries/Year</p>
-              <p className="text-lg font-semibold">{output.totalInquiries.toLocaleString()}</p>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Results */}
-      <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-[#03143B]/20 p-6">
-        <h4 className="font-semibold text-[#03143B] mb-4">Employee Experience Results</h4>
-        <div className="grid md:grid-cols-4 gap-4">
-          <ResultCard label="Hours Saved/Year" value={output.hoursSaved.toLocaleString()} />
-          <ResultCard
-            label="Employee Time Savings"
-            value={formatCurrency(output.employeeTimeSavings)}
-          />
-          <ResultCard
-            label="Manager Time Savings"
-            value={formatCurrency(output.managerTimeSavings)}
-          />
-          <ResultCard
-            label="Total Monetary Value"
-            value={formatCurrency(output.totalMonetaryValue)}
-            highlight
-          />
+      {/* Full calculation breakdown */}
+      {yr && (() => {
+        const hourlyRate = inputs.avgHourlyRate ?? (inputs as any).avgEmployeeHourlyRate ?? 55;
+        const totalInquiries = Math.round(yr.totalInquiries);
+        const baselineMin = totalInquiries * inputs.avgTimePerInquiry;
+        const baselineHrs = Math.round(baselineMin / 60);
+        const s = yearSettings[selectedYear] ?? yearSettings[yearSettings.length - 1];
+        const volMult = 1 + (s?.workforceChange ?? 0) / 100;
+        return (
+          <div className="p-3 bg-blue-50 rounded-lg text-xs text-gray-600 font-mono space-y-1">
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1 font-sans">Year {selectedYear + 1} Calculation</div>
+            <p><span className="text-gray-400">1.</span> {inputs.totalEmployeePopulation.toLocaleString()} employees{volMult !== 1 ? ` × ${volMult.toFixed(2)}x growth` : ''} × {inputs.inquiriesPerEmployeePerYear} inquiries/yr = <strong>{totalInquiries.toLocaleString()}</strong> total inquiries</p>
+            <p><span className="text-gray-400">2.</span> {totalInquiries.toLocaleString()} inquiries × {inputs.avgTimePerInquiry} min each = <strong>{baselineHrs.toLocaleString()} hrs</strong> baseline time spent</p>
+            <p><span className="text-gray-400">3.</span> Wisq reduces {inputs.timeReductionPercent}% of inquiry time × {inputs.adoptionRate}% adoption = <strong>{(inputs.timeReductionPercent * inputs.adoptionRate / 100).toFixed(1)}%</strong> effective savings</p>
+            <p><span className="text-gray-400">4.</span> {baselineHrs.toLocaleString()} hrs × {(inputs.timeReductionPercent * inputs.adoptionRate / 100).toFixed(1)}% = <strong>{Math.round(yr.hoursSaved).toLocaleString()} hrs</strong> saved</p>
+            <p><span className="text-gray-400">5.</span> {Math.round(yr.hoursSaved).toLocaleString()} hrs × {formatCurrency(hourlyRate)}/hr = <strong className="text-[#03143B]">{formatCurrency(yr.totalMonetaryValue)}/yr</strong></p>
+          </div>
+        );
+      })()}
+
+      {/* Annual Averages */}
+      {(() => {
+        const yrs = output.yearResults?.length || 1;
+        const avgHours = output.hoursSaved / yrs;
+        const avgValue = output.totalMonetaryValue / yrs;
+        const avgPerEmployee = inputs.totalEmployeePopulation > 0 ? avgValue / inputs.totalEmployeePopulation : 0;
+        return (
+          <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-[#03143B]/20 p-6">
+            <h4 className="font-semibold text-[#03143B] mb-4">Annual Savings (avg)</h4>
+            <div className="grid md:grid-cols-3 gap-4">
+              <ResultCard label="Hours Saved/Year" value={Math.round(avgHours).toLocaleString()} />
+              <ResultCard
+                label="Total Productivity Value"
+                value={formatCurrency(avgValue)}
+                highlight
+              />
+              <ResultCard
+                label="Per Employee/Year"
+                value={formatCurrency(avgPerEmployee)}
+              />
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Savings by Year */}
+      {output.yearResults && output.yearResults.length > 1 && (
+        <div className="bg-gradient-to-br from-gray-50 to-green-50 rounded-lg border border-[#03143B]/20 p-6">
+          <h4 className="font-semibold text-[#03143B] mb-4">Savings by Year</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-2 pr-4 text-gray-600 font-medium">Year</th>
+                  <th className="text-right py-2 px-4 text-gray-600 font-medium">Inquiries</th>
+                  <th className="text-right py-2 px-4 text-gray-600 font-medium">Hours Saved</th>
+                  <th className="text-right py-2 pl-4 text-gray-600 font-medium">Productivity Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {output.yearResults.map((yr) => {
+                  const colors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
+                  return (
+                    <tr key={yr.year} className="border-b border-gray-100">
+                      <td className="py-2 pr-4 font-medium" style={{ color: colors[(yr.year - 1) % colors.length] }}>
+                        Year {yr.year}
+                      </td>
+                      <td className="text-right py-2 px-4 text-gray-700">{Math.round(yr.totalInquiries).toLocaleString()}</td>
+                      <td className="text-right py-2 px-4 text-gray-700">{Math.round(yr.hoursSaved).toLocaleString()}</td>
+                      <td className="text-right py-2 pl-4 font-semibold text-[#03143B]">{formatCurrency(yr.totalMonetaryValue)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-[#03143B]/20">
+                  <td className="py-2 pr-4 font-semibold text-[#03143B]">Contract Total</td>
+                  <td className="text-right py-2 px-4" />
+                  <td className="text-right py-2 px-4 font-bold text-[#03143B]">{Math.round(output.hoursSaved).toLocaleString()}</td>
+                  <td className="text-right py-2 pl-4 font-bold text-[#03143B]">{formatCurrency(output.totalMonetaryValue)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1683,6 +2599,46 @@ function EmployeeExperienceTab({
 // ──────────────────────────────────────────────
 // Summary Tab
 // ──────────────────────────────────────────────
+
+function HoverYearPopup({
+  label,
+  yearValues,
+  children,
+}: {
+  label: string;
+  yearValues: { year: number; value: number }[];
+  children: React.ReactNode;
+}) {
+  const [show, setShow] = useState(false);
+  const yearColors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      {children}
+      {show && yearValues.length > 1 && (
+        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#03143B] text-white rounded-lg shadow-xl p-3 min-w-[180px]">
+          <p className="text-[10px] uppercase tracking-wider text-white/50 font-medium mb-1.5">{label}</p>
+          {yearValues.map((yv) => (
+            <div key={yv.year} className="flex justify-between items-center py-0.5">
+              <span className="text-xs font-medium" style={{ color: yearColors[(yv.year - 1) % yearColors.length] }}>Y{yv.year}</span>
+              <span className="text-xs font-semibold">{formatCurrency(yv.value)}</span>
+            </div>
+          ))}
+          <div className="border-t border-white/20 mt-1.5 pt-1.5 flex justify-between">
+            <span className="text-[10px] text-white/60">Avg/yr</span>
+            <span className="text-xs font-bold">{formatCurrency(yearValues.reduce((s, v) => s + v.value, 0) / yearValues.length)}</span>
+          </div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+            <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-[#03143B]" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SummaryTab({
   summary,
@@ -1692,6 +2648,7 @@ function SummaryTab({
   employeeOutput,
   wisqLicenseCost,
   narrative,
+  contractYears,
 }: {
   summary: ReturnType<typeof calculateROISummary>;
   projection: ReturnType<typeof calculateMultiYearProjection>;
@@ -1700,149 +2657,435 @@ function SummaryTab({
   employeeOutput: ReturnType<typeof calculateEmployeeExperienceROI>;
   wisqLicenseCost: number;
   narrative: string;
+  contractYears: number;
 }) {
+  const yearColors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
+  const yrs = summary.yearResults;
+  const total = summary.hrOpsSavings + summary.legalSavings + summary.productivitySavings;
+  const hrPct = total > 0 ? (summary.hrOpsSavings / total) * 100 : 0;
+  const legalPct = total > 0 ? (summary.legalSavings / total) * 100 : 0;
+  const prodPct = total > 0 ? (summary.productivitySavings / total) * 100 : 0;
+
+  // Per-year data for HR sub-items
+  const hrYearCosts = hrOutput.yearCostResults;
+  const legalYearResults = legalOutput.yearResults ?? [];
+  const exYearResults = employeeOutput.yearResults ?? [];
+  const nYrs = contractYears || 1;
+
+  // Cumulative chart dimensions
+  const chartW = 600;
+  const chartH = 220;
+  const pad = { top: 10, right: 10, bottom: 30, left: 55 };
+  const innerW = chartW - pad.left - pad.right;
+  const innerH = chartH - pad.top - pad.bottom;
+
+  // Build cumulative data points at each year boundary (x=0 through x=contractYears)
+  // Value grows linearly within each year; at x=0 everything is 0
+  const cumPoints: { x: number; hr: number; legal: number; prod: number }[] = [{ x: 0, hr: 0, legal: 0, prod: 0 }];
+  let cumHR = 0, cumLegal = 0, cumProd = 0;
+  for (const yr of yrs) {
+    cumHR += yr.hrOpsSavings;
+    cumLegal += yr.legalSavings;
+    cumProd += yr.productivitySavings;
+    cumPoints.push({ x: yr.year, hr: cumHR, legal: cumLegal, prod: cumProd });
+  }
+
+  // License cost step function: paid upfront at start of each year
+  // Points: (0, cost), (1-, cost), (1, 2*cost), (2-, 2*cost), ...
+  const costSteps: { x: number; cost: number }[] = [];
+  for (let i = 0; i < contractYears; i++) {
+    const paid = (i + 1) * wisqLicenseCost;
+    costSteps.push({ x: i, cost: paid });       // jump up at start of year
+    costSteps.push({ x: i + 1, cost: paid });   // flat until next year
+  }
+
+  const maxCumVal = Math.max(
+    ...cumPoints.map(d => d.hr + d.legal + d.prod),
+    ...costSteps.map(d => d.cost),
+    1
+  );
+
+  const xScale = (x: number) => pad.left + (x / contractYears) * innerW;
+  const yScale = (val: number) => pad.top + innerH - (val / maxCumVal) * innerH;
+
+  // Build area paths from cumPoints (linear interpolation = incremental value recognition)
+  const buildAreaPath = (
+    topFn: (d: typeof cumPoints[0]) => number,
+    bottomFn: (d: typeof cumPoints[0]) => number
+  ) => {
+    if (cumPoints.length < 2) return '';
+    const topPts = cumPoints.map(d => `${xScale(d.x)},${yScale(topFn(d))}`);
+    const bottomPts = [...cumPoints].reverse().map(d => `${xScale(d.x)},${yScale(bottomFn(d))}`);
+    return `M${topPts.join('L')}L${bottomPts.join('L')}Z`;
+  };
+
+  const hrArea = buildAreaPath(d => d.hr, () => 0);
+  const legalArea = buildAreaPath(d => d.hr + d.legal, d => d.hr);
+  const prodArea = buildAreaPath(d => d.hr + d.legal + d.prod, d => d.hr + d.legal);
+  const costLine = costSteps.map(d => `${xScale(d.x)},${yScale(d.cost)}`).join('L');
+
   return (
     <div className="space-y-6">
-      <p className="text-gray-600">
-        Your complete ROI picture: combining operational efficiency, risk reduction, and
-        productivity gains into a single, comprehensive business case.
-      </p>
+      {/* Key Metrics */}
+      <div className="grid md:grid-cols-4 gap-4">
+        <HoverYearPopup label="Gross Value" yearValues={yrs.map(yr => ({ year: yr.year, value: yr.grossValue }))}>
+          <div className="bg-gradient-to-br from-[#03143B] to-[#020e29] rounded-lg p-5 text-white cursor-default">
+            <p className="text-xs opacity-60 mb-1">Gross Annual Value</p>
+            <p className="text-2xl font-bold">{formatCompactCurrency(summary.grossAnnualValue)}</p>
+            <p className="text-[10px] opacity-40 mt-1">avg/yr</p>
+          </div>
+        </HoverYearPopup>
+        <HoverYearPopup label="ROI %" yearValues={yrs.map(yr => ({ year: yr.year, value: wisqLicenseCost > 0 ? (yr.netValue / wisqLicenseCost) * 100 : 0 }))}>
+          <div className="bg-gradient-to-br from-[#03143B]/80 to-[#020e29]/80 rounded-lg p-5 text-white cursor-default">
+            <p className="text-xs opacity-60 mb-1">ROI</p>
+            <p className="text-2xl font-bold">{summary.totalROI.toFixed(0)}%</p>
+            <p className="text-[10px] opacity-40 mt-1">avg annual return</p>
+          </div>
+        </HoverYearPopup>
+        <div className="bg-gradient-to-br from-gray-600 to-gray-500 rounded-lg p-5 text-white">
+          <p className="text-xs opacity-60 mb-1">Payback Period</p>
+          <p className="text-2xl font-bold">{summary.paybackPeriodMonths.toFixed(1)} mo</p>
+        </div>
+        <HoverYearPopup label="Net Benefit" yearValues={yrs.map(yr => ({ year: yr.year, value: yr.netValue }))}>
+          <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-lg p-5 text-white cursor-default">
+            <p className="text-xs opacity-60 mb-1">Net Annual Benefit</p>
+            <p className="text-2xl font-bold">{formatCompactCurrency(summary.netAnnualBenefit)}</p>
+            <p className="text-[10px] opacity-40 mt-1">after ${formatCompactCurrency(wisqLicenseCost)} license</p>
+          </div>
+        </HoverYearPopup>
+      </div>
+
+      {/* Value Source Bar + Pillar Cards */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h4 className="font-semibold text-[#03143B] mb-4">Where the Value Comes From</h4>
+
+        {/* Stacked bar */}
+        <div className="relative h-8 rounded-full overflow-hidden bg-gray-100 mb-4">
+          <div className="absolute inset-y-0 left-0 bg-[#03143B] transition-all" style={{ width: `${hrPct}%` }} />
+          <div className="absolute inset-y-0 bg-[#6b7fff] transition-all" style={{ left: `${hrPct}%`, width: `${legalPct}%` }} />
+          <div className="absolute inset-y-0 bg-[#059669] transition-all" style={{ left: `${hrPct + legalPct}%`, width: `${prodPct}%` }} />
+          {/* Labels on bar */}
+          {hrPct > 12 && (
+            <span className="absolute inset-y-0 flex items-center text-white text-xs font-bold px-3" style={{ left: 0, width: `${hrPct}%` }}>
+              {hrPct.toFixed(0)}%
+            </span>
+          )}
+          {legalPct > 12 && (
+            <span className="absolute inset-y-0 flex items-center text-white text-xs font-bold px-2" style={{ left: `${hrPct}%`, width: `${legalPct}%` }}>
+              {legalPct.toFixed(0)}%
+            </span>
+          )}
+          {prodPct > 12 && (
+            <span className="absolute inset-y-0 flex items-center justify-end text-white text-xs font-bold px-3" style={{ left: `${hrPct + legalPct}%`, width: `${prodPct}%` }}>
+              {prodPct.toFixed(0)}%
+            </span>
+          )}
+        </div>
+
+        {/* Three pillar cards */}
+        <div className="grid md:grid-cols-3 gap-4">
+          <HoverYearPopup label="HR Operations" yearValues={yrs.map(yr => ({ year: yr.year, value: yr.hrOpsSavings }))}>
+            <div className="rounded-lg border-2 border-[#03143B]/20 p-4 cursor-default hover:border-[#03143B]/40 transition-colors">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-3 h-3 rounded-full bg-[#03143B]" />
+                <span className="text-sm font-semibold text-[#03143B]">HR Operations</span>
+              </div>
+              <p className="text-xl font-bold text-[#03143B]">{formatCurrency(summary.hrOpsSavings)}<span className="text-xs font-normal text-gray-400">/yr</span></p>
+              <div className="mt-2 space-y-0.5 text-[11px] text-gray-500">
+                <div className="flex justify-between">
+                  <span>Headcount reduction</span>
+                  <span>{formatCurrency(hrOutput.headcountReductionSavings / nYrs)}</span>
+                </div>
+                {hrOutput.managerTimeSavings > 0 && (
+                  <div className="flex justify-between">
+                    <span>Manager time savings</span>
+                    <span>{formatCurrency(hrOutput.managerTimeSavings / nYrs)}</span>
+                  </div>
+                )}
+                {hrOutput.triageSavings > 0 && (
+                  <div className="flex justify-between">
+                    <span>Triage role savings</span>
+                    <span>{formatCurrency(hrOutput.triageSavings / nYrs)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </HoverYearPopup>
+
+          <HoverYearPopup label="Legal & Compliance" yearValues={yrs.map(yr => ({ year: yr.year, value: yr.legalSavings }))}>
+            <div className="rounded-lg border-2 border-[#6b7fff]/20 p-4 cursor-default hover:border-[#6b7fff]/40 transition-colors">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-3 h-3 rounded-full bg-[#6b7fff]" />
+                <span className="text-sm font-semibold text-[#03143B]">Legal & Compliance</span>
+              </div>
+              <p className="text-xl font-bold text-[#03143B]">{formatCurrency(summary.legalSavings)}<span className="text-xs font-normal text-gray-400">/yr</span></p>
+              <div className="mt-2 space-y-0.5 text-[11px] text-gray-500">
+                <div className="flex justify-between">
+                  <span>Legal cost avoidance</span>
+                  <span>{formatCurrency(legalOutput.avoidedLegalCosts / nYrs)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Admin savings</span>
+                  <span>{formatCurrency(legalOutput.adminCostSavings / nYrs)}</span>
+                </div>
+                {legalOutput.auditPrepSavings > 0 && (
+                  <div className="flex justify-between">
+                    <span>Audit prep</span>
+                    <span>{formatCurrency(legalOutput.auditPrepSavings / nYrs)}</span>
+                  </div>
+                )}
+                {legalOutput.riskValue > 0 && (
+                  <div className="flex justify-between">
+                    <span>Risk detection</span>
+                    <span>{formatCurrency(legalOutput.riskValue / nYrs)}</span>
+                  </div>
+                )}
+                {legalOutput.proactiveValue > 0 && (
+                  <div className="flex justify-between">
+                    <span>Proactive alerts</span>
+                    <span>{formatCurrency(legalOutput.proactiveValue / nYrs)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </HoverYearPopup>
+
+          <HoverYearPopup label="Employee Experience" yearValues={yrs.map(yr => ({ year: yr.year, value: yr.productivitySavings }))}>
+            <div className="rounded-lg border-2 border-[#059669]/20 p-4 cursor-default hover:border-[#059669]/40 transition-colors">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-3 h-3 rounded-full bg-[#059669]" />
+                <span className="text-sm font-semibold text-[#03143B]">Employee Experience</span>
+              </div>
+              <p className="text-xl font-bold text-[#03143B]">{formatCurrency(summary.productivitySavings)}<span className="text-xs font-normal text-gray-400">/yr</span></p>
+              <div className="mt-2 space-y-0.5 text-[11px] text-gray-500">
+                <div className="flex justify-between">
+                  <span>Hours saved/yr</span>
+                  <span>{Math.round(employeeOutput.hoursSaved / nYrs).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Productivity value</span>
+                  <span>{formatCurrency(employeeOutput.totalMonetaryValue / nYrs)}</span>
+                </div>
+              </div>
+            </div>
+          </HoverYearPopup>
+        </div>
+      </div>
+
+      {/* Cumulative Value Chart */}
+      {yrs.length > 1 && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h4 className="font-semibold text-[#03143B] mb-1">Cumulative Value Over Contract</h4>
+          <p className="text-xs text-gray-400 mb-4">Stacked by pillar, dashed line = cumulative license cost</p>
+          <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full" preserveAspectRatio="xMidYMid meet">
+            {/* Grid lines */}
+            {[0, 0.25, 0.5, 0.75, 1].map(frac => {
+              const y = pad.top + innerH - frac * innerH;
+              return (
+                <g key={frac}>
+                  <line x1={pad.left} x2={chartW - pad.right} y1={y} y2={y} stroke="#e5e7eb" strokeWidth={0.5} />
+                  <text x={pad.left - 5} y={y + 3} textAnchor="end" fontSize={9} fill="#9ca3af">
+                    {formatCompactCurrency(frac * maxCumVal)}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Stacked areas */}
+            <path d={hrArea} fill="#03143B" opacity={0.8} />
+            <path d={legalArea} fill="#6b7fff" opacity={0.8} />
+            <path d={prodArea} fill="#059669" opacity={0.8} />
+
+            {/* License cost dashed line */}
+            <polyline points={costLine} fill="none" stroke="#dc2626" strokeWidth={2} strokeDasharray="6,3" />
+
+            {/* X-axis year boundary labels + cumulative value dots */}
+            {cumPoints.map(d => {
+              const x = xScale(d.x);
+              const total = d.hr + d.legal + d.prod;
+              const totalY = yScale(total);
+              return (
+                <g key={d.x}>
+                  <text x={x} y={chartH - 5} textAnchor="middle" fontSize={10} fill="#6b7280" fontWeight="600">
+                    {d.x === 0 ? 'Start' : `Y${d.x}`}
+                  </text>
+                  {d.x > 0 && (
+                    <>
+                      <circle cx={x} cy={totalY} r={3} fill="#03143B" />
+                      <text x={x} y={totalY - 8} textAnchor="middle" fontSize={9} fill="#03143B" fontWeight="700">
+                        {formatCompactCurrency(total)}
+                      </text>
+                    </>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Legend */}
+            <rect x={pad.left + 5} y={pad.top + 2} width={8} height={8} rx={2} fill="#03143B" />
+            <text x={pad.left + 16} y={pad.top + 10} fontSize={8} fill="#6b7280">HR Ops</text>
+            <rect x={pad.left + 55} y={pad.top + 2} width={8} height={8} rx={2} fill="#6b7fff" />
+            <text x={pad.left + 66} y={pad.top + 10} fontSize={8} fill="#6b7280">Legal</text>
+            <rect x={pad.left + 95} y={pad.top + 2} width={8} height={8} rx={2} fill="#059669" />
+            <text x={pad.left + 106} y={pad.top + 10} fontSize={8} fill="#6b7280">EX</text>
+            <line x1={pad.left + 140} x2={pad.left + 155} y1={pad.top + 6} y2={pad.top + 6} stroke="#dc2626" strokeWidth={1.5} strokeDasharray="4,2" />
+            <text x={pad.left + 158} y={pad.top + 10} fontSize={8} fill="#6b7280">License Cost</text>
+          </svg>
+        </div>
+      )}
+
+      {/* Detailed Breakdown with Hover Popups */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h4 className="font-semibold text-[#03143B] mb-4">Detailed Breakdown</h4>
+        <div className="space-y-2">
+          {/* HR Ops items */}
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium px-3 pt-2">HR Operations</div>
+          <HoverBreakdownRow
+            label="Headcount / Workload Reduction"
+            avgValue={hrOutput.headcountReductionSavings / nYrs}
+            yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.headcountSavings }))}
+          />
+          {hrOutput.managerTimeSavings > 0 && (
+            <HoverBreakdownRow
+              label="Manager Time Savings"
+              avgValue={hrOutput.managerTimeSavings / nYrs}
+              yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.managerSavings }))}
+            />
+          )}
+          {hrOutput.triageSavings > 0 && (
+            <HoverBreakdownRow
+              label="Triage Role Savings"
+              avgValue={hrOutput.triageSavings / nYrs}
+              yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.triageSavings }))}
+            />
+          )}
+
+          {/* Legal items */}
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium px-3 pt-3">Legal & Compliance</div>
+          <HoverBreakdownRow
+            label="Legal Cost Avoidance"
+            avgValue={legalOutput.avoidedLegalCosts / nYrs}
+            yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.avoidedLegalCosts }))}
+          />
+          <HoverBreakdownRow
+            label="Administrative Savings"
+            avgValue={legalOutput.adminCostSavings / nYrs}
+            yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.adminCostSavings }))}
+          />
+          {legalOutput.auditPrepSavings > 0 && (
+            <HoverBreakdownRow
+              label="Audit Prep Savings"
+              avgValue={legalOutput.auditPrepSavings / nYrs}
+              yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.auditPrepSavings }))}
+            />
+          )}
+          {legalOutput.riskValue > 0 && (
+            <HoverBreakdownRow
+              label="Risk Pattern Detection"
+              avgValue={legalOutput.riskValue / nYrs}
+              yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.riskValue }))}
+            />
+          )}
+          {legalOutput.proactiveValue > 0 && (
+            <HoverBreakdownRow
+              label="Proactive Compliance Alerts"
+              avgValue={legalOutput.proactiveValue / nYrs}
+              yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.proactiveValue }))}
+            />
+          )}
+
+          {/* EX items */}
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium px-3 pt-3">Employee Experience</div>
+          <HoverBreakdownRow
+            label="Productivity Savings"
+            avgValue={employeeOutput.totalMonetaryValue / nYrs}
+            yearValues={exYearResults.map(yr => ({ year: yr.year, value: yr.totalMonetaryValue }))}
+          />
+
+          {/* Total row */}
+          <div className="border-t-2 border-[#03143B]/20 mt-3 pt-3 flex justify-between items-center px-3 py-2">
+            <span className="font-semibold text-[#03143B]">Total Annual Value (avg)</span>
+            <span className="text-lg font-bold text-[#03143B]">{formatCurrency(summary.grossAnnualValue)}</span>
+          </div>
+          <div className="flex justify-between items-center px-3 py-1 text-sm text-gray-500">
+            <span>Less: Wisq license cost</span>
+            <span>−{formatCurrency(wisqLicenseCost)}</span>
+          </div>
+          <div className="flex justify-between items-center px-3 py-2 bg-emerald-50 rounded-lg">
+            <span className="font-semibold text-emerald-700">Net Annual Benefit</span>
+            <span className="text-lg font-bold text-emerald-700">{formatCurrency(summary.netAnnualBenefit)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Multi-Year Projection cards */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h4 className="font-semibold text-[#03143B] mb-4">Contract Projection</h4>
+        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${projection.years.length + 2}, minmax(0, 1fr))` }}>
+          {projection.years.map((yr) => (
+            <div key={yr.year} className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+              <p className="text-xs text-gray-500 mb-1" style={{ color: yearColors[(yr.year - 1) % yearColors.length] }}>Year {yr.year}</p>
+              <p className="text-sm font-bold text-[#03143B]">{formatCurrency(yr.value)}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">Net: {formatCurrency(yr.net)}</p>
+            </div>
+          ))}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+            <p className="text-xs text-gray-500 mb-1">Total</p>
+            <p className="text-sm font-bold text-[#03143B]">{formatCurrency(projection.total)}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{contractYears} years</p>
+          </div>
+          <div className="bg-gradient-to-br from-[#03143B] to-[#020e29] rounded-lg p-3 text-center text-white">
+            <p className="text-xs opacity-60 mb-1">Net Total</p>
+            <p className="text-sm font-bold">{formatCurrency(projection.netTotal)}</p>
+            <p className="text-[10px] opacity-40 mt-0.5">After license</p>
+          </div>
+        </div>
+      </div>
 
       {/* Business Case Narrative */}
       {narrative && (
         <div className="bg-[#03143B]/5 border border-[#03143B]/15 rounded-lg p-5">
           <h4 className="font-semibold text-[#03143B] mb-2">Business Case Insight</h4>
-          <p className="text-gray-700 leading-relaxed">{narrative}</p>
+          <p className="text-gray-700 leading-relaxed text-sm">{narrative}</p>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* Key Metrics */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-[#03143B] to-[#020e29] rounded-lg p-6 text-white">
-          <p className="text-sm opacity-80 mb-1">Gross Annual Value</p>
-          <p className="text-2xl font-bold">{formatCompactCurrency(summary.grossAnnualValue)}</p>
-        </div>
-        <div className="bg-gradient-to-br from-[#03143B]/80 to-[#020e29]/80 rounded-lg p-6 text-white">
-          <p className="text-sm opacity-80 mb-1">Return on Investment</p>
-          <p className="text-2xl font-bold">{formatCompactCurrency(summary.netAnnualBenefit)}</p>
-          <p className="text-xs opacity-60 mt-1">annually</p>
-        </div>
-        <div className="bg-gradient-to-br from-gray-600 to-gray-500 rounded-lg p-6 text-white">
-          <p className="text-sm opacity-80 mb-1">Payback Period</p>
-          <p className="text-2xl font-bold">{summary.paybackPeriodMonths.toFixed(1)} months</p>
-        </div>
-        <div className="bg-gradient-to-br from-[#03143B]/60 to-[#020e29]/60 rounded-lg p-6 text-white">
-          <p className="text-sm opacity-80 mb-1">Net Annual Benefit</p>
-          <p className="text-2xl font-bold">{formatCompactCurrency(summary.netAnnualBenefit)}</p>
-        </div>
-      </div>
-
-      {/* Value Breakdown */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h4 className="font-semibold text-[#03143B] mb-4">Value Breakdown</h4>
-        <div className="space-y-3">
-          <BreakdownRow
-            label="HR Operations Efficiency"
-            description="Cost per case reduction through deflection and automation"
-            value={summary.hrOpsSavings}
-            total={summary.totalAnnualValue}
-            color="bg-[#03143B]"
-          />
-          {/* Sub-items for HR Ops (avg annual across contract) */}
-          {(hrOutput.managerTimeSavings > 0 || hrOutput.triageSavings > 0) && (
-            <div className="ml-8 space-y-1">
-              <div className="flex justify-between text-sm text-gray-500 px-4">
-                <span>Headcount reduction (avg/yr)</span>
-                <span>{formatCurrency(hrOutput.headcountReductionSavings / (hrOutput.yearCostResults.length || 1))}</span>
-              </div>
-              {hrOutput.managerTimeSavings > 0 && (
-                <div className="flex justify-between text-sm text-gray-500 px-4">
-                  <span>Manager time savings (avg/yr)</span>
-                  <span>{formatCurrency(hrOutput.managerTimeSavings / (hrOutput.yearCostResults.length || 1))}</span>
-                </div>
-              )}
-              {hrOutput.triageSavings > 0 && (
-                <div className="flex justify-between text-sm text-gray-500 px-4">
-                  <span>Triage role savings (avg/yr)</span>
-                  <span>{formatCurrency(hrOutput.triageSavings / (hrOutput.yearCostResults.length || 1))}</span>
-                </div>
-              )}
+function HoverBreakdownRow({
+  label,
+  avgValue,
+  yearValues,
+}: {
+  label: string;
+  avgValue: number;
+  yearValues: { year: number; value: number }[];
+}) {
+  const [show, setShow] = useState(false);
+  const yearColors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
+  return (
+    <div
+      className="relative flex justify-between items-center px-3 py-1.5 rounded hover:bg-gray-50 cursor-default transition-colors"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <span className="text-sm text-gray-700">{label}</span>
+      <span className="text-sm font-semibold text-[#03143B]">{formatCurrency(avgValue)}<span className="text-xs font-normal text-gray-400">/yr</span></span>
+      {show && yearValues.length > 1 && (
+        <div className="absolute z-50 right-0 bottom-full mb-1 bg-[#03143B] text-white rounded-lg shadow-xl p-3 min-w-[160px]">
+          <p className="text-[10px] uppercase tracking-wider text-white/50 font-medium mb-1">{label}</p>
+          {yearValues.map((yv) => (
+            <div key={yv.year} className="flex justify-between items-center py-0.5">
+              <span className="text-xs font-medium" style={{ color: yearColors[(yv.year - 1) % yearColors.length] }}>Y{yv.year}</span>
+              <span className="text-xs font-semibold">{formatCurrency(yv.value)}</span>
             </div>
-          )}
-          <BreakdownRow
-            label="Legal & Compliance Protection"
-            description="Avoided legal costs through improved accuracy"
-            value={summary.legalSavings}
-            total={summary.totalAnnualValue}
-            color="bg-[#6b7fff]"
-          />
-          {/* Sub-items for Legal */}
-          {(legalOutput.auditPrepSavings > 0 ||
-            legalOutput.riskValue > 0 ||
-            legalOutput.proactiveValue > 0) && (
-            <div className="ml-8 space-y-1">
-              <div className="flex justify-between text-sm text-gray-500 px-4">
-                <span>Legal cost avoidance</span>
-                <span>{formatCurrency(legalOutput.avoidedLegalCosts)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-gray-500 px-4">
-                <span>Admin savings</span>
-                <span>{formatCurrency(legalOutput.adminCostSavings)}</span>
-              </div>
-              {legalOutput.auditPrepSavings > 0 && (
-                <div className="flex justify-between text-sm text-gray-500 px-4">
-                  <span>Audit prep savings</span>
-                  <span>{formatCurrency(legalOutput.auditPrepSavings)}</span>
-                </div>
-              )}
-              {legalOutput.riskValue > 0 && (
-                <div className="flex justify-between text-sm text-gray-500 px-4">
-                  <span>Risk pattern detection</span>
-                  <span>{formatCurrency(legalOutput.riskValue)}</span>
-                </div>
-              )}
-              {legalOutput.proactiveValue > 0 && (
-                <div className="flex justify-between text-sm text-gray-500 px-4">
-                  <span>Proactive compliance alerts</span>
-                  <span>{formatCurrency(legalOutput.proactiveValue)}</span>
-                </div>
-              )}
-            </div>
-          )}
-          <BreakdownRow
-            label="Employee Experience & Productivity"
-            description="Time savings for employees and managers"
-            value={summary.productivitySavings}
-            total={summary.totalAnnualValue}
-            color="bg-gray-500"
-          />
-        </div>
-      </div>
-
-      {/* Multi-Year Projection */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h4 className="font-semibold text-[#03143B] mb-4">Multi-Year Projection</h4>
-        <p className="text-sm text-gray-600 mb-4">
-          Combined value across HR operations, legal/compliance, and employee experience
-        </p>
-        <div className="grid md:grid-cols-{projection.years.length + 2} gap-4" style={{ gridTemplateColumns: `repeat(${projection.years.length + 2}, minmax(0, 1fr))` }}>
-          {projection.years.map((yr) => (
-            <ProjectionCard
-              key={yr.year}
-              label={`Year ${yr.year}`}
-              value={yr.value}
-              sublabel={`Net: ${formatCurrency(yr.net)}`}
-            />
           ))}
-          <ProjectionCard label="Total Gross" value={projection.total} sublabel="All years" />
-          <ProjectionCard
-            label="Net Total"
-            value={projection.netTotal}
-            sublabel="After license costs"
-            highlight
-          />
+          <div className="absolute top-full right-4 -mt-px">
+            <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-[#03143B]" />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1932,21 +3175,38 @@ function InputField({
   onChange: (value: number) => void;
   type: 'number' | 'currency' | 'formatted-number';
 }) {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/[$,]/g, '');
-    if (!isNaN(Number(rawValue)) && rawValue !== '') {
-      onChange(Number(rawValue));
-    } else if (rawValue === '') {
-      onChange(0);
-    }
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  const formattedValue =
+    type === 'currency' || type === 'formatted-number'
+      ? value.toLocaleString()
+      : String(value);
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setEditing(true);
+    // Show raw number (no commas) when editing
+    setDraft(value === 0 ? '' : String(value));
+    // Select all on focus for easy replacement
+    setTimeout(() => e.target.select(), 0);
   };
 
-  const displayValue =
-    type === 'currency'
-      ? value.toLocaleString()
-      : type === 'formatted-number'
-      ? value.toLocaleString()
-      : value;
+  const handleBlur = () => {
+    setEditing(false);
+    const raw = draft.replace(/[$,]/g, '');
+    const num = Number(raw);
+    onChange(!isNaN(num) && raw !== '' ? num : 0);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDraft(e.target.value);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      (e.target as HTMLInputElement).blur();
+    }
+  };
 
   return (
     <div>
@@ -1957,8 +3217,11 @@ function InputField({
         )}
         <input
           type="text"
-          value={displayValue}
+          value={editing ? draft : formattedValue}
           onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
           className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#03143B] focus:border-transparent ${
             type === 'currency' ? 'pl-7' : ''
           }`}

@@ -50,7 +50,7 @@ export interface YearlySoftwareConfig {
 
 export interface PricingInputs {
   employeeCount: number;
-  contractTermYears: 1 | 2 | 3;
+  contractTermYears: 1 | 2 | 3 | 4 | 5;
 
   // Software (recurring) - per year configuration
   // Array length matches contractTermYears
@@ -178,6 +178,8 @@ export interface HROperationsInputs {
   tier01DeflectionByYear: number[];  // per-year deflection rates, one per contract year
 
   // Tier 2+: Complex Workflows
+  tier2PlusTotalCases: number;           // total Tier 2+ cases (>= sum of configured workflows)
+  tier2PlusAvgTimePerCase?: number;      // hours per case for unconfigured Tier 2+ (defaults to weighted avg)
   tier2Workflows: Tier2Workflow[];
   tier2PlusDefaultDeflection: number;    // hidden base rate for seeding new workflows
   tier2PlusDefaultEffortReduction: number; // hidden base rate for seeding new workflows
@@ -201,6 +203,8 @@ export interface HROperationsYearResult {
   currentTotalMinutes: number;
   futureTotalMinutes: number;
   hoursSaved: number;
+  tier01HoursSaved: number;
+  tier2HoursSaved: number;
   casesDeflected: number;
   workloadReductionPercent: number;
 }
@@ -209,6 +213,8 @@ export interface HROperationsYearResult {
 export interface HROperationsYearCostResult {
   year: number;
   headcountSavings: number;
+  tier01Savings: number;
+  tier2Savings: number;
   managerSavings: number;
   triageSavings: number;
   totalSavings: number;
@@ -265,7 +271,21 @@ export interface LegalComplianceInputs {
   proactiveAlerts?: ProactiveAlerts;
 }
 
+export interface LegalComplianceYearResult {
+  year: number;
+  highStakesCases: number;
+  avoidedIncidents: number;
+  avoidedLegalCosts: number;
+  adminCostSavings: number;
+  auditPrepSavings: number;
+  riskValue: number;
+  proactiveValue: number;
+  totalAvoidedCosts: number;
+}
+
 export interface LegalComplianceOutput {
+  yearResults: LegalComplianceYearResult[];
+  // Contract totals (backward compat)
   highStakesCases: number;
   avoidedIncidents: number;
   avoidedLegalCosts: number;
@@ -281,21 +301,37 @@ export interface EmployeeExperienceInputs {
   inquiriesPerEmployeePerYear: number;
   avgTimePerInquiry: number;
   timeReductionPercent: number;
-  avgEmployeeHourlyRate: number;
-  avgManagerHourlyRate: number;
+  avgHourlyRate: number;
   adoptionRate: number;
   employeeSatisfactionImprovement: number;
 }
 
-export interface EmployeeExperienceOutput {
+export interface EmployeeExperienceYearResult {
+  year: number;
   totalInquiries: number;
   hoursSaved: number;
-  employeeTimeSavings: number;
-  managerTimeSavings: number;
   totalMonetaryValue: number;
 }
 
+export interface EmployeeExperienceOutput {
+  yearResults: EmployeeExperienceYearResult[];
+  // Contract totals (backward compat)
+  totalInquiries: number;
+  hoursSaved: number;
+  totalMonetaryValue: number;
+}
+
+export interface ROISummaryYearResult {
+  year: number;
+  hrOpsSavings: number;
+  legalSavings: number;
+  productivitySavings: number;
+  grossValue: number;
+  netValue: number;
+}
+
 export interface ROISummary {
+  yearResults: ROISummaryYearResult[];
   grossAnnualValue: number;
   totalAnnualValue: number;
   totalROI: number;
@@ -809,7 +845,8 @@ export const DEFAULT_HR_OPERATIONS: HROperationsInputs = {
   ],
   tier01CasesPerYear: 9600,   // ~80% of 12000
   tier01AvgHandleTime: 9,
-  tier01DeflectionByYear: [24, 48, 60],  // 80% base × [30%, 60%, 75%] effectiveness
+  tier01DeflectionByYear: [30, 60, 75],  // matches wisqEffectiveness directly
+  tier2PlusTotalCases: 0,
   tier2Workflows: [],
   tier2PlusDefaultDeflection: 40,
   tier2PlusDefaultEffortReduction: 80,
@@ -834,8 +871,7 @@ export const DEFAULT_EMPLOYEE_EXPERIENCE: EmployeeExperienceInputs = {
   inquiriesPerEmployeePerYear: 3,
   avgTimePerInquiry: 15,
   timeReductionPercent: 75,
-  avgEmployeeHourlyRate: 50,
-  avgManagerHourlyRate: 75,
+  avgHourlyRate: 55,
   adoptionRate: 70,
   employeeSatisfactionImprovement: 25,
 };

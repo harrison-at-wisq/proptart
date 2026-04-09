@@ -1479,6 +1479,7 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
                 workforceType: company.workforceType || undefined,
                 orgModel: company.orgModel || undefined,
               }}
+              contractTermYears={pricing.contractTermYears}
             />
           </div>
         )}

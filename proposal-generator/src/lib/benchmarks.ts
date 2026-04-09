@@ -140,13 +140,9 @@ export const FIELD_SOURCES: Record<string, { sourceIds: string[]; note: string }
     sourceIds: ['gartner', 'apqc'],
     note: 'Blended average across self-service, phone/chat, email, and walk-up channels',
   },
-  avgEmployeeHourlyRate: {
+  avgHourlyRate: {
     sourceIds: ['bls_ecec'],
-    note: 'Average employee compensation by industry, fully loaded (1.3x base)',
-  },
-  avgManagerHourlyRate: {
-    sourceIds: ['bls_oes', 'bls_ecec'],
-    note: 'Manager compensation fully loaded hourly rate by industry',
+    note: 'Average hourly rate across all employees by industry',
   },
 };
 
@@ -576,14 +572,13 @@ export function generateEstimates(profile: CompanyProfile): EstimatedInputs {
   // Avg time per inquiry: Gartner/APQC blended 10-15 min
   const avgTimePerInquiry = employeeCount < 2500 ? 15 : employeeCount < 10000 ? 12 : 10;
 
-  let avgEmployeeHourlyRate = Math.round(indBenchmark.avgEmployeeSalary / 2080);
-  if (workforceType === 'frontline-heavy') avgEmployeeHourlyRate = Math.round(avgEmployeeHourlyRate * 0.8);
-  if (workforceType === 'knowledge-worker') avgEmployeeHourlyRate = Math.round(avgEmployeeHourlyRate * 1.2);
+  let avgHourlyRate = Math.round(indBenchmark.avgEmployeeSalary / 2080);
+  if (workforceType === 'frontline-heavy') avgHourlyRate = Math.round(avgHourlyRate * 0.8);
+  if (workforceType === 'knowledge-worker') avgHourlyRate = Math.round(avgHourlyRate * 1.2);
 
-  const avgManagerHourlyRate = managerHourlyCost;
   markEstimated(
     'totalEmployeePopulation', 'inquiriesPerEmployeePerYear',
-    'avgTimePerInquiry', 'avgEmployeeHourlyRate', 'avgManagerHourlyRate'
+    'avgTimePerInquiry', 'avgHourlyRate'
   );
 
   return {
@@ -596,7 +591,8 @@ export function generateEstimates(profile: CompanyProfile): EstimatedInputs {
       ],
       tier01CasesPerYear,
       tier01AvgHandleTime,
-      tier01DeflectionByYear: [24, 48, 60],  // 80% base × [30%, 60%, 75%]
+      tier01DeflectionByYear: [30, 60, 75],  // matches wisqEffectiveness directly
+      tier2PlusTotalCases: Math.round(tier2PlusTotalCases * 1.5), // 50% buffer for unconfigured workflows
       tier2Workflows,
       tier2PlusDefaultDeflection: 40,
       tier2PlusDefaultEffortReduction: 80,
@@ -645,8 +641,7 @@ export function generateEstimates(profile: CompanyProfile): EstimatedInputs {
       inquiriesPerEmployeePerYear: inquiriesPerEmployee,
       avgTimePerInquiry,
       timeReductionPercent: 90,
-      avgEmployeeHourlyRate,
-      avgManagerHourlyRate,
+      avgHourlyRate,
       adoptionRate: 80,
       employeeSatisfactionImprovement: 25,
     },

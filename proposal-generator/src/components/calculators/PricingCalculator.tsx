@@ -315,17 +315,17 @@ export function PricingCalculator({ inputs, onChange }: PricingCalculatorProps) 
                 Contract Term
               </label>
               <div className="flex gap-2">
-                {([1, 2, 3] as const).map((years) => (
+                {([1, 2, 3, 4, 5] as const).map((years) => (
                   <button
                     key={years}
-                    onClick={() => onChange({ contractTermYears: years })}
-                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                    onClick={() => onChange({ contractTermYears: years as PricingInputs['contractTermYears'] })}
+                    className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
                       inputs.contractTermYears === years
                         ? 'bg-[#03143B] text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    {years} Year{years > 1 ? 's' : ''}
+                    {years}Y
                   </button>
                 ))}
               </div>

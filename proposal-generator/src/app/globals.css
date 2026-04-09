@@ -84,6 +84,33 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Multi-thumb slider: transparent track, colored thumb via CSS variable */
+input[type="range"].year-thumb {
+  background: transparent !important;
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  z-index: 1;
+}
+
+input[type="range"].year-thumb::-webkit-slider-thumb {
+  pointer-events: auto;
+  background: var(--thumb-color, var(--wisq-constellation-blue));
+  position: relative;
+  z-index: 2;
+}
+
+input[type="range"].year-thumb::-moz-range-thumb {
+  pointer-events: auto;
+  background: var(--thumb-color, var(--wisq-constellation-blue));
+  position: relative;
+  z-index: 2;
+}
+
 /* Checkbox styling */
 input[type="checkbox"] {
   accent-color: var(--wisq-constellation-blue);
