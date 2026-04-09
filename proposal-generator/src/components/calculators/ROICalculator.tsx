@@ -2767,7 +2767,7 @@ function SummaryTab({
   const hrArea = buildAreaPath(d => d.hr, () => 0);
   const legalArea = buildAreaPath(d => d.hr + d.legal, d => d.hr);
   const prodArea = buildAreaPath(d => d.hr + d.legal + d.prod, d => d.hr + d.legal);
-  const costLine = costSteps.map(d => `${xScale(d.x)},${yScale(d.cost)}`).join('L');
+  const costLine = costSteps.map(d => `${xScale(d.x)},${yScale(d.cost)}`).join(' ');
 
   return (
     <div className="space-y-6">
