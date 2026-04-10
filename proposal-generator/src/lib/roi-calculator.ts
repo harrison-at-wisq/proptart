@@ -53,12 +53,23 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
       (sum, wf) => sum + wf.volumePerYear * volumeMultiplier, 0
     );
 
-    // Unconfigured Tier 2+ cases (exist but Wisq doesn't handle them)
-    const configuredT2Volume = inputs.tier2Workflows.reduce(
+    // Determine which workflows are active this year (default: all active)
+    const isWfActive = (wf: typeof inputs.tier2Workflows[0]) =>
+      wf.activeYears ? (wf.activeYears[y] !== false) : true;
+
+    // Configured volume that Wisq is actually handling this year
+    const activeConfiguredVolume = inputs.tier2Workflows
+      .filter(isWfActive)
+      .reduce((sum, wf) => sum + wf.volumePerYear * volumeMultiplier, 0);
+
+    // All configured volume (active + inactive) — for current-state hours
+    const allConfiguredVolume = inputs.tier2Workflows.reduce(
       (sum, wf) => sum + wf.volumePerYear * volumeMultiplier, 0
     );
+
+    // Unconfigured complex cases (exist but Wisq doesn't handle them)
     const totalT2Volume = (inputs.tier2PlusTotalCases || 0) * volumeMultiplier;
-    const unconfiguredT2Cases = Math.max(0, totalT2Volume - configuredT2Volume);
+    const unconfiguredT2Cases = Math.max(0, totalT2Volume - allConfiguredVolume);
     const configuredWfSum = inputs.tier2Workflows.reduce((s, wf) => s + wf.volumePerYear, 0);
     const weightedAvgHours = configuredWfSum > 0
       ? inputs.tier2Workflows.reduce((s, wf) => s + wf.timePerWorkflowHours * wf.volumePerYear, 0) / configuredWfSum
@@ -66,7 +77,12 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
     const unconfiguredHoursPerCase = inputs.tier2PlusAvgTimePerCase ?? weightedAvgHours;
     const unconfiguredT2Min = unconfiguredT2Cases * unconfiguredHoursPerCase * 60;
 
-    // Current state (no Wisq)
+    // Inactive workflow cases — count as full time (Wisq not touching them)
+    const inactiveWfMin = inputs.tier2Workflows
+      .filter(wf => !isWfActive(wf))
+      .reduce((sum, wf) => sum + wf.volumePerYear * volumeMultiplier * wf.timePerWorkflowHours * 60, 0);
+
+    // Current state (no Wisq) — all cases at full time
     const currentTier01Min = tier01Cases * inputs.tier01AvgHandleTime;
     const currentTier2Min = inputs.tier2Workflows.reduce(
       (sum, wf) => sum + wf.volumePerYear * volumeMultiplier * wf.timePerWorkflowHours * 60, 0
@@ -77,9 +93,11 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
     const tier01Deflection = (tier01DeflectionByYear[y] ?? 0) / 100;
     const futureTier01Min = tier01Cases * (1 - tier01Deflection) * inputs.tier01AvgHandleTime;
 
-    let futureTier2Min = unconfiguredT2Min; // unconfigured cases stay at full time
+    // Inactive workflows + unconfigured = full time (Wisq doesn't touch)
+    let futureTier2Min = unconfiguredT2Min + inactiveWfMin;
     let casesDeflected = tier01Cases * tier01Deflection;
     for (const wf of inputs.tier2Workflows) {
+      if (!isWfActive(wf)) continue; // skip inactive — already counted at full time
       const wfCases = wf.volumePerYear * volumeMultiplier;
       // Per-year arrays on workflow, with fallback for old data
       const wfDeflectionArr = wf.deflectionByYear?.length ? wf.deflectionByYear : null;
@@ -110,6 +128,7 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
       tier2HoursSaved,
       casesDeflected,
       workloadReductionPercent,
+      activeConfiguredCases: activeConfiguredVolume,
     });
 
     // --- Phase 2: Cost translation ---
@@ -178,9 +197,9 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
 /**
  * Calculate Legal Compliance ROI — multi-year, coverage-based model
  *
- * High-stakes cases come from Tier 2+ volume (scaled by headcount growth).
+ * High-stakes cases come from complex case volume (scaled by headcount growth).
  * Wisq accuracy is a fixed rate — what changes per year is how many cases
- * Wisq actually handles (configured workflow coverage of total T2+).
+ * Wisq actually handles (configured workflow coverage of total complex cases).
  * Cases Wisq touches get Wisq accuracy; untouched cases stay at baseline.
  */
 export function calculateLegalComplianceROI(
@@ -188,14 +207,14 @@ export function calculateLegalComplianceROI(
   tier2PlusConfiguredCases: number,
   yearSettings?: ContractYearSettings[],
   contractYears?: number,
-  tier2PlusTotalCases?: number
+  tier2PlusTotalCases?: number,
+  activeConfiguredCasesByYear?: number[],
 ): LegalComplianceOutput {
   const years = contractYears || yearSettings?.length || 1;
   const settings = yearSettings?.length ? yearSettings : [{ wisqEffectiveness: 75, workforceChange: 0 }];
 
-  // Wisq coverage: what fraction of T2+ cases are configured workflows (Wisq handles them)
+  // Base total T2 volume (unscaled)
   const totalT2 = tier2PlusTotalCases || tier2PlusConfiguredCases || 1;
-  const wisqCoverage = Math.min(1, tier2PlusConfiguredCases / totalT2);
 
   // Base high-stakes cases (before workforce scaling)
   const baseHighStakesCases = inputs.useManualCaseVolume
@@ -208,11 +227,16 @@ export function calculateLegalComplianceROI(
     const s = settings[y] ?? settings[settings.length - 1];
     const volMult = 1 + s.workforceChange / 100;
 
+    // Per-year Wisq coverage: use active configured cases for this year if available
+    const activeConfigured = activeConfiguredCasesByYear?.[y] ?? (tier2PlusConfiguredCases * volMult);
+    const totalT2Scaled = totalT2 * volMult;
+    const wisqCoverageYear = totalT2Scaled > 0 ? Math.min(1, activeConfigured / totalT2Scaled) : 0;
+
     // Total high-stakes cases this year (scaled by headcount)
     const highStakesCases = baseHighStakesCases * volMult;
 
     // Split: cases Wisq handles vs. cases it doesn't
-    const wisqHandled = highStakesCases * wisqCoverage;
+    const wisqHandled = highStakesCases * wisqCoverageYear;
     const notHandled = highStakesCases - wisqHandled;
 
     // Wisq accuracy is fixed — incidents avoided only on cases Wisq touches

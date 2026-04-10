@@ -144,6 +144,7 @@ export interface Tier2Workflow {
   timePerWorkflowHours: number;
   deflectionByYear: number[];     // per-year deflection rates (0-100%), one per contract year
   effortReductionByYear: number[]; // per-year effort reduction rates (0-100%)
+  activeYears?: boolean[];         // per-year on/off — true = active (defaults to all true)
 }
 
 export interface ManagerHRTime {
@@ -172,14 +173,19 @@ export interface HROperationsInputs {
   contractYears: number;
   yearSettings: ContractYearSettings[];
 
-  // Tier 0-1: Simple Cases
+  // Simple Transactions
   tier01CasesPerYear: number;
   tier01AvgHandleTime: number;
   tier01DeflectionByYear: number[];  // per-year deflection rates, one per contract year
 
-  // Tier 2+: Complex Workflows
-  tier2PlusTotalCases: number;           // total Tier 2+ cases (>= sum of configured workflows)
-  tier2PlusAvgTimePerCase?: number;      // hours per case for unconfigured Tier 2+ (defaults to weighted avg)
+  // Complex Cases
+  tier2PlusTotalCases: number;           // total complex cases (>= sum of configured workflows)
+  tier2PlusAvgTimePerCase?: number;      // hours per case for unconfigured complex cases (defaults to weighted avg)
+  nonConfiguredWorkflow?: {
+    enabled: boolean;
+    volumePerYear: number;
+    hoursPerCase: number;
+  };
   tier2Workflows: Tier2Workflow[];
   tier2PlusDefaultDeflection: number;    // hidden base rate for seeding new workflows
   tier2PlusDefaultEffortReduction: number; // hidden base rate for seeding new workflows
@@ -207,6 +213,7 @@ export interface HROperationsYearResult {
   tier2HoursSaved: number;
   casesDeflected: number;
   workloadReductionPercent: number;
+  activeConfiguredCases: number;
 }
 
 // Phase 2 output: per-year cost translation
@@ -847,6 +854,7 @@ export const DEFAULT_HR_OPERATIONS: HROperationsInputs = {
   tier01AvgHandleTime: 9,
   tier01DeflectionByYear: [30, 60, 75],  // matches wisqEffectiveness directly
   tier2PlusTotalCases: 0,
+  nonConfiguredWorkflow: { enabled: false, volumePerYear: 0, hoursPerCase: 0.75 },
   tier2Workflows: [],
   tier2PlusDefaultDeflection: 40,
   tier2PlusDefaultEffortReduction: 80,

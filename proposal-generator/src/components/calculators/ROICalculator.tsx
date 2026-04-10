@@ -145,11 +145,15 @@ export function ROICalculator({
     0
   );
 
-  const tier2PlusTotalCases = hrInputs.tier2PlusTotalCases || Math.round(tier2PlusConfiguredCases * 1.5);
+  const ncVol = hrInputs.nonConfiguredWorkflow?.enabled ? (hrInputs.nonConfiguredWorkflow.volumePerYear || 0) : 0;
+  const tier2PlusTotalCases = hrInputs.tier2PlusTotalCases || (tier2PlusConfiguredCases + ncVol) || tier2PlusConfiguredCases;
+
+  // Per-year active configured cases from HR output (for legal compliance coverage)
+  const activeConfiguredCasesByYear = hrOutput.yearResults.map(yr => yr.activeConfiguredCases);
 
   const legalOutput = useMemo(
-    () => calculateLegalComplianceROI(legalInputs, tier2PlusConfiguredCases, yearSettings, contractYears, tier2PlusTotalCases),
-    [legalInputs, tier2PlusConfiguredCases, yearSettings, contractYears, tier2PlusTotalCases]
+    () => calculateLegalComplianceROI(legalInputs, tier2PlusConfiguredCases, yearSettings, contractYears, tier2PlusTotalCases, activeConfiguredCasesByYear),
+    [legalInputs, tier2PlusConfiguredCases, yearSettings, contractYears, tier2PlusTotalCases, activeConfiguredCasesByYear]
   );
 
   const employeeOutput = useMemo(
@@ -804,7 +808,7 @@ function TwoRingChart({
           style={{ left: hover.x + 12, top: hover.y - 8, transform: 'translateY(-100%)' }}
         >
           <div className="text-gray-400 text-[10px] mb-0.5">
-            {hover.tier === 'tier01' ? '◉ Simple Cases (Tier 0/1)' : '◈ Complex Workflows (Tier 2+)'}
+            {hover.tier === 'tier01' ? '◉ Simple Transactions' : '◈ Complex Cases'}
           </div>
           <div className="font-semibold">{hover.label}</div>
           <div className="text-gray-300">{hover.detail}</div>
@@ -847,8 +851,9 @@ function CaseloadDashboard({
   // Configured workflow sum
   const configuredWorkflowSum = inputs.tier2Workflows.reduce((s, wf) => s + wf.volumePerYear, 0);
 
-  // Auto-default tier2PlusTotalCases if not set or 0
-  const tier2PlusTotalCases = inputs.tier2PlusTotalCases || Math.round(configuredWorkflowSum * 1.5);
+  // Total complex cases = configured + non-configured (if enabled)
+  const ncVolDash = inputs.nonConfiguredWorkflow?.enabled ? (inputs.nonConfiguredWorkflow.volumePerYear || 0) : 0;
+  const tier2PlusTotalCases = inputs.tier2PlusTotalCases || (configuredWorkflowSum + ncVolDash) || configuredWorkflowSum;
   const totalCases = (inputs.tier01CasesPerYear || 0) + tier2PlusTotalCases;
 
   // Reconciliation warning
@@ -873,12 +878,19 @@ function CaseloadDashboard({
   const tier01RemainingMin = tier01RemainingCases * inputs.tier01AvgHandleTime;
 
   // --- Tier 2+ per-workflow breakdown ---
-  interface WfBreakdown { name: string; deflectedCases: number; remainingCases: number; deflectedMin: number; remainingMin: number; colorIdx: number; }
+  interface WfBreakdown { name: string; deflectedCases: number; remainingCases: number; deflectedMin: number; remainingMin: number; currentMin: number; colorIdx: number; }
   const wfBreakdowns: WfBreakdown[] = [];
   let configuredCasesScaled = 0;
   inputs.tier2Workflows.forEach((wf, i) => {
     const wfCases = wf.volumePerYear * volMult;
     configuredCasesScaled += wfCases;
+    const wfActive = wf.activeYears ? (wf.activeYears[selectedYear] !== false) : true;
+    const currentMin = wfCases * wf.timePerWorkflowHours * 60; // baseline time (no Wisq)
+    if (!wfActive) {
+      // Inactive this year — all cases remain at full time, no deflection
+      wfBreakdowns.push({ name: `${wf.name} (inactive)`, deflectedCases: 0, remainingCases: Math.round(wfCases), deflectedMin: 0, remainingMin: currentMin, currentMin, colorIdx: i });
+      return;
+    }
     const deflArr = wf.deflectionByYear?.length ? wf.deflectionByYear : null;
     const deflRate = (deflArr ? (deflArr[selectedYear] ?? 0) : 50) / 100;
     const effArr = wf.effortReductionByYear?.length ? wf.effortReductionByYear : null;
@@ -888,7 +900,7 @@ function CaseloadDashboard({
     // Time: deflected cases take 0 time; remaining cases are reduced by effort reduction
     const remainingMin = remaining * wf.timePerWorkflowHours * 60 * (1 - effRate);
     const deflectedMin = deflected * wf.timePerWorkflowHours * 60; // time that would have been spent
-    wfBreakdowns.push({ name: wf.name, deflectedCases: deflected, remainingCases: remaining, deflectedMin, remainingMin, colorIdx: i });
+    wfBreakdowns.push({ name: wf.name, deflectedCases: deflected, remainingCases: remaining, deflectedMin, remainingMin, currentMin, colorIdx: i });
   });
 
   // Other unconfigured Tier 2+ cases
@@ -941,9 +953,11 @@ function CaseloadDashboard({
     const colors = WORKFLOW_COLORS[wf.colorIdx % WORKFLOW_COLORS.length];
     const deflVal = isCases ? wf.deflectedCases : wf.deflectedMin;
     const remVal = isCases ? wf.remainingCases : wf.remainingMin;
+    // totalValue uses baseline current time (not Wisq-reduced) so pie area stays proportional
+    const totalVal = isCases ? (wf.deflectedCases + wf.remainingCases) : wf.currentMin;
     innerSlices.push({
       name: wf.name,
-      totalValue: deflVal + remVal,
+      totalValue: totalVal,
       deflectedValue: deflVal,
       remainingValue: remVal,
       deflectedColor: colors.dark,
@@ -1057,8 +1071,8 @@ function CaseloadDashboard({
                 {/* Header row: T0/1 | T2+ */}
                 <div className="grid grid-cols-[auto_1fr_1fr] gap-x-2 items-center">
                   <div />
-                  <div className="text-[10px] text-gray-400 font-medium text-center">◉ Simple T0/1</div>
-                  <div className="text-[10px] text-gray-400 font-medium text-center">◈ Complex T2+</div>
+                  <div className="text-[10px] text-gray-400 font-medium text-center">◉ Simple Transactions</div>
+                  <div className="text-[10px] text-gray-400 font-medium text-center">◈ Complex Cases</div>
                 </div>
 
                 {/* Current Breakdown row */}
@@ -1114,11 +1128,11 @@ function CaseloadDashboard({
                   <p className="text-xl font-bold text-[#03143B]">{totalCasesScaled.toLocaleString()}</p>
                 </div>
                 <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">◉ Tier 0/1</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">◉ Simple Transactions</p>
                   <p className="text-xl font-bold text-[#03143B]">{tier01TotalCases.toLocaleString()}</p>
                 </div>
                 <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">◈ Tier 2+</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">◈ Complex Cases</p>
                   <p className="text-xl font-bold text-[#03143B]">{tier2TotalCases.toLocaleString()}</p>
                 </div>
               </>
@@ -1129,11 +1143,11 @@ function CaseloadDashboard({
                   <p className="text-xl font-bold text-[#03143B]">{totalHrs.toLocaleString()}</p>
                 </div>
                 <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">◉ Tier 0/1</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">◉ Simple Transactions</p>
                   <p className="text-xl font-bold text-[#03143B]">{tier01Hrs.toLocaleString()} hrs</p>
                 </div>
                 <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">◈ Tier 2+</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">◈ Complex Cases</p>
                   <p className="text-xl font-bold text-[#03143B]">{tier2Hrs.toLocaleString()} hrs</p>
                 </div>
               </>
@@ -1148,8 +1162,8 @@ function CaseloadDashboard({
                   <th className="text-left py-2 pr-4 text-gray-600 font-medium">Year</th>
                   <th className="text-right py-2 px-3 text-gray-600 font-medium">Current Hrs</th>
                   <th className="text-right py-2 px-3 text-gray-600 font-medium">With Wisq</th>
-                  <th className="text-right py-2 px-3 text-gray-600 font-medium">◉ T0/1 Saved</th>
-                  <th className="text-right py-2 px-3 text-gray-600 font-medium">◈ T2+ Saved</th>
+                  <th className="text-right py-2 px-3 text-gray-600 font-medium">◉ Simple Saved</th>
+                  <th className="text-right py-2 px-3 text-gray-600 font-medium">◈ Complex Saved</th>
                   <th className="text-right py-2 pl-3 text-gray-600 font-medium">Reduction</th>
                 </tr>
               </thead>
@@ -1523,13 +1537,13 @@ function HROperationsTab({
         yearColors={YEAR_COLORS}
       />
 
-      {/* Tier 0-1: Parameters (full width) */}
+      {/* Simple Transactions: Parameters (full width) */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h4 className="font-semibold text-[#03143B] mb-4">Tier 0-1: Simple Cases</h4>
+        <h4 className="font-semibold text-[#03143B] mb-4">Simple Transactions</h4>
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <InputField
-              label="Tier 0/1 Cases per Year"
+              label="Simple Transaction Cases per Year"
               value={inputs.tier01CasesPerYear || 0}
               onChange={(v) => onChange({ tier01CasesPerYear: v })}
               type="formatted-number"
@@ -1559,10 +1573,10 @@ function HROperationsTab({
         />
       </div>
 
-      {/* Tier 2+: Complex Workflows (full width) */}
+      {/* Complex Cases (full width) */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <div className="flex justify-between items-center mb-4">
-          <h4 className="font-semibold text-[#03143B]">Tier 2+: Complex Workflows</h4>
+          <h4 className="font-semibold text-[#03143B]">Complex Cases</h4>
           <button
             onClick={onAddWorkflow}
             className="px-3 py-1 text-sm bg-[#03143B] text-white rounded-md hover:bg-[#020e29] transition-colors"
@@ -1571,107 +1585,167 @@ function HROperationsTab({
           </button>
         </div>
 
-        {/* Top row: Total cases + Avg time per case */}
+        {/* Summary: total configured + non-configured */}
         {(() => {
           const wfSum = inputs.tier2Workflows.reduce((s, wf) => s + wf.volumePerYear, 0);
-          const t2Total = inputs.tier2PlusTotalCases || Math.round(wfSum * 1.5);
-          const isExactMatch = wfSum > 0 && t2Total === wfSum;
-          const ratio = wfSum > 0 ? t2Total / wfSum : 0;
-          const weightedAvg = wfSum > 0
-            ? inputs.tier2Workflows.reduce((s, wf) => s + wf.timePerWorkflowHours * wf.volumePerYear, 0) / wfSum
-            : 0.75;
-          const currentAvg = inputs.tier2PlusAvgTimePerCase ?? weightedAvg;
+          const nc = inputs.nonConfiguredWorkflow;
+          const ncVol = nc?.enabled ? (nc.volumePerYear || 0) : 0;
+          const totalCases = wfSum + ncVol;
+          const ratio = wfSum > 0 ? totalCases / wfSum : 0;
           return (
-            <div className="mb-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <InputField
-                    label="Total Tier 2+ Cases per Year"
-                    value={t2Total}
-                    onChange={(v) => onChange({ tier2PlusTotalCases: v })}
-                    type="formatted-number"
-                  />
-                  {wfSum > 0 && (() => {
-                    if (isExactMatch) {
-                      return (
-                        <p className="text-[10px] text-emerald-600 mt-1">
-                          ✓ Total equals configured cases — estimating based on current Wisq workflows.
-                        </p>
-                      );
-                    }
-                    if (ratio >= 1.5) {
-                      return (
-                        <p className="text-[10px] text-emerald-600 mt-1">
-                          ✓ Total ({t2Total.toLocaleString()}) is {Math.round(ratio * 100)}% of configured ({wfSum.toLocaleString()}) — good coverage estimate.
-                        </p>
-                      );
-                    }
-                    if (ratio >= 1.25) {
-                      return (
-                        <p className="text-[10px] text-amber-500 mt-1">
-                          ⚠ Total ({t2Total.toLocaleString()}) is only {Math.round(ratio * 100)}% of configured ({wfSum.toLocaleString()}). You likely have more unconfigured T2+ cases.
-                        </p>
-                      );
-                    }
-                    return (
-                      <p className="text-[10px] text-red-600 mt-1">
-                        ⚠ Total ({t2Total.toLocaleString()}) is only {Math.round(ratio * 100)}% of configured ({wfSum.toLocaleString()}). This should be higher — total must include all T2+ cases, not just configured ones.
-                      </p>
-                    );
-                  })()}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Avg Time per Case (hours)</label>
-                  <input
-                    type="number"
-                    value={currentAvg}
-                    onChange={(e) => onChange({ tier2PlusAvgTimePerCase: Number(e.target.value) || 0 })}
-                    step={0.25}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#03143B]"
-                  />
-                  <p className="text-[10px] text-gray-400 mt-1">
-                    Weighted avg: {weightedAvg.toFixed(2)} hrs ({Math.round(weightedAvg * 60)} min)
-                    {inputs.tier2PlusAvgTimePerCase != null && Math.abs(inputs.tier2PlusAvgTimePerCase - weightedAvg) > 0.01 && (
-                      <button
-                        onClick={() => onChange({ tier2PlusAvgTimePerCase: undefined })}
-                        className="ml-2 text-[#4d65ff] hover:underline"
-                      >
-                        Reset to weighted avg
-                      </button>
-                    )}
-                  </p>
-                </div>
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-500">Total Complex Cases</p>
+                <p className="text-lg font-bold text-[#03143B]">{totalCases.toLocaleString()}</p>
+                <p className="text-[10px] text-gray-400">{wfSum.toLocaleString()} configured{ncVol > 0 ? ` + ${ncVol.toLocaleString()} non-configured` : ''}</p>
               </div>
+              {wfSum > 0 && !nc?.enabled && (
+                <p className="text-[10px] text-amber-500 max-w-[220px] text-right">
+                  ⚠ No non-configured cases added. Most orgs have additional complex cases beyond configured workflows.
+                </p>
+              )}
+              {wfSum > 0 && nc?.enabled && ncVol > 0 && (() => {
+                if (ratio >= 1.5) {
+                  return (
+                    <p className="text-[10px] text-emerald-600 max-w-[220px] text-right">
+                      ✓ Total is {Math.round(ratio * 100)}% of configured — good coverage estimate.
+                    </p>
+                  );
+                }
+                return (
+                  <p className="text-[10px] text-amber-500 max-w-[220px] text-right">
+                    ⚠ Total is only {Math.round(ratio * 100)}% of configured ({wfSum.toLocaleString()}). Should be at least 150% to capture all complex cases.
+                  </p>
+                );
+              })()}
             </div>
           );
         })()}
 
         {/* Workflow panels */}
-        {inputs.tier2Workflows.length === 0 ? (
-          <div className="text-center p-8 border-2 border-dashed border-gray-200 rounded-lg">
-            <p className="text-gray-500 mb-3">No Tier 2+ workflows configured</p>
-            <button
-              onClick={onAddWorkflow}
-              className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-            >
-              Add Your First Workflow
-            </button>
-          </div>
-        ) : (
-          <div className={`grid gap-3 ${inputs.tier2Workflows.length >= 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            {inputs.tier2Workflows.map((workflow) => (
-              <div key={workflow.id} className="p-3 bg-gray-50 rounded-lg space-y-2">
+        {/* Workflow panels — Non-Configured first, then configured */}
+        <div className={`grid gap-3 grid-cols-2`}>
+          {/* Non-Configured Workflow Card */}
+          {(() => {
+            const nc = inputs.nonConfiguredWorkflow ?? { enabled: false, volumePerYear: 0, hoursPerCase: 0.75 };
+            return (
+              <div className={`p-3 rounded-lg space-y-2 border-2 ${nc.enabled ? 'bg-blue-50/60 border-blue-200' : 'bg-gray-50/50 border-dashed border-gray-200'}`}>
+                <div className="flex justify-between items-center">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={nc.enabled}
+                      onChange={(e) => onChange({
+                        nonConfiguredWorkflow: { ...nc, enabled: e.target.checked },
+                        tier2PlusTotalCases: e.target.checked
+                          ? inputs.tier2Workflows.reduce((s, wf) => s + wf.volumePerYear, 0) + nc.volumePerYear
+                          : inputs.tier2Workflows.reduce((s, wf) => s + wf.volumePerYear, 0),
+                      })}
+                      className="w-4 h-4 text-[#2563eb] rounded focus:ring-[#2563eb]"
+                    />
+                    <span className="text-sm font-semibold text-[#03143B]">Non-Configured</span>
+                  </label>
+                  <span className="text-[9px] uppercase tracking-wider text-blue-400 font-medium bg-blue-100 px-2 py-0.5 rounded-full">Wisq won&apos;t touch</span>
+                </div>
+                <p className="text-[10px] text-gray-400">Complex cases that exist but are not routed through Wisq workflows.</p>
+                {nc.enabled && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Volume/Year</label>
+                      <input
+                        type="number"
+                        value={nc.volumePerYear}
+                        onChange={(e) => {
+                          const vol = Number(e.target.value) || 0;
+                          const wfSum = inputs.tier2Workflows.reduce((s, wf) => s + wf.volumePerYear, 0);
+                          onChange({
+                            nonConfiguredWorkflow: { ...nc, volumePerYear: vol },
+                            tier2PlusTotalCases: wfSum + vol,
+                            tier2PlusAvgTimePerCase: nc.hoursPerCase,
+                          });
+                        }}
+                        placeholder="Volume/yr"
+                        className="w-full px-2 py-1 text-sm border border-blue-200 rounded bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Hours/Case</label>
+                      <input
+                        type="number"
+                        value={nc.hoursPerCase}
+                        onChange={(e) => {
+                          const hrs = Number(e.target.value) || 0;
+                          onChange({
+                            nonConfiguredWorkflow: { ...nc, hoursPerCase: hrs },
+                            tier2PlusAvgTimePerCase: hrs,
+                          });
+                        }}
+                        placeholder="Hours"
+                        step={0.25}
+                        className="w-full px-2 py-1 text-sm border border-blue-200 rounded bg-white"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {inputs.tier2Workflows.length === 0 && (
+            <div className="text-center p-6 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center justify-center">
+              <p className="text-gray-500 mb-3 text-sm">No configured workflows yet</p>
+              <button
+                onClick={onAddWorkflow}
+                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Add Your First Workflow
+              </button>
+            </div>
+          )}
+
+          {inputs.tier2Workflows.map((workflow) => {
+            const activeYrs = workflow.activeYears?.length === contractYears
+              ? workflow.activeYears
+              : Array.from({ length: contractYears }, () => true);
+            const allActive = activeYrs.every(Boolean);
+            return (
+            <div key={workflow.id} className={`p-3 rounded-lg space-y-2 ${allActive ? 'bg-emerald-50/50 border border-emerald-200' : 'bg-amber-50/50 border border-amber-200'}`}>
                 <div className="flex justify-between items-center">
                   <EditableWorkflowName
                     name={workflow.name}
                     onChange={(name) => onUpdateWorkflow(workflow.id, { name })}
                   />
-                  <button
-                    onClick={() => onRemoveWorkflow(workflow.id)}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
-                  >
-                    ✕
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {contractYears > 1 && (
+                      <div className="flex items-center gap-0.5 mr-2">
+                        {activeYrs.map((active, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              const newYrs = [...activeYrs];
+                              newYrs[i] = !newYrs[i];
+                              onUpdateWorkflow(workflow.id, { activeYears: newYrs });
+                            }}
+                            className={`w-6 h-5 text-[9px] font-bold rounded transition-all ${
+                              active
+                                ? 'text-white'
+                                : 'bg-gray-200 text-gray-400 line-through'
+                            }`}
+                            style={active ? { backgroundColor: YEAR_COLORS[i % YEAR_COLORS.length] } : {}}
+                            title={active ? `Active in Y${i + 1} — click to disable` : `Inactive in Y${i + 1} — click to enable`}
+                          >
+                            Y{i + 1}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => onRemoveWorkflow(workflow.id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -1702,6 +1776,11 @@ function HROperationsTab({
                     />
                   </div>
                 </div>
+                {!allActive && (
+                  <p className="text-[10px] text-amber-600">
+                    Wisq inactive in {activeYrs.map((a, i) => !a ? `Y${i + 1}` : null).filter(Boolean).join(', ')} — cases still exist but won&apos;t be handled by Wisq (affects compliance coverage)
+                  </p>
+                )}
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <MultiYearSlider
                     label="Deflection Rate"
@@ -1713,6 +1792,7 @@ function HROperationsTab({
                       onUpdateWorkflow(workflow.id, { deflectionByYear: newArr });
                     }}
                     yearColors={YEAR_COLORS}
+                    activeYears={activeYrs}
                   />
                   <MultiYearSlider
                     label="Effort Reduction"
@@ -1724,12 +1804,13 @@ function HROperationsTab({
                       onUpdateWorkflow(workflow.id, { effortReductionByYear: newArr });
                     }}
                     yearColors={YEAR_COLORS}
+                    activeYears={activeYrs}
                   />
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
       </div>
 
       {/* Cost Parameters */}
@@ -1737,14 +1818,14 @@ function HROperationsTab({
         <h4 className="font-semibold text-[#03143B] mb-4">Cost Parameters</h4>
         <div className="grid md:grid-cols-2 gap-4">
           <InputField
-            label="Tier 0/1 HR Ops Fully Burdened Cost"
+            label="Simple Transaction HR Ops Fully Burdened Cost"
             value={inputs.tier01HandlerSalary}
             onChange={(v) => onChange({ tier01HandlerSalary: v })}
             type="currency"
           />
           <div>
             <InputField
-              label="Tier 2+ HR Ops Fully Burdened Cost"
+              label="Complex Case HR Ops Fully Burdened Cost"
               value={inputs.tier2PlusHandlerSalary}
               onChange={(v) => onChange({ tier2PlusHandlerSalary: v })}
               type="currency"
@@ -1893,8 +1974,8 @@ function HROperationsTab({
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-2 pr-4 text-gray-600 font-medium">Year</th>
-                <th className="text-right py-2 px-4 text-gray-600 font-medium">◉ T0/1 Savings</th>
-                <th className="text-right py-2 px-4 text-gray-600 font-medium">◈ T2+ Savings</th>
+                <th className="text-right py-2 px-4 text-gray-600 font-medium">◉ Simple Savings</th>
+                <th className="text-right py-2 px-4 text-gray-600 font-medium">◈ Complex Savings</th>
                 {output.yearCostResults.some((yr) => yr.managerSavings > 0) && (
                   <th className="text-right py-2 px-4 text-gray-600 font-medium">Manager Savings</th>
                 )}
@@ -2020,7 +2101,7 @@ function LegalComplianceTab({
           </div>
           <div className="space-y-4">
             <div className="p-3 bg-gray-50 rounded">
-              <p className="text-sm text-gray-600">Configured Tier 2+ Cases</p>
+              <p className="text-sm text-gray-600">Configured Complex Cases</p>
               <p className="text-lg font-semibold">{tier2PlusConfiguredCases.toLocaleString()}</p>
             </div>
 
@@ -2067,7 +2148,7 @@ function LegalComplianceTab({
                   : <p>{tier2PlusConfiguredCases.toLocaleString()} cases × {r2(inputs.highStakesPercent)}% = {Math.round(scaledHighStakes).toLocaleString()} high-stakes → Wisq handles all {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()}</p>
               ) : (
                 <>
-                  <p>{tier2PlusConfiguredCases.toLocaleString()} configured / {tier2PlusTotalCases.toLocaleString()} total T2+ = {(wisqCoverage * 100).toFixed(0)}% coverage</p>
+                  <p>{tier2PlusConfiguredCases.toLocaleString()} configured / {tier2PlusTotalCases.toLocaleString()} total complex = {(wisqCoverage * 100).toFixed(0)}% coverage</p>
                   {inputs.useManualCaseVolume
                     ? <p>{Math.round(scaledHighStakes).toLocaleString()} high-stakes (manual) × {(wisqCoverage * 100).toFixed(0)}% = {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()} Wisq handles</p>
                     : <p>{tier2PlusTotalCases.toLocaleString()} × {r2(inputs.highStakesPercent)}% = {Math.round(baseHighStakes).toLocaleString()} high-stakes{volMult !== 1 ? ` × ${r2(volMult)}x growth` : ''} × {(wisqCoverage * 100).toFixed(0)}% = {Math.round(scaledHighStakes * wisqCoverage).toLocaleString()} Wisq handles</p>
@@ -2649,11 +2730,14 @@ function HoverYearPopup({
   label,
   yearValues,
   children,
+  formatFn,
 }: {
   label: string;
   yearValues: { year: number; value: number }[];
   children: React.ReactNode;
+  formatFn?: (v: number) => string;
 }) {
+  const fmt = formatFn ?? formatCurrency;
   const [show, setShow] = useState(false);
   const yearColors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
   return (
@@ -2669,12 +2753,12 @@ function HoverYearPopup({
           {yearValues.map((yv) => (
             <div key={yv.year} className="flex justify-between items-center py-0.5">
               <span className="text-xs font-medium" style={{ color: yearColors[(yv.year - 1) % yearColors.length] }}>Y{yv.year}</span>
-              <span className="text-xs font-semibold">{formatCurrency(yv.value)}</span>
+              <span className="text-xs font-semibold">{fmt(yv.value)}</span>
             </div>
           ))}
           <div className="border-t border-white/20 mt-1.5 pt-1.5 flex justify-between">
             <span className="text-[10px] text-white/60">Avg/yr</span>
-            <span className="text-xs font-bold">{formatCurrency(yearValues.reduce((s, v) => s + v.value, 0) / yearValues.length)}</span>
+            <span className="text-xs font-bold">{fmt(yearValues.reduce((s, v) => s + v.value, 0) / yearValues.length)}</span>
           </div>
           <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
             <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-[#03143B]" />
@@ -2780,7 +2864,7 @@ function SummaryTab({
             <p className="text-[10px] opacity-40 mt-1">avg/yr</p>
           </div>
         </HoverYearPopup>
-        <HoverYearPopup label="ROI %" yearValues={yrs.map(yr => ({ year: yr.year, value: wisqLicenseCost > 0 ? (yr.netValue / wisqLicenseCost) * 100 : 0 }))}>
+        <HoverYearPopup label="ROI %" yearValues={yrs.map(yr => ({ year: yr.year, value: wisqLicenseCost > 0 ? (yr.netValue / wisqLicenseCost) * 100 : 0 }))} formatFn={(v) => `${v.toFixed(0)}%`}>
           <div className="bg-gradient-to-br from-[#03143B]/80 to-[#020e29]/80 rounded-lg p-5 text-white cursor-default">
             <p className="text-xs opacity-60 mb-1">ROI</p>
             <p className="text-2xl font-bold">{summary.totalROI.toFixed(0)}%</p>
@@ -2986,12 +3070,12 @@ function SummaryTab({
           {/* HR Ops items */}
           <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium px-3 pt-2">HR Operations</div>
           <HoverBreakdownRow
-            label="Tier 0/1 Workload Savings"
+            label="Simple Transaction Savings"
             avgValue={hrYearCosts.reduce((s, yr) => s + yr.tier01Savings, 0) / nYrs}
             yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.tier01Savings }))}
           />
           <HoverBreakdownRow
-            label="Tier 2+ Workload Savings"
+            label="Complex Case Savings"
             avgValue={hrYearCosts.reduce((s, yr) => s + yr.tier2Savings, 0) / nYrs}
             yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.tier2Savings }))}
           />
@@ -3171,7 +3255,7 @@ function generateBusinessCaseNarrative(
 
   if (hrPercent > 50) {
     const lastYearFTE = hrOutput.yearCostResults[hrOutput.yearCostResults.length - 1]?.fteReduction ?? 0;
-    return `HR operational efficiency is your strongest value lever at ${hrPercent.toFixed(0)}% of total value. Wisq's AI-powered deflection reduces your effective cost per case by automating Tier 0-1 responses and streamlining Tier 2+ workflows. This translates to ${lastYearFTE.toFixed(1)} FTE in workload reduction by the final contract year.`;
+    return `HR operational efficiency is your strongest value lever at ${hrPercent.toFixed(0)}% of total value. Wisq's AI-powered deflection reduces your effective cost per case by automating simple transactions and streamlining complex case workflows. This translates to ${lastYearFTE.toFixed(1)} FTE in workload reduction by the final contract year.`;
   }
 
   return `Wisq delivers balanced value across operations (${hrPercent.toFixed(0)}%), compliance (${legalPercent.toFixed(0)}%), and employee experience (${prodPercent.toFixed(0)}%). This diversified ROI means the business case holds up even if any single value stream performs below projections. Net annual benefit of ${formatCompactCurrency(summary.netAnnualBenefit)} annually.`;
@@ -3332,6 +3416,7 @@ function MultiYearSlider({
   min = 0,
   max = 100,
   yearColors,
+  activeYears,
 }: {
   label: string;
   values: number[];
@@ -3339,7 +3424,9 @@ function MultiYearSlider({
   min?: number;
   max?: number;
   yearColors: string[];
+  activeYears?: boolean[];
 }) {
+  const isActive = (i: number) => activeYears ? (activeYears[i] !== false) : true;
   const trackRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<number | null>(null);
 
@@ -3361,6 +3448,7 @@ function MultiYearSlider({
   };
 
   const handlePointerDown = (i: number) => (e: React.PointerEvent) => {
+    if (!isActive(i)) return; // inactive years can't be dragged
     e.preventDefault();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     draggingRef.current = i;
@@ -3387,9 +3475,11 @@ function MultiYearSlider({
     let nearestIdx = 0;
     let nearestDist = Infinity;
     values.forEach((v, i) => {
+      if (!isActive(i)) return; // skip inactive
       const dist = Math.abs(v - raw);
       if (dist < nearestDist) { nearestDist = dist; nearestIdx = i; }
     });
+    if (!isActive(nearestIdx)) return;
     onChange(nearestIdx, clampMonotonic(nearestIdx, raw));
   };
 
@@ -3416,17 +3506,18 @@ function MultiYearSlider({
         {values.map((val, i) => {
           const pct = ((val - min) / (max - min)) * 100;
           const color = yearColors[i % yearColors.length];
+          const active = isActive(i);
           return (
             <div
               key={i}
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing"
+              className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 ${active ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed'}`}
               style={{ left: `${pct}%`, zIndex: 10 + i }}
               onPointerDown={handlePointerDown(i)}
-              title={`Year ${i + 1}: ${Math.round(val)}%`}
+              title={active ? `Year ${i + 1}: ${Math.round(val)}%` : `Year ${i + 1}: inactive`}
             >
               <div
-                className="w-4 h-4 rounded-full border-2 border-white shadow-md transition-transform hover:scale-110"
-                style={{ backgroundColor: color }}
+                className={`w-4 h-4 rounded-full border-2 shadow-md transition-transform ${active ? 'border-white hover:scale-110' : 'border-gray-300 opacity-40'}`}
+                style={{ backgroundColor: active ? color : '#d1d5db' }}
               />
             </div>
           );
@@ -3434,11 +3525,14 @@ function MultiYearSlider({
       </div>
       {/* Year labels below */}
       <div className="flex gap-3 mt-0.5 flex-wrap">
-        {values.map((val, i) => (
-          <span key={i} className="text-[10px] font-medium" style={{ color: yearColors[i % yearColors.length] }}>
-            Y{i + 1}: {Math.round(val)}%
-          </span>
-        ))}
+        {values.map((val, i) => {
+          const active = isActive(i);
+          return (
+            <span key={i} className={`text-[10px] font-medium ${!active ? 'line-through opacity-40' : ''}`} style={{ color: active ? yearColors[i % yearColors.length] : '#9ca3af' }}>
+              Y{i + 1}: {active ? `${Math.round(val)}%` : 'off'}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

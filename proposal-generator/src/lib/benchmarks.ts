@@ -90,11 +90,11 @@ export const FIELD_SOURCES: Record<string, { sourceIds: string[]; note: string }
   },
   tier01AvgHandleTime: {
     sourceIds: ['gartner', 'apqc'],
-    note: 'Blended Tier 0/1 handle time from HR shared services benchmarks',
+    note: 'Blended simple transaction handle time from HR shared services benchmarks',
   },
   tier2Workflows: {
     sourceIds: ['gartner', 'deloitte'],
-    note: 'Tier 2+ case mix and hours per case from HR service delivery research',
+    note: 'Complex case mix and hours per case from HR service delivery research',
   },
   tier01HandlerSalary: {
     sourceIds: ['bls_oes', 'bls_ecec', 'shrm'],
@@ -118,7 +118,7 @@ export const FIELD_SOURCES: Record<string, { sourceIds: string[]; note: string }
   },
   highStakesPercent: {
     sourceIds: ['gartner', 'shrm'],
-    note: 'Percentage of Tier 2+ cases classified as high-stakes by compliance risk level',
+    note: 'Percentage of complex cases classified as high-stakes by compliance risk level',
   },
   avgLegalCostPerIncident: {
     sourceIds: ['hiscox', 'shrm'],
@@ -179,7 +179,7 @@ interface HeadcountBenchmark {
   hrEmployeeRatio: number;        // employees per HR person
   casesPerEmployeePerYear: number; // formal HR cases/tickets per employee
   inquiriesPerEmployeePerYear: number; // all HR inquiries (including informal)
-  avgHandleTimeMinutes: number;   // Tier 0/1 blended handle time
+  avgHandleTimeMinutes: number;   // Simple transaction blended handle time
   adminHoursPerHighStakesCase: number;
   auditPrepHoursPerAudit: number;
 }
@@ -189,7 +189,7 @@ const HEADCOUNT_BENCHMARKS: Record<HeadcountBand, HeadcountBenchmark> = {
     hrEmployeeRatio: 64,             // SHRM 2023: ~1:58–70 for small-mid orgs
     casesPerEmployeePerYear: 1.0,    // Gartner 2023: 0.8–1.2 for this band
     inquiriesPerEmployeePerYear: 4.5, // Gartner/APQC: 3–6 range
-    avgHandleTimeMinutes: 12,        // Gartner: Tier 0/1 blended 10–15 min
+    avgHandleTimeMinutes: 12,        // Gartner: simple transaction blended 10–15 min
     adminHoursPerHighStakesCase: 15, // SHRM: lower complexity at smaller scale
     auditPrepHoursPerAudit: 60,      // Deloitte/APQC: 40–80 hrs
   },
@@ -218,7 +218,7 @@ const HEADCOUNT_BENCHMARKS: Record<HeadcountBand, HeadcountBenchmark> = {
 
 interface IndustryBenchmark {
   // Case volume & complexity
-  tier01Percent: number;              // % of cases that are simple Tier 0/1
+  tier01Percent: number;              // % of cases that are simple transactions
   casesPerEmployeeMultiplier: number; // multiplier on base cases/employee
   seasonalFactor: number;
 
@@ -406,7 +406,7 @@ function estimateWisqLicenseCost(employeeCount: number): number {
 }
 
 // ──────────────────────────────────────────────
-// Industry-specific Tier 2+ workflow templates
+// Industry-specific complex case workflow templates
 // Sources: Gartner HR Service Delivery (2023), Deloitte (2023)
 // ──────────────────────────────────────────────
 
@@ -504,7 +504,7 @@ export function generateEstimates(profile: CompanyProfile): EstimatedInputs {
   if (workforceType === 'knowledge-worker') casesPerEmployee *= 0.85;
   const totalCasesPerYear = Math.round(employeeCount * casesPerEmployee);
 
-  // Split: Tier 0-1 vs Tier 2+ based on industry complexity
+  // Split: simple transactions vs complex cases based on industry complexity
   const tier01Pct = indBenchmark.tier01Percent / 100;
   const tier01CasesPerYear = Math.round(totalCasesPerYear * tier01Pct);
   const tier2PlusTotalCases = Math.round(totalCasesPerYear * (1 - tier01Pct));
@@ -515,7 +515,7 @@ export function generateEstimates(profile: CompanyProfile): EstimatedInputs {
   const tier01AvgHandleTime = hcBenchmark.avgHandleTimeMinutes;
   markEstimated('tier01AvgHandleTime');
 
-  // ── Tier 2+ Workflows ──
+  // ── Complex Case Workflows ──
   const tier2Workflows = estimateWorkflowVolumes(tier2PlusTotalCases, industry);
   markEstimated('tier2Workflows');
 
