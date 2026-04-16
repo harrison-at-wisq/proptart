@@ -21,6 +21,7 @@ export { IntegrationPills, INTEGRATION_PILLS_PLACEHOLDER } from './IntegrationPi
 export { ContactCard, CONTACT_CARD_PLACEHOLDER } from './ContactCard';
 export { PageFooter, PAGE_FOOTER_PLACEHOLDER } from './PageFooter';
 export { CoverTitleBlock, COVER_TITLE_BLOCK_PLACEHOLDER } from './CoverTitleBlock';
+export { CoverPreparedFor, COVER_PREPARED_FOR_PLACEHOLDER } from './CoverPreparedFor';
 export { Spacer, SPACER_PLACEHOLDER } from './Spacer';
 export { PlaceholderPanel, PLACEHOLDER_PANEL_PLACEHOLDER } from './PlaceholderPanel';
 export { HarperProfile, HARPER_PROFILE_PLACEHOLDER } from './HarperProfile';

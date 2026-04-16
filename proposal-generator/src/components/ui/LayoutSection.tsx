@@ -46,22 +46,33 @@ export function LayoutSection({
 
   // Build resolved block list: merge saved layout with defaults
   // If layout exists, it may contain blocks from other sections (via cross-section move)
-  const resolvedBlocks = layout?.blocks?.length
-    ? layout.blocks.map(bl => {
-        const def = blocks.find(b => b.blockId === bl.blockId)
-                    || blockRegistry?.[bl.blockId];
-        if (!def) return null;
-        return {
-          ...def,
-          colSpan: bl.colSpan,
-          order: bl.order,
-        };
-      }).filter(Boolean) as Array<BlockDef & { colSpan: number; order: number }>
-    : blocks.map((def, defaultOrder) => ({
+  const resolvedBlocks = (() => {
+    if (!layout?.blocks?.length) {
+      return blocks.map((def, defaultOrder) => ({
         ...def,
         colSpan: def.defaultColSpan,
         order: defaultOrder,
       }));
+    }
+    const saved = layout.blocks.map(bl => {
+      const def = blocks.find(b => b.blockId === bl.blockId)
+                  || blockRegistry?.[bl.blockId];
+      if (!def) return null;
+      return { ...def, colSpan: bl.colSpan, order: bl.order };
+    }).filter(Boolean) as Array<BlockDef & { colSpan: number; order: number }>;
+
+    const savedIds = new Set(layout.blocks.map(bl => bl.blockId));
+    const maxOrder = saved.length > 0 ? Math.max(...saved.map(b => b.order)) : -1;
+    const newBlocks = blocks
+      .filter(b => !savedIds.has(b.blockId))
+      .map((def, i) => ({
+        ...def,
+        colSpan: def.defaultColSpan,
+        order: maxOrder + 1 + i,
+      }));
+
+    return [...saved, ...newBlocks];
+  })();
 
   // Sort by order for rendering
   const sortedBlocks = [...resolvedBlocks].sort((a, b) => a.order - b.order);

@@ -740,7 +740,7 @@ export type ProposalElementType =
   | 'integration-pills' | 'contact-card' | 'page-footer' | 'cover-title-block'
   | 'spacer' | 'placeholder-panel' | 'harper-profile'
   | 'roi-pie-chart' | 'roi-breakdown-columns'
-  | 'cover-image' | 'table-of-contents';
+  | 'cover-image' | 'table-of-contents' | 'cover-prepared-for';
 
 /** Section layout preset identifiers */
 export type SectionLayoutPreset =

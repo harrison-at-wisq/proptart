@@ -29,6 +29,7 @@ import {
   ROI_BREAKDOWN_COLUMNS_PLACEHOLDER,
   COVER_IMAGE_PLACEHOLDER,
   TABLE_OF_CONTENTS_PLACEHOLDER,
+  COVER_PREPARED_FOR_PLACEHOLDER,
 } from '../elements';
 
 /** Returns default data props for a given element type (using PLACEHOLDER constants) */
@@ -77,7 +78,9 @@ export function getDefaultElementData(elementType: ProposalElementType): Record<
     case 'page-footer':
       return { ...PAGE_FOOTER_PLACEHOLDER };
     case 'cover-title-block':
-      return { ...COVER_TITLE_BLOCK_PLACEHOLDER };
+      return { title: COVER_TITLE_BLOCK_PLACEHOLDER.title };
+    case 'cover-prepared-for':
+      return { ...COVER_PREPARED_FOR_PLACEHOLDER };
     case 'spacer':
       return { height: SPACER_PLACEHOLDER.height };
     case 'placeholder-panel':

@@ -242,17 +242,26 @@ export function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
   const sections: ExportSection[] = [];
 
   // ==================== 1. COVER (dark) ====================
+  const coverTopGroup = crypto.randomUUID();
+  const coverBottomGroup = crypto.randomUUID();
   sections.push({
     id: crypto.randomUUID(),
     name: 'Cover Page',
     darkTheme: true,
     elements: [
-      el('cover-title-block', 12, {
-        title: docContent.coverTitle,
-        quote: docContent.coverQuote || '',
+      el('eyebrow-label', 12, { text: docContent.coverEyebrow || 'STRATEGIC PROPOSAL' }, coverTopGroup),
+      el('section-heading', 12, { text: docContent.coverTitle, showBorder: false }, coverTopGroup),
+      el('divider-line', 12, {}, coverTopGroup),
+      el('vision-callout', 12, { text: docContent.coverQuote || '' }, coverTopGroup),
+      el('cover-prepared-for', 12, {
         contactName: inputs.company.contactName,
         contactTitle: resolveOtherValue(inputs.company.contactTitle, inputs.company.customContactTitle),
-      }),
+      }, coverTopGroup),
+      el('cover-image', 12, {}, coverBottomGroup),
+      el('table-of-contents', 12, {
+        heading: docContent.tocHeading || "What's Inside",
+        items: docContent.tocItems,
+      }, coverBottomGroup),
       el('page-footer', 12, { date: today, showConfidential: false }),
     ],
   });

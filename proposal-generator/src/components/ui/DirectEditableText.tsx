@@ -11,6 +11,7 @@ export interface DirectEditableTextProps {
   style?: React.CSSProperties;
   multiline?: boolean;
   placeholder?: string;
+  alwaysEditable?: boolean;
 }
 
 export function DirectEditableText({
@@ -21,8 +22,10 @@ export function DirectEditableText({
   style,
   multiline = false,
   placeholder = 'Click to edit...',
+  alwaysEditable = false,
 }: DirectEditableTextProps) {
-  const { layoutMode } = useLayoutMode();
+  const { layoutMode: rawLayoutMode } = useLayoutMode();
+  const layoutMode = alwaysEditable ? false : rawLayoutMode;
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(value);
   const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
@@ -67,7 +70,7 @@ export function DirectEditableText({
     const inputClasses = `
       w-full bg-white border-2 border-[#03143B] rounded px-2 py-1
       focus:outline-none focus:ring-2 focus:ring-[#03143B]/50
-      text-inherit font-inherit
+      !text-black font-inherit
       ${className}
     `;
 

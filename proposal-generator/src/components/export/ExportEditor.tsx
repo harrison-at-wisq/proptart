@@ -1464,11 +1464,27 @@ function ExportElementBlock({
 
   // Multi-field element wiring
   if (element.elementType === 'cover-title-block') {
+    props.onEyebrowChange = (value: string) => {
+      onUpdateData({ ...element.data, eyebrow: value });
+    };
     props.onTitleChange = (value: string) => {
       onUpdateData({ ...element.data, title: value });
     };
     props.onQuoteChange = (value: string) => {
       onUpdateData({ ...element.data, quote: value });
+    };
+    props.onContactNameChange = (value: string) => {
+      onUpdateData({ ...element.data, contactName: value });
+    };
+    props.onContactTitleChange = (value: string) => {
+      onUpdateData({ ...element.data, contactTitle: value });
+    };
+  } else if (element.elementType === 'cover-prepared-for') {
+    props.onContactNameChange = (value: string) => {
+      onUpdateData({ ...element.data, contactName: value });
+    };
+    props.onContactTitleChange = (value: string) => {
+      onUpdateData({ ...element.data, contactTitle: value });
     };
   } else if (element.elementType === 'customer-quote') {
     props.onTextChange = (value: string) => {
@@ -1501,6 +1517,14 @@ function ExportElementBlock({
     props.onRemove = (index: number) => {
       const faqs = ((element.data.faqs as Array<Record<string, string>>) || []).filter((_, i) => i !== index);
       onUpdateData({ ...element.data, faqs });
+    };
+  } else if (element.elementType === 'cover-image') {
+    props.onSrcChange = (value: string) => {
+      onUpdateData({ ...element.data, src: value });
+    };
+  } else if (element.elementType === 'table-of-contents') {
+    props.onHeadingChange = (value: string) => {
+      onUpdateData({ ...element.data, heading: value });
     };
   } else if (element.elementType === 'spacer') {
     props.onHeightChange = (h: number) => {

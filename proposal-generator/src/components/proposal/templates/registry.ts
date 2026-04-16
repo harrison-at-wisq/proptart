@@ -29,6 +29,7 @@ import { ROIPieChart } from '../elements/ROIPieChart';
 import { ROIBreakdownColumns } from '../elements/ROIBreakdownColumns';
 import { CoverImage } from '../elements/CoverImage';
 import { TableOfContents } from '../elements/TableOfContents';
+import { CoverPreparedFor } from '../elements/CoverPreparedFor';
 
 /** Maps element type identifiers to their React components */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,6 +63,7 @@ export const ELEMENT_REGISTRY: Record<ProposalElementType, React.ComponentType<a
   'roi-breakdown-columns': ROIBreakdownColumns,
   'cover-image': CoverImage,
   'table-of-contents': TableOfContents,
+  'cover-prepared-for': CoverPreparedFor,
 };
 
 /** Element metadata for the block inserter / element picker UI */
@@ -116,4 +118,5 @@ export const ELEMENT_CATALOG: ElementMeta[] = [
   { type: 'roi-breakdown-columns', name: 'ROI Breakdown', description: 'Three-column detailed savings breakdown', category: 'data', defaultColSpan: 12 },
   { type: 'cover-image', name: 'Cover Image', description: 'Full-width hero image', category: 'layout', defaultColSpan: 12 },
   { type: 'table-of-contents', name: 'Table of Contents', description: 'Numbered section overview grid', category: 'lists', defaultColSpan: 12 },
+  { type: 'cover-prepared-for', name: 'Prepared For', description: 'Contact name and title line', category: 'text', defaultColSpan: 12 },
 ];

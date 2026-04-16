@@ -19,6 +19,7 @@ interface WidgetGroupProps<T extends WidgetItem> {
   maxItems?: number;
   addLabel?: string;
   className?: string;
+  alwaysEditable?: boolean;
 }
 
 export function WidgetGroup<T extends WidgetItem>({
@@ -31,8 +32,10 @@ export function WidgetGroup<T extends WidgetItem>({
   maxItems,
   addLabel = 'Add item',
   className = '',
+  alwaysEditable = false,
 }: WidgetGroupProps<T>) {
-  const { layoutMode } = useLayoutMode();
+  const { layoutMode: rawLayoutMode } = useLayoutMode();
+  const layoutMode = alwaysEditable || rawLayoutMode;
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
 
