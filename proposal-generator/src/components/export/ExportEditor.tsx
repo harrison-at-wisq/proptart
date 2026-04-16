@@ -1522,6 +1522,9 @@ function ExportElementBlock({
     props.onSrcChange = (value: string) => {
       onUpdateData({ ...element.data, src: value });
     };
+    props.onMaxHeightChange = (value: number) => {
+      onUpdateData({ ...element.data, maxHeight: value });
+    };
   } else if (element.elementType === 'table-of-contents') {
     props.onHeadingChange = (value: string) => {
       onUpdateData({ ...element.data, heading: value });
