@@ -33,12 +33,14 @@ export function useROIScenarios(inputs: ProposalInputs) {
   const results = useMemo(() => {
     const multipliers = SCENARIO_MULTIPLIERS[scenario];
     const pricing = calculatePricing(inputs.pricing);
+    const contractYears = inputs.pricing.contractTermYears || 3;
+    const hrInputs = inputs.hrOperations;
 
     // Adjust HR operations inputs — scale per-year deflection rates
     const adjustedHR: HROperationsInputs = {
-      ...inputs.hrOperations,
-      tier01DeflectionByYear: (inputs.hrOperations.tier01DeflectionByYear || []).map(v => Math.min(100, v * multipliers.deflection)),
-      tier2Workflows: inputs.hrOperations.tier2Workflows.map(wf => ({
+      ...hrInputs,
+      tier01DeflectionByYear: (hrInputs.tier01DeflectionByYear || []).map(v => Math.min(100, v * multipliers.deflection)),
+      tier2Workflows: hrInputs.tier2Workflows.map(wf => ({
         ...wf,
         deflectionByYear: (wf.deflectionByYear || []).map(v => Math.min(100, v * multipliers.deflection)),
       })),
@@ -50,11 +52,25 @@ export function useROIScenarios(inputs: ProposalInputs) {
       adoptionRate: Math.min(100, inputs.employeeExperience.adoptionRate * multipliers.adoption),
     };
 
+    const yearSettings = hrInputs.yearSettings?.length
+      ? hrInputs.yearSettings
+      : [
+          { wisqEffectiveness: 30, workforceChange: 0 },
+          { wisqEffectiveness: 60, workforceChange: 5 },
+          { wisqEffectiveness: 75, workforceChange: 10 },
+        ];
+
     const hrOutput = calculateHROperationsROI(adjustedHR);
-    const tier2Cases = adjustedHR.tier2Workflows.reduce((sum, w) => sum + w.volumePerYear, 0);
-    const legalOutput = calculateLegalComplianceROI(inputs.legalCompliance, tier2Cases);
-    const eeOutput = calculateEmployeeExperienceROI(adjustedEE);
-    const summary = calculateROISummary(hrOutput, legalOutput, eeOutput, pricing.annualRecurringRevenue, adjustedHR.contractYears);
+    const tier2PlusConfiguredCases = adjustedHR.tier2Workflows.reduce((sum, w) => sum + w.volumePerYear, 0);
+    const ncVol = adjustedHR.nonConfiguredWorkflow?.enabled ? (adjustedHR.nonConfiguredWorkflow.volumePerYear || 0) : 0;
+    const tier2PlusTotalCases = adjustedHR.tier2PlusTotalCases || (tier2PlusConfiguredCases + ncVol) || tier2PlusConfiguredCases;
+    const activeConfiguredCasesByYear = hrOutput.yearResults.map(yr => yr.activeConfiguredCases);
+    const legalOutput = calculateLegalComplianceROI(
+      inputs.legalCompliance, tier2PlusConfiguredCases, yearSettings, contractYears, tier2PlusTotalCases, activeConfiguredCasesByYear
+    );
+    const eeOutput = calculateEmployeeExperienceROI(adjustedEE, yearSettings, contractYears);
+    const wisqLicenseCost = hrInputs.wisqLicenseCost || pricing.annualRecurringRevenue;
+    const summary = calculateROISummary(hrOutput, legalOutput, eeOutput, wisqLicenseCost, contractYears);
 
     return {
       hrOutput,

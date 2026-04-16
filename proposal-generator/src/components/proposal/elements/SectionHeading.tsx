@@ -6,6 +6,8 @@ import { DirectEditableText } from '@/components/ui/DirectEditableText';
 interface SectionHeadingProps {
   text?: string;
   subtitle?: string;
+  /** Hide the bottom accent border (default: true / shown) */
+  showBorder?: boolean;
   onChange?: (value: string) => void;
   darkTheme?: boolean;
 }
@@ -14,9 +16,14 @@ export const SECTION_HEADING_PLACEHOLDER = {
   text: 'Section Title',
 };
 
-export function SectionHeading({ text = SECTION_HEADING_PLACEHOLDER.text, subtitle, onChange, darkTheme }: SectionHeadingProps) {
+export function SectionHeading({ text = SECTION_HEADING_PLACEHOLDER.text, subtitle, showBorder = true, onChange, darkTheme }: SectionHeadingProps) {
+  const borderClass = showBorder
+    ? `pb-3 border-b-2 ${darkTheme ? 'border-white/30' : ''}`
+    : '';
+  const borderStyle = showBorder && !darkTheme ? { borderColor: 'var(--theme-primary)' } : undefined;
+
   return (
-    <div className={`pb-3 border-b-2 ${darkTheme ? 'border-white/30' : ''}`} style={darkTheme ? undefined : { borderColor: 'var(--theme-primary)' }}>
+    <div className={borderClass} style={borderStyle}>
       {onChange ? (
         <DirectEditableText
           value={text}

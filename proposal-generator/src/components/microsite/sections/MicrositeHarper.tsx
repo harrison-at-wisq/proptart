@@ -30,13 +30,19 @@ export function MicrositeHarper({ inputs }: Props) {
   return (
     <section id="harper" className="py-20 sm:py-28 bg-[#f3f4f6]" ref={sectionRef}>
       <div className="max-w-5xl mx-auto px-6 ms-fade-up">
-        <h2 className="text-3xl sm:text-4xl font-bold mb-1" style={{ color: 'var(--theme-primary)' }}>Meet Harper</h2>
-        <p className="mb-2" style={{ color: 'rgba(var(--theme-primary-rgb), 0.5)' }}>Your AI HR Teammate</p>
-        <div className="w-16 h-0.5 mb-8" style={{ backgroundColor: 'var(--theme-primary)' }} />
-
-        <p className="text-gray-700 text-lg leading-relaxed max-w-3xl mb-10">
-          {harperIntro}
-        </p>
+        <div className="flex flex-col md:flex-row gap-8 mb-10">
+          <div className="flex-1">
+            <h2 className="text-3xl sm:text-4xl font-bold mb-1" style={{ color: 'var(--theme-primary)' }}>Meet Harper</h2>
+            <p className="mb-2" style={{ color: 'rgba(var(--theme-primary-rgb), 0.5)' }}>Your AI HR Teammate</p>
+            <div className="w-16 h-0.5 mb-8" style={{ backgroundColor: 'var(--theme-primary)' }} />
+            <p className="text-gray-700 text-lg leading-relaxed">
+              {harperIntro}
+            </p>
+          </div>
+          <div className="w-full md:w-[30%] flex-shrink-0">
+            <img src="/Harper-profile.png" alt="Harper" className="w-full h-auto rounded-xl object-cover" />
+          </div>
+        </div>
 
         {/* Stats row */}
         <div ref={statsRef} className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12 ms-fade-up">

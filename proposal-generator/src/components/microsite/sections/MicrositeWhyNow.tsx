@@ -3,13 +3,6 @@
 import React from 'react';
 import { ProposalInputs } from '@/types/proposal';
 import { WHY_NOW_CONTENT, NEXT_STEPS_OPTIONS } from '@/lib/content-templates';
-import { calculatePricing, formatCompactCurrency } from '@/lib/pricing-calculator';
-import {
-  calculateHROperationsROI,
-  calculateLegalComplianceROI,
-  calculateEmployeeExperienceROI,
-  calculateROISummary,
-} from '@/lib/roi-calculator';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
 import { MicrositeQuote } from '../MicrositeQuote';
 
@@ -20,13 +13,6 @@ interface Props {
 export function MicrositeWhyNow({ inputs }: Props) {
   const sectionRef = useScrollAnimation<HTMLElement>();
   const stepsRef = useScrollAnimation<HTMLDivElement>(0.1);
-
-  const pricing = calculatePricing(inputs.pricing);
-  const hrOutput = calculateHROperationsROI(inputs.hrOperations);
-  const tier2Cases = inputs.hrOperations.tier2Workflows.reduce((sum, w) => sum + w.volumePerYear, 0);
-  const legalOutput = calculateLegalComplianceROI(inputs.legalCompliance, tier2Cases);
-  const eeOutput = calculateEmployeeExperienceROI(inputs.employeeExperience);
-  const summary = calculateROISummary(hrOutput, legalOutput, eeOutput, pricing.annualRecurringRevenue);
 
   const whyNowKeys = ['costOfDelay', 'aiMomentum', 'quickWins', 'competitivePressure'] as const;
   const generatedMap = inputs.generatedContent?.whyNowContent?.reduce((acc, item) => {
@@ -67,11 +53,6 @@ export function MicrositeWhyNow({ inputs }: Props) {
               <div key={itemKey} className="p-5 bg-gray-50 rounded-xl border-l-4" style={{ borderColor: 'var(--theme-primary)' }}>
                 <h3 className="font-semibold mb-1" style={{ color: 'var(--theme-primary)' }}>{headline}</h3>
                 <p className="text-gray-600 text-sm leading-relaxed">{description}</p>
-                {index === 0 && (
-                  <p className="text-lg font-bold mt-3" style={{ color: 'var(--theme-primary)' }}>
-                    {formatCompactCurrency(summary.grossAnnualValue / 12)}/month in potential value
-                  </p>
-                )}
               </div>
             );
           })}

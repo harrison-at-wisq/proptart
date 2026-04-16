@@ -9,7 +9,6 @@ const SECTIONS: NavSection[] = [
   { id: 'harper', label: 'Harper' },
   { id: 'value-drivers', label: 'Value' },
   { id: 'investment', label: 'Investment' },
-  { id: 'roi-explorer', label: 'ROI' },
   { id: 'security', label: 'Security' },
   { id: 'why-now', label: 'Next Steps' },
 ];

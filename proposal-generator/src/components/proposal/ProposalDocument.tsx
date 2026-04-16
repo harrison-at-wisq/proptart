@@ -25,7 +25,7 @@ import {
   calculateLegalComplianceROI,
   calculateEmployeeExperienceROI,
   calculateROISummary,
-  calculate3YearProjection,
+  calculateMultiYearProjection,
 } from '@/lib/roi-calculator';
 import { materializeDocumentContent } from '@/lib/materialize-content';
 
@@ -369,12 +369,27 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
 
   // Calculate all computed values (not editable — always derived from inputs)
   const pricing = calculatePricing(inputs.pricing);
-  const hrOutput = calculateHROperationsROI(inputs.hrOperations);
-  const tier2Cases = inputs.hrOperations.tier2Workflows.reduce((sum, w) => sum + w.volumePerYear, 0);
-  const legalOutput = calculateLegalComplianceROI(inputs.legalCompliance, tier2Cases);
-  const employeeOutput = calculateEmployeeExperienceROI(inputs.employeeExperience);
-  const summary = calculateROISummary(hrOutput, legalOutput, employeeOutput, pricing.annualRecurringRevenue);
-  const projection = calculate3YearProjection(summary.grossAnnualValue, pricing.annualRecurringRevenue);
+  const contractYears = inputs.pricing.contractTermYears || 3;
+  const hrInputsLocal = inputs.hrOperations;
+  const yearSettingsLocal = hrInputsLocal.yearSettings?.length
+    ? hrInputsLocal.yearSettings
+    : [
+        { wisqEffectiveness: 30, workforceChange: 0 },
+        { wisqEffectiveness: 60, workforceChange: 5 },
+        { wisqEffectiveness: 75, workforceChange: 10 },
+      ];
+  const hrOutput = calculateHROperationsROI(hrInputsLocal);
+  const tier2PlusConfiguredCasesLocal = hrInputsLocal.tier2Workflows.reduce((sum, w) => sum + w.volumePerYear, 0);
+  const ncVolLocal = hrInputsLocal.nonConfiguredWorkflow?.enabled ? (hrInputsLocal.nonConfiguredWorkflow.volumePerYear || 0) : 0;
+  const tier2PlusTotalCasesLocal = hrInputsLocal.tier2PlusTotalCases || (tier2PlusConfiguredCasesLocal + ncVolLocal) || tier2PlusConfiguredCasesLocal;
+  const activeConfiguredCasesByYearLocal = hrOutput.yearResults.map(yr => yr.activeConfiguredCases);
+  const legalOutput = calculateLegalComplianceROI(
+    inputs.legalCompliance, tier2PlusConfiguredCasesLocal, yearSettingsLocal, contractYears, tier2PlusTotalCasesLocal, activeConfiguredCasesByYearLocal
+  );
+  const employeeOutput = calculateEmployeeExperienceROI(inputs.employeeExperience, yearSettingsLocal, contractYears);
+  const wisqLicenseCostLocal = hrInputsLocal.wisqLicenseCost || pricing.annualRecurringRevenue;
+  const summary = calculateROISummary(hrOutput, legalOutput, employeeOutput, wisqLicenseCostLocal, contractYears);
+  const projection = calculateMultiYearProjection(hrOutput, legalOutput, employeeOutput, wisqLicenseCostLocal);
 
   // FAQ helper
   const getFAQsForPage = (pageId: string): FAQSection | undefined => {
@@ -476,6 +491,11 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
     return allBlocks;
   };
 
+  // Payback: what fraction of the year are they in the negative?
+  const avgAnnualInvestment = pricing.totalContractValue / contractYears;
+  const monthlyGross = summary.grossAnnualValue / 12;
+  const paybackMonths = monthlyGross > 0 ? avgAnnualInvestment / monthlyGross : 0;
+
   // Build render context for template-driven sections
   const renderCtx: ProposalRenderContext = {
     docContent,
@@ -483,6 +503,8 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
     pricing,
     summary,
     projection,
+    contractYears,
+    paybackMonths,
     inputs,
     customerIntegrations,
     today,

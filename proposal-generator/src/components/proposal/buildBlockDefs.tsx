@@ -7,7 +7,6 @@ import type {
   QuoteSection,
 } from '@/types/proposal';
 import type { FAQSection as FAQSectionType } from '@/types/proposal';
-import { resolveOtherValue } from '@/types/proposal';
 import { formatCompactCurrency, formatCurrency } from '@/lib/pricing-calculator';
 import { getSelectedQuoteForSection } from '@/lib/customer-quotes';
 
@@ -32,6 +31,8 @@ import { IntegrationPills } from './elements/IntegrationPills';
 import { ContactCard } from './elements/ContactCard';
 import { PageFooter } from './elements/PageFooter';
 import { CoverTitleBlock } from './elements/CoverTitleBlock';
+import { CoverImage } from './elements/CoverImage';
+import { TableOfContents } from './elements/TableOfContents';
 
 /** All data sources needed to render proposal blocks */
 export interface ProposalRenderContext {
@@ -55,12 +56,12 @@ export interface ProposalRenderContext {
     productivitySavings: number;
   };
   projection: {
-    year1: number;
-    year2: number;
-    year3: number;
+    years: { year: number; value: number; net: number }[];
     total: number;
     netTotal: number;
   };
+  contractYears: number;
+  paybackMonths: number;
   inputs: ProposalInputs;
   customerIntegrations: { name: string; category: string }[];
   today: string;
@@ -103,12 +104,29 @@ export function buildBlockDefs(
         case 'coverTitle':
           return (
             <CoverTitleBlock
+              eyebrow={docContent.coverEyebrow}
+              onEyebrowChange={(value) => updateContent('coverEyebrow', value)}
               title={docContent.coverTitle}
               onTitleChange={(value) => updateContent('coverTitle', value)}
               quote={docContent.coverQuote}
               onQuoteChange={(value) => updateContent('coverQuote', value)}
-              contactName={inputs.company.contactName}
-              contactTitle={resolveOtherValue(inputs.company.contactTitle, inputs.company.customContactTitle)}
+              contactName={docContent.coverContactName}
+              onContactNameChange={(value) => updateContent('coverContactName', value)}
+              contactTitle={docContent.coverContactTitle}
+              onContactTitleChange={(value) => updateContent('coverContactTitle', value)}
+            />
+          );
+
+        case 'coverImage':
+          return <CoverImage />;
+
+        case 'coverToc':
+          return (
+            <TableOfContents
+              heading={docContent.tocHeading}
+              onHeadingChange={(value) => updateContent('tocHeading', value)}
+              items={docContent.tocItems}
+              onChange={(items) => updateContent('tocItems', items)}
             />
           );
 
@@ -158,19 +176,21 @@ export function buildBlockDefs(
             />
           );
 
-        case 'keyMetrics':
+        case 'keyMetrics': {
+          const avgInvestment = pricing.totalContractValue / (ctx.contractYears || 1);
           return (
             <MetricTable
               title={props?.title as string || 'Key Metrics'}
               rows={[
-                { label: 'Annual Investment', value: formatCompactCurrency(pricing.annualRecurringRevenue) },
+                { label: 'Avg. Annual Investment', value: formatCompactCurrency(avgInvestment) },
                 { label: 'Projected Annual Value', value: formatCompactCurrency(summary.grossAnnualValue) },
                 { label: 'Return on Investment', value: `${formatCompactCurrency(summary.netAnnualBenefit)}/yr` },
-                { label: 'Payback Period', value: `${summary.paybackPeriodMonths.toFixed(1)} mo` },
+                { label: 'Payback Period', value: `${ctx.paybackMonths.toFixed(1)} mo` },
               ]}
               darkTheme={dark}
             />
           );
+        }
 
         case 'currentStateHeading':
           return (
@@ -330,9 +350,9 @@ export function buildBlockDefs(
             <KPITiles
               tiles={[
                 { value: `${formatCompactCurrency(summary.netAnnualBenefit)}/yr`, label: 'ROI' },
-                { value: `${summary.paybackPeriodMonths.toFixed(1)} mo`, label: 'Payback' },
-                { value: formatCompactCurrency(projection.total), label: '3-Year Value' },
-                { value: formatCompactCurrency(projection.netTotal), label: '3-Year Net' },
+                { value: `${ctx.paybackMonths.toFixed(1)} mo`, label: 'Payback' },
+                { value: formatCompactCurrency(projection.total), label: `${ctx.contractYears}-Year Value` },
+                { value: formatCompactCurrency(projection.netTotal), label: `${ctx.contractYears}-Year Net` },
               ]}
               darkTheme={dark}
             />
@@ -347,11 +367,11 @@ export function buildBlockDefs(
         case 'projectionPanel':
           return (
             <ProjectionPanel
-              columns={[
-                { label: 'Year 1 (50% adoption)', value: formatCompactCurrency(projection.year1) },
-                { label: 'Year 2 (75% adoption)', value: formatCompactCurrency(projection.year2) },
-                { label: 'Year 3 (100% adoption)', value: formatCompactCurrency(projection.year3) },
-              ]}
+              title={`${ctx.contractYears}-Year Value Projection`}
+              columns={projection.years.map(yr => ({
+                label: `Year ${yr.year}`,
+                value: formatCompactCurrency(yr.value),
+              }))}
               darkTheme={dark}
             />
           );

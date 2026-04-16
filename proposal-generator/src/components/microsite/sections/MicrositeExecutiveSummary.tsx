@@ -24,16 +24,35 @@ export function MicrositeExecutiveSummary({ inputs }: Props) {
   const painRef = useScrollAnimation<HTMLDivElement>(0.1);
 
   const pricing = calculatePricing(inputs.pricing);
-  const hrOutput = calculateHROperationsROI(inputs.hrOperations);
-  const tier2Cases = inputs.hrOperations.tier2Workflows.reduce((sum, w) => sum + w.volumePerYear, 0);
-  const legalOutput = calculateLegalComplianceROI(inputs.legalCompliance, tier2Cases);
-  const eeOutput = calculateEmployeeExperienceROI(inputs.employeeExperience);
-  const summary = calculateROISummary(hrOutput, legalOutput, eeOutput, pricing.annualRecurringRevenue);
+  const contractYears = inputs.pricing.contractTermYears || 3;
+  const hrInputs = inputs.hrOperations;
+  const yearSettings = hrInputs.yearSettings?.length
+    ? hrInputs.yearSettings
+    : [
+        { wisqEffectiveness: 30, workforceChange: 0 },
+        { wisqEffectiveness: 60, workforceChange: 5 },
+        { wisqEffectiveness: 75, workforceChange: 10 },
+      ];
+  const hrOutput = calculateHROperationsROI(hrInputs);
+  const tier2PlusConfiguredCases = hrInputs.tier2Workflows.reduce((sum, w) => sum + w.volumePerYear, 0);
+  const ncVol = hrInputs.nonConfiguredWorkflow?.enabled ? (hrInputs.nonConfiguredWorkflow.volumePerYear || 0) : 0;
+  const tier2PlusTotalCases = hrInputs.tier2PlusTotalCases || (tier2PlusConfiguredCases + ncVol) || tier2PlusConfiguredCases;
+  const activeConfiguredCasesByYear = hrOutput.yearResults.map(yr => yr.activeConfiguredCases);
+  const legalOutput = calculateLegalComplianceROI(
+    inputs.legalCompliance, tier2PlusConfiguredCases, yearSettings, contractYears, tier2PlusTotalCases, activeConfiguredCasesByYear
+  );
+  const eeOutput = calculateEmployeeExperienceROI(inputs.employeeExperience, yearSettings, contractYears);
+  const wisqLicenseCost = hrInputs.wisqLicenseCost || pricing.annualRecurringRevenue;
+  const summary = calculateROISummary(hrOutput, legalOutput, eeOutput, wisqLicenseCost, contractYears);
 
   const opportunityContent = getOpportunityContent(inputs.company.industry);
 
+  const avgAnnualInvestment = pricing.totalContractValue / contractYears;
+  const monthlyGross = summary.grossAnnualValue / 12;
+  const paybackMonths = monthlyGross > 0 ? avgAnnualInvestment / monthlyGross : 0;
+
   const roiCounter = useAnimatedCounter(Math.round(summary.netAnnualBenefit), 1400);
-  const paybackCounter = useAnimatedCounter(summary.paybackPeriodMonths, 1200, 1);
+  const paybackCounter = useAnimatedCounter(paybackMonths, 1200, 1);
   const valueCounter = useAnimatedCounter(Math.round(summary.grossAnnualValue / 1000), 1200);
 
   // Get content with override priority
@@ -89,8 +108,8 @@ export function MicrositeExecutiveSummary({ inputs }: Props) {
             <div className="bg-gray-50 rounded-xl p-6 border border-[#e0e3eb] space-y-4">
               <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--theme-primary)' }}>Key Metrics</h3>
               <div className="flex justify-between items-center pb-3 border-b border-gray-200">
-                <span className="text-gray-600 text-sm">Annual Investment</span>
-                <span className="text-xl font-bold" style={{ color: 'var(--theme-primary)' }}>{formatCompactCurrency(pricing.annualRecurringRevenue)}</span>
+                <span className="text-gray-600 text-sm">Avg. Annual Investment</span>
+                <span className="text-xl font-bold" style={{ color: 'var(--theme-primary)' }}>{formatCompactCurrency(avgAnnualInvestment)}</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-gray-200">
                 <span className="text-gray-600 text-sm">Projected Annual Value</span>

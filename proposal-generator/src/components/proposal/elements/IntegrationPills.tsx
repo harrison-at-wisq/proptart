@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { DirectEditableText } from '@/components/ui/DirectEditableText';
 
 interface Integration {
   category: string;
@@ -10,6 +11,8 @@ interface Integration {
 interface IntegrationPillsProps {
   title?: string;
   integrations?: Integration[];
+  onTitleChange?: (value: string) => void;
+  onIntegrationChange?: (index: number, field: 'category' | 'name', value: string) => void;
   darkTheme?: boolean;
 }
 
@@ -25,6 +28,8 @@ export const INTEGRATION_PILLS_PLACEHOLDER = {
 export function IntegrationPills({
   title = INTEGRATION_PILLS_PLACEHOLDER.title,
   integrations = INTEGRATION_PILLS_PLACEHOLDER.integrations,
+  onTitleChange,
+  onIntegrationChange,
   darkTheme,
 }: IntegrationPillsProps) {
   const pillClass = darkTheme
@@ -38,14 +43,27 @@ export function IntegrationPills({
   return (
     <>
       {title && (
-        <h3 className={`text-lg font-semibold ${titleColor} mb-4`} style={titleStyle}>{title}</h3>
+        onTitleChange ? (
+          <DirectEditableText value={title} onChange={onTitleChange} as="h3" className={`text-lg font-semibold ${titleColor} mb-4`} style={titleStyle} />
+        ) : (
+          <h3 className={`text-lg font-semibold ${titleColor} mb-4`} style={titleStyle}>{title}</h3>
+        )
       )}
       {integrations.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {integrations.map((integration, i) => (
             <div key={i} className={pillClass} style={pillStyle}>
-              <span className={`${categoryOpacity} mr-2`}>{integration.category}</span>
-              <span className="font-medium">{integration.name}</span>
+              {onIntegrationChange ? (
+                <>
+                  <DirectEditableText value={integration.category} onChange={(v) => onIntegrationChange(i, 'category', v)} as="span" className={`${categoryOpacity} mr-2`} />
+                  <DirectEditableText value={integration.name} onChange={(v) => onIntegrationChange(i, 'name', v)} as="span" className="font-medium" />
+                </>
+              ) : (
+                <>
+                  <span className={`${categoryOpacity} mr-2`}>{integration.category}</span>
+                  <span className="font-medium">{integration.name}</span>
+                </>
+              )}
             </div>
           ))}
         </div>

@@ -620,8 +620,11 @@ export interface SectionVisibility {
 /** Fully materialized, directly-editable document content */
 export interface ProposalDocumentContent {
   // Cover Page
+  coverEyebrow: string;
   coverTitle: string;
   coverQuote: string;
+  coverContactName: string;
+  coverContactTitle: string;
 
   // Executive Summary
   execSummaryInsight: string;
@@ -649,6 +652,10 @@ export interface ProposalDocumentContent {
 
   // Next Steps
   nextStepsItems: WidgetItem[]; // { id, title, description }
+
+  // Table of Contents
+  tocHeading: string;
+  tocItems: WidgetItem[];
 
   // FAQ Sections
   faqSections: FAQSection[];
@@ -731,7 +738,9 @@ export type ProposalElementType =
   | 'bullet-list' | 'numbered-steps'
   | 'customer-quote' | 'divider-line' | 'faq-section'
   | 'integration-pills' | 'contact-card' | 'page-footer' | 'cover-title-block'
-  | 'spacer';
+  | 'spacer' | 'placeholder-panel' | 'harper-profile'
+  | 'roi-pie-chart' | 'roi-breakdown-columns'
+  | 'cover-image' | 'table-of-contents';
 
 /** Section layout preset identifiers */
 export type SectionLayoutPreset =
@@ -767,8 +776,11 @@ export interface ProposalTemplate {
 
 // Content overrides from inline editing
 export interface ProposalContentOverrides {
+  coverEyebrow?: string;
   coverTitle?: string;
   coverQuote?: string;
+  coverContactName?: string;
+  coverContactTitle?: string;
   execSummaryInsight?: string;
   execSummaryVision?: string;
   execSummaryBullets?: string[];

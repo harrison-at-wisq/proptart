@@ -5,12 +5,15 @@ import { DirectEditableText } from '@/components/ui/DirectEditableText';
 
 interface CoverTitleBlockProps {
   eyebrow?: string;
+  onEyebrowChange?: (value: string) => void;
   title?: string;
   onTitleChange?: (value: string) => void;
   quote?: string;
   onQuoteChange?: (value: string) => void;
   contactName?: string;
+  onContactNameChange?: (value: string) => void;
   contactTitle?: string;
+  onContactTitleChange?: (value: string) => void;
   darkTheme?: boolean;
 }
 
@@ -24,12 +27,15 @@ export const COVER_TITLE_BLOCK_PLACEHOLDER = {
 
 export function CoverTitleBlock({
   eyebrow = COVER_TITLE_BLOCK_PLACEHOLDER.eyebrow,
+  onEyebrowChange,
   title = COVER_TITLE_BLOCK_PLACEHOLDER.title,
   onTitleChange,
   quote = COVER_TITLE_BLOCK_PLACEHOLDER.quote,
   onQuoteChange,
   contactName = COVER_TITLE_BLOCK_PLACEHOLDER.contactName,
+  onContactNameChange,
   contactTitle = COVER_TITLE_BLOCK_PLACEHOLDER.contactTitle,
+  onContactTitleChange,
   darkTheme,
 }: CoverTitleBlockProps) {
   const headingColor = darkTheme ? 'text-white' : '';
@@ -44,9 +50,19 @@ export function CoverTitleBlock({
 
   return (
     <div>
-      <div className={`text-sm font-semibold ${headingColor} tracking-widest uppercase mb-2`} style={headingStyle}>
-        {eyebrow}
-      </div>
+      {onEyebrowChange ? (
+        <DirectEditableText
+          value={eyebrow}
+          onChange={onEyebrowChange}
+          as="div"
+          className={`text-sm font-semibold ${headingColor} tracking-widest uppercase mb-2`}
+          style={headingStyle}
+        />
+      ) : (
+        <div className={`text-sm font-semibold ${headingColor} tracking-widest uppercase mb-2`} style={headingStyle}>
+          {eyebrow}
+        </div>
+      )}
       {onTitleChange ? (
         <DirectEditableText
           value={title}
@@ -73,7 +89,20 @@ export function CoverTitleBlock({
         </div>
       )}
       <div className={`text-lg ${metaText} space-y-1`}>
-        <p>Prepared for <span className={`font-semibold ${nameText}`}>{contactName}</span>, {contactTitle}</p>
+        <p>
+          Prepared for{' '}
+          {onContactNameChange ? (
+            <DirectEditableText value={contactName} onChange={onContactNameChange} as="span" className={`font-semibold ${nameText}`} />
+          ) : (
+            <span className={`font-semibold ${nameText}`}>{contactName}</span>
+          )}
+          ,{' '}
+          {onContactTitleChange ? (
+            <DirectEditableText value={contactTitle} onChange={onContactTitleChange} as="span" />
+          ) : (
+            <>{contactTitle}</>
+          )}
+        </p>
       </div>
     </div>
   );

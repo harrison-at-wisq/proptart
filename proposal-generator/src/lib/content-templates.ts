@@ -8,7 +8,6 @@ export const OPPORTUNITY_CONTENT: Record<Industry, { insight: string; vision: st
     bullets: [
       'Instant answers for a distributed workforce',
       'Scale HR support globally without timezone constraints',
-      'Free your team to focus on strategic initiatives',
     ],
   },
   'Financial Services': {
@@ -17,7 +16,6 @@ export const OPPORTUNITY_CONTENT: Record<Industry, { insight: string; vision: st
     bullets: [
       'Audit-ready documentation for every interaction',
       'Consistent policy application across all locations',
-      'Real-time compliance monitoring and alerts',
     ],
   },
   'Healthcare': {
@@ -26,7 +24,6 @@ export const OPPORTUNITY_CONTENT: Record<Industry, { insight: string; vision: st
     bullets: [
       '24/7 support for round-the-clock staff',
       'HIPAA-aware policy guidance',
-      'Reduce administrative burden on clinical managers',
     ],
   },
   'Manufacturing': {
@@ -35,7 +32,6 @@ export const OPPORTUNITY_CONTENT: Record<Industry, { insight: string; vision: st
     bullets: [
       'Multi-language support for diverse workforces',
       'Instant access to safety and compliance policies',
-      'Reduce time-to-resolution for employee issues',
     ],
   },
   'Retail': {
@@ -44,7 +40,6 @@ export const OPPORTUNITY_CONTENT: Record<Industry, { insight: string; vision: st
     bullets: [
       'Instant onboarding support during peak seasons',
       'Consistent policy enforcement across all stores',
-      'Reduce manager time spent on HR questions by 80%',
     ],
   },
   'Professional Services': {
@@ -53,7 +48,6 @@ export const OPPORTUNITY_CONTENT: Record<Industry, { insight: string; vision: st
     bullets: [
       'Support your mobile, client-facing workforce',
       'Maintain confidentiality with secure, private interactions',
-      'Scale HR expertise without scaling headcount',
     ],
   },
   'Education': {
@@ -62,7 +56,6 @@ export const OPPORTUNITY_CONTENT: Record<Industry, { insight: string; vision: st
     bullets: [
       'Navigate complex union and tenure policies',
       'Support diverse employment classifications',
-      'Reduce administrative burden during enrollment periods',
     ],
   },
   'Government': {
@@ -71,7 +64,6 @@ export const OPPORTUNITY_CONTENT: Record<Industry, { insight: string; vision: st
     bullets: [
       'Full audit trails for public accountability',
       'Navigate complex civil service regulations',
-      'Reduce grievances through consistent policy application',
     ],
   },
   'Hospitality': {
@@ -80,7 +72,6 @@ export const OPPORTUNITY_CONTENT: Record<Industry, { insight: string; vision: st
     bullets: [
       '24/7 multilingual HR support',
       'Rapid onboarding for seasonal staff',
-      'Reduce manager time spent on HR by 35+ hours monthly',
     ],
   },
   'Transportation & Logistics': {
@@ -89,7 +80,6 @@ export const OPPORTUNITY_CONTENT: Record<Industry, { insight: string; vision: st
     bullets: [
       'Mobile-first HR support for field workers',
       'DOT compliance guidance at their fingertips',
-      'Reduce safety incidents through better policy access',
     ],
   },
   'Energy & Utilities': {
@@ -98,7 +88,6 @@ export const OPPORTUNITY_CONTENT: Record<Industry, { insight: string; vision: st
     bullets: [
       'Safety policy access when and where it\'s needed',
       'Audit-ready documentation for regulators',
-      'Support for complex shift and overtime policies',
     ],
   },
   'Media & Entertainment': {
@@ -107,16 +96,14 @@ export const OPPORTUNITY_CONTENT: Record<Industry, { insight: string; vision: st
     bullets: [
       'Navigate complex union and guild requirements',
       'Support for project-based employment',
-      'Instant access to benefits and payroll information',
     ],
   },
   'Other': {
     insight: 'Modern HR teams face a common challenge: scaling personalized support without scaling headcount proportionally.',
     vision: 'What if every employee could get instant, accurate, personalized HR guidance—anytime, anywhere?',
     bullets: [
-      'Reduce response times from days to seconds',
+      'Instant, accurate answers for every employee',
       'Free your HR team for strategic work',
-      'Improve employee satisfaction with instant answers',
     ],
   },
 };
@@ -144,47 +131,47 @@ export const VALUE_DRIVER_CONTENT: Record<ValueDriver, { headline: string; descr
 export const PAIN_POINT_CONTENT: Record<PainPoint, { headline: string; impact: string }> = {
   'hr-overwhelmed': {
     headline: 'HR Team Stretched Thin',
-    impact: 'Your HR team spends 60%+ of their time on repetitive inquiries, leaving little capacity for strategic work.',
+    impact: '60%+ of HR time goes to repetitive inquiries, leaving little capacity for strategic work.',
   },
   'inconsistent-policy': {
     headline: 'Inconsistent Policy Application',
-    impact: 'Different answers from different people create confusion, frustration, and potential compliance risk.',
+    impact: 'Different answers from different people create confusion and compliance risk.',
   },
   'slow-response': {
     headline: 'Slow Response Times',
-    impact: 'Employees wait days for answers to simple questions, impacting productivity and satisfaction.',
+    impact: 'Employees wait days for simple answers, hurting productivity and satisfaction.',
   },
   'compliance-risk': {
     headline: 'Compliance Exposure',
-    impact: 'Without consistent documentation and policy application, every HR interaction carries potential legal risk.',
+    impact: 'Inconsistent documentation and policy application create legal risk.',
   },
   'employee-frustration': {
     headline: 'Employee Frustration',
-    impact: 'Employees can\'t get quick answers to basic questions, damaging their perception of HR and the company.',
+    impact: 'Employees can\'t get quick answers, damaging their experience and trust in HR.',
   },
   'scaling-challenges': {
     headline: 'Can\'t Scale HR Support',
-    impact: 'Adding employees means adding HR headcount—an unsustainable equation as you grow.',
+    impact: 'More employees means more HR headcount—an unsustainable equation.',
   },
   'documentation-gaps': {
     headline: 'Documentation Gaps',
-    impact: 'Informal conversations and email threads leave no audit trail when you need one most.',
+    impact: 'Informal conversations leave no audit trail when you need one most.',
   },
   'manager-burden': {
     headline: 'Managers Burdened with HR',
-    impact: 'Line managers spend hours each week fielding HR questions instead of leading their teams.',
+    impact: 'Managers spend hours each week on HR questions instead of leading teams.',
   },
   'need-to-scale': {
     headline: 'Need to Scale Without Adding Headcount',
-    impact: 'Business is growing but the budget for HR headcount isn\'t—you need to do more with your current team.',
+    impact: 'Business is growing but HR headcount isn\'t—you need to do more with less.',
   },
   'hr-busywork': {
-    headline: 'HR Spending Too Much Time on Routine Tasks',
-    impact: 'Your HR experts are stuck answering the same questions repeatedly instead of driving strategic initiatives.',
+    headline: 'HR Stuck on Routine Tasks',
+    impact: 'Your HR experts answer the same questions repeatedly instead of driving strategy.',
   },
   'strategic-blocked': {
     headline: 'HR Can\'t Focus on Strategic Initiatives',
-    impact: 'Day-to-day firefighting leaves no capacity for culture building, talent development, or transformation projects.',
+    impact: 'Day-to-day firefighting leaves no capacity for talent development or transformation.',
   },
 };
 
@@ -192,19 +179,19 @@ export const PAIN_POINT_CONTENT: Record<PainPoint, { headline: string; impact: s
 export const WHY_NOW_CONTENT = {
   costOfDelay: {
     headline: 'The Cost of Waiting',
-    description: 'Every month without Wisq represents avoidable costs in HR time, compliance risk, and employee productivity.',
+    description: 'Every month without Wisq means avoidable HR costs and compliance risk.',
   },
   aiMomentum: {
     headline: 'AI is Transforming HR',
-    description: 'Organizations that adopt AI for HR now are building competitive advantages in talent acquisition, retention, and operational efficiency.',
+    description: 'Early AI adopters are gaining lasting advantages in talent and operations.',
   },
   quickWins: {
     headline: 'Quick Wins Available',
-    description: 'Most customers see measurable ROI within 90 days. Start with high-volume use cases and expand from there.',
+    description: 'Most customers see measurable ROI within 90 days of launch.',
   },
   competitivePressure: {
     headline: 'Your Competitors Are Moving',
-    description: 'Leading organizations in your industry are already exploring or implementing AI-powered HR solutions.',
+    description: 'Leading organizations in your industry are already implementing AI-powered HR.',
   },
 };
 

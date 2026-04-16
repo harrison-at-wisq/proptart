@@ -21,6 +21,18 @@ export const DEFAULT_TEMPLATE: ProposalTemplate = {
           defaultColSpan: 12,
         },
         {
+          elementType: 'cover-image',
+          blockId: 'coverImage',
+          label: 'Cover Image',
+          defaultColSpan: 12,
+        },
+        {
+          elementType: 'table-of-contents',
+          blockId: 'coverToc',
+          label: 'Table of Contents',
+          defaultColSpan: 12,
+        },
+        {
           elementType: 'page-footer',
           blockId: 'coverFooter',
           label: 'Footer',

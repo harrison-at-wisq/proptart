@@ -23,6 +23,12 @@ import {
   PAGE_FOOTER_PLACEHOLDER,
   COVER_TITLE_BLOCK_PLACEHOLDER,
   SPACER_PLACEHOLDER,
+  PLACEHOLDER_PANEL_PLACEHOLDER,
+  HARPER_PROFILE_PLACEHOLDER,
+  ROI_PIE_CHART_PLACEHOLDER,
+  ROI_BREAKDOWN_COLUMNS_PLACEHOLDER,
+  COVER_IMAGE_PLACEHOLDER,
+  TABLE_OF_CONTENTS_PLACEHOLDER,
 } from '../elements';
 
 /** Returns default data props for a given element type (using PLACEHOLDER constants) */
@@ -74,6 +80,18 @@ export function getDefaultElementData(elementType: ProposalElementType): Record<
       return { ...COVER_TITLE_BLOCK_PLACEHOLDER };
     case 'spacer':
       return { height: SPACER_PLACEHOLDER.height };
+    case 'placeholder-panel':
+      return { label: PLACEHOLDER_PANEL_PLACEHOLDER.label, height: PLACEHOLDER_PANEL_PLACEHOLDER.height };
+    case 'harper-profile':
+      return {};
+    case 'roi-pie-chart':
+      return { slices: ROI_PIE_CHART_PLACEHOLDER.slices, title: ROI_PIE_CHART_PLACEHOLDER.title };
+    case 'roi-breakdown-columns':
+      return { columns: ROI_BREAKDOWN_COLUMNS_PLACEHOLDER.columns };
+    case 'cover-image':
+      return { src: COVER_IMAGE_PLACEHOLDER.src };
+    case 'table-of-contents':
+      return { heading: TABLE_OF_CONTENTS_PLACEHOLDER.heading, items: TABLE_OF_CONTENTS_PLACEHOLDER.items };
     default:
       return {};
   }
@@ -100,6 +118,7 @@ export function getEditableDataKey(elementType: ProposalElementType): 'text' | '
     case 'bullet-list':
     case 'numbered-steps':
     case 'stat-cards':
+    case 'table-of-contents':
       return 'items';
     default:
       return null;

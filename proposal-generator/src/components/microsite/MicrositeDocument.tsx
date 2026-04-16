@@ -10,7 +10,7 @@ import { MicrositeExecutiveSummary } from './sections/MicrositeExecutiveSummary'
 import { MicrositeHarper } from './sections/MicrositeHarper';
 import { MicrositeValueDrivers } from './sections/MicrositeValueDrivers';
 import { MicrositeInvestment } from './sections/MicrositeInvestment';
-import { MicrositeROIExplorer } from './sections/MicrositeROIExplorer';
+
 import { MicrositeSecurity } from './sections/MicrositeSecurity';
 import { MicrositeWhyNow } from './sections/MicrositeWhyNow';
 import { MicrositeFooter } from './sections/MicrositeFooter';
@@ -30,7 +30,6 @@ export function MicrositeDocument({ inputs }: Props) {
       <MicrositeHarper inputs={inputs} />
       <MicrositeValueDrivers inputs={inputs} />
       <MicrositeInvestment inputs={inputs} />
-      <MicrositeROIExplorer inputs={inputs} />
       <MicrositeSecurity inputs={inputs} />
       <MicrositeWhyNow inputs={inputs} />
       <MicrositeFooter customerLogoBase64={inputs.company.customerLogoBase64} />

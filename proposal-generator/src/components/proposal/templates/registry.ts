@@ -23,6 +23,12 @@ import { ContactCard } from '../elements/ContactCard';
 import { PageFooter } from '../elements/PageFooter';
 import { CoverTitleBlock } from '../elements/CoverTitleBlock';
 import { Spacer } from '../elements/Spacer';
+import { PlaceholderPanel } from '../elements/PlaceholderPanel';
+import { HarperProfile } from '../elements/HarperProfile';
+import { ROIPieChart } from '../elements/ROIPieChart';
+import { ROIBreakdownColumns } from '../elements/ROIBreakdownColumns';
+import { CoverImage } from '../elements/CoverImage';
+import { TableOfContents } from '../elements/TableOfContents';
 
 /** Maps element type identifiers to their React components */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -50,6 +56,12 @@ export const ELEMENT_REGISTRY: Record<ProposalElementType, React.ComponentType<a
   'page-footer': PageFooter,
   'cover-title-block': CoverTitleBlock,
   'spacer': Spacer,
+  'placeholder-panel': PlaceholderPanel,
+  'harper-profile': HarperProfile,
+  'roi-pie-chart': ROIPieChart,
+  'roi-breakdown-columns': ROIBreakdownColumns,
+  'cover-image': CoverImage,
+  'table-of-contents': TableOfContents,
 };
 
 /** Element metadata for the block inserter / element picker UI */
@@ -98,4 +110,10 @@ export const ELEMENT_CATALOG: ElementMeta[] = [
   { type: 'page-footer', name: 'Page Footer', description: 'Logo, date, and confidentiality', category: 'layout', defaultColSpan: 12 },
   { type: 'spacer', name: 'Spacer', description: 'Adjustable vertical space', category: 'layout', defaultColSpan: 12 },
   { type: 'divider-line', name: 'Divider Line', description: 'Navy accent bar', category: 'layout', defaultColSpan: 12 },
+  { type: 'placeholder-panel', name: 'Placeholder Panel', description: 'Reserved space for future content', category: 'layout', defaultColSpan: 12 },
+  { type: 'harper-profile', name: 'Harper Profile', description: 'Profile circle for Harper AI', category: 'cards', defaultColSpan: 5 },
+  { type: 'roi-pie-chart', name: 'ROI Pie Chart', description: 'Donut chart showing savings breakdown', category: 'data', defaultColSpan: 6 },
+  { type: 'roi-breakdown-columns', name: 'ROI Breakdown', description: 'Three-column detailed savings breakdown', category: 'data', defaultColSpan: 12 },
+  { type: 'cover-image', name: 'Cover Image', description: 'Full-width hero image', category: 'layout', defaultColSpan: 12 },
+  { type: 'table-of-contents', name: 'Table of Contents', description: 'Numbered section overview grid', category: 'lists', defaultColSpan: 12 },
 ];

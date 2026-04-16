@@ -41,12 +41,21 @@ export function materializeDocumentContent(inputs: ProposalInputs): ProposalDocu
   const opportunityContent = getOpportunityContent(inputs.company.industry);
 
   // -- Cover Page --
+  const coverEyebrow = resolve(overrides.coverEyebrow, undefined, 'STRATEGIC PROPOSAL');
   const coverTitle = resolve(
     overrides.coverTitle,
     undefined,
     `Transforming HR at ${inputs.company.companyName || 'Your Company'}`
   );
   const coverQuote = resolve(overrides.coverQuote, undefined, inputs.coverQuote || '');
+  const coverContactName = resolve(overrides.coverContactName, undefined, inputs.company.contactName || '');
+  const coverContactTitle = resolve(
+    overrides.coverContactTitle,
+    undefined,
+    inputs.company.contactTitle === 'Other'
+      ? (inputs.company.customContactTitle || '')
+      : (inputs.company.contactTitle || '')
+  );
 
   // -- Executive Summary --
   const execSummaryInsight = resolve(
@@ -203,8 +212,11 @@ export function materializeDocumentContent(inputs: ProposalInputs): ProposalDocu
   };
 
   return {
+    coverEyebrow,
     coverTitle,
     coverQuote,
+    coverContactName,
+    coverContactTitle,
     execSummaryInsight,
     execSummaryVision,
     execSummaryBullets,
@@ -216,6 +228,15 @@ export function materializeDocumentContent(inputs: ProposalInputs): ProposalDocu
     implementationTimeline,
     whyNowItems,
     nextStepsItems,
+    tocHeading: "What's Inside",
+    tocItems: [
+      { id: '1', num: '01', title: 'Executive Summary', description: 'Strategic vision and key outcomes' },
+      { id: '2', num: '02', title: 'Meet Harper', description: 'Your AI-powered HR assistant' },
+      { id: '3', num: '03', title: 'Investment Case', description: 'ROI breakdown and payback timeline' },
+      { id: '4', num: '04', title: 'Security & Integrations', description: 'Enterprise-grade compliance' },
+      { id: '5', num: '05', title: 'Why Now', description: 'Cost of delay and momentum' },
+      { id: '6', num: '06', title: 'Next Steps', description: 'Your path forward' },
+    ],
     faqSections,
     selectedQuotes,
     sectionVisibility,
