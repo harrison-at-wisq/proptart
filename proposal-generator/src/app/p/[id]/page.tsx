@@ -73,7 +73,8 @@ export default function AssetsWorkspacePage({
         .then(res => res.json())
         .then(json => {
           const data = json?.proposal?.data as ProposalInputs | undefined;
-          setProposalName(json?.proposal?.name || 'Untitled Proposal');
+          const companyName = data?.company?.companyName?.trim();
+          setProposalName(companyName || json?.proposal?.name || 'Untitled Proposal');
           if (data) setProposalData(data);
         }),
       fetchAssets(),
@@ -129,7 +130,8 @@ export default function AssetsWorkspacePage({
       const json = await res.json();
       const pdfId = json.pdfExport?.id;
       if (!pdfId) throw new Error('No PDF export ID returned');
-      router.push(`/p/${id}/assets/pdf-${pdfId}`);
+      window.open(`/p/${id}/pdf/${pdfId}`, '_blank', 'noopener,noreferrer');
+      await fetchAssets();
     } catch (err) {
       console.error(err);
       setCreating(null);
@@ -253,8 +255,9 @@ export default function AssetsWorkspacePage({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => router.push(`/p/${id}`)}
+                onClick={() => router.push('/')}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
+                title="Back to workspace"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -267,6 +270,17 @@ export default function AssetsWorkspacePage({
                 </p>
               </div>
             </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => router.push(`/p/${id}/inputs`)}
+                className="flex items-center gap-2 px-4 py-2 bg-white text-[#03143B] border border-[#03143B] rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit Inputs
+              </button>
 
             {/* New Asset dropdown */}
             <div className="relative" ref={dropdownRef}>
@@ -320,6 +334,7 @@ export default function AssetsWorkspacePage({
                   </button>
                 </div>
               )}
+            </div>
             </div>
           </div>
         </div>
@@ -759,15 +774,17 @@ function PdfExportCard({
 
         {/* Actions */}
         <div className="flex gap-2">
-          <button
-            onClick={() => router.push(`/p/${proposalId}/assets/pdf-${pdf.id}`)}
+          <a
+            href={`/p/${proposalId}/pdf/${pdf.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-[#03143B] rounded-lg hover:bg-[#03143B]/90 transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
             Edit
-          </button>
+          </a>
         </div>
       </div>
     </div>

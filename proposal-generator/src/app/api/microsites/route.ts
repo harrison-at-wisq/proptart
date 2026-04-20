@@ -6,23 +6,23 @@ import { ProposalInputs } from '@/types/proposal';
 
 export const dynamic = 'force-dynamic';
 
-// GET - List microsites for a proposal (supports multiple)
+// GET - List microsites. Scope with ?proposalId=X for a single proposal,
+// or omit proposalId for cross-proposal listings (workspace home).
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const proposalId = searchParams.get('proposalId');
   const includeArchived = searchParams.get('includeArchived') === 'true';
 
-  if (!proposalId) {
-    return NextResponse.json({ error: 'proposalId query param required' }, { status: 400 });
-  }
-
   const supabase = createServerSupabaseClient();
 
   let query = supabase
     .from('microsites')
-    .select('id, slug, name, published_at, unpublished_at, view_count, last_viewed_at, updated_at, owner_email')
-    .eq('proposal_id', proposalId)
+    .select('id, slug, name, published_at, unpublished_at, view_count, last_viewed_at, updated_at, owner_email, proposal_id')
     .order('updated_at', { ascending: false });
+
+  if (proposalId) {
+    query = query.eq('proposal_id', proposalId);
+  }
 
   if (!includeArchived) {
     query = query.is('unpublished_at', null);
@@ -34,7 +34,34 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ microsites: data || [] });
+  // If cross-proposal, attach parent proposal company + id for display
+  let microsites = data || [];
+  if (!proposalId && microsites.length > 0) {
+    const parentIds = Array.from(new Set(microsites.map((m) => m.proposal_id)));
+    const { data: parents } = await supabase
+      .from('proposals')
+      .select('id, name, data')
+      .in('id', parentIds);
+    const parentMap = new Map(
+      (parents || []).map((p) => {
+        const pData = p.data as ProposalInputs;
+        return [
+          p.id,
+          {
+            name: p.name,
+            companyName: pData?.company?.companyName || 'Unnamed',
+          },
+        ];
+      })
+    );
+    microsites = microsites.map((m) => ({
+      ...m,
+      proposalName: parentMap.get(m.proposal_id)?.name ?? null,
+      proposalCompanyName: parentMap.get(m.proposal_id)?.companyName ?? null,
+    }));
+  }
+
+  return NextResponse.json({ microsites });
 }
 
 // POST - Publish a new microsite for a proposal

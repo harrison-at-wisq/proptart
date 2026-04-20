@@ -12,8 +12,6 @@ import {
   DEFAULT_EMPLOYEE_EXPERIENCE,
   ProposalInputs,
 } from '@/types/proposal';
-import { DEFAULT_MOU_INPUTS, MOUInputs } from '@/types/mou';
-import { DocumentType } from '@/types/database';
 
 // GET - List all proposals (all wisq.com users can see all)
 export async function GET() {
@@ -25,7 +23,7 @@ export async function GET() {
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
     .from('proposals')
-    .select('id, name, owner_email, data, document_type, created_at, updated_at')
+    .select('id, name, owner_email, data, created_at, updated_at')
     .order('updated_at', { ascending: false });
 
   if (error) {
@@ -33,41 +31,44 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Fetch all microsites for these proposals (for quick-access links)
+  // Fetch all microsites and PDF exports for these proposals (for counts + quick links)
   const proposalIds = (data || []).map((p) => p.id);
-  const { data: microsites } = await supabase
-    .from('microsites')
-    .select('proposal_id, slug, unpublished_at')
-    .in('proposal_id', proposalIds);
+  const [micrositesRes, pdfExportsRes] = await Promise.all([
+    supabase
+      .from('microsites')
+      .select('proposal_id, slug, unpublished_at')
+      .in('proposal_id', proposalIds),
+    supabase
+      .from('pdf_exports')
+      .select('proposal_id')
+      .in('proposal_id', proposalIds),
+  ]);
 
-  // Count microsites per proposal and track the latest active slug
   const micrositeCountMap = new Map<string, number>();
   const latestActiveSlugMap = new Map<string, string>();
-  for (const m of microsites || []) {
+  for (const m of micrositesRes.data || []) {
     micrositeCountMap.set(m.proposal_id, (micrositeCountMap.get(m.proposal_id) || 0) + 1);
     if (!m.unpublished_at) {
       latestActiveSlugMap.set(m.proposal_id, m.slug);
     }
   }
+  const pdfCountMap = new Map<string, number>();
+  for (const p of pdfExportsRes.data || []) {
+    pdfCountMap.set(p.proposal_id, (pdfCountMap.get(p.proposal_id) || 0) + 1);
+  }
 
-  // Transform to list items with ownership info
   const proposals = (data || []).map((p) => {
-    const docType = (p.document_type as DocumentType) || 'proposal';
-    const pData = p.data as ProposalInputs | MOUInputs;
+    const pData = p.data as ProposalInputs;
     const micrositeCount = micrositeCountMap.get(p.id) || 0;
+    const pdfCount = pdfCountMap.get(p.id) || 0;
     const latestMicrositeSlug = latestActiveSlugMap.get(p.id) || null;
-    const hasGenerated = docType === 'mou'
-      ? !!(pData as MOUInputs)?.generatedContent
-      : !!(pData as ProposalInputs)?.generatedContent;
     return {
       id: p.id,
       name: p.name,
       companyName: pData?.company?.companyName || 'Unnamed',
-      industry: 'industry' in (pData?.company || {})
-        ? (pData?.company as ProposalInputs['company'] | MOUInputs['company'])?.industry || 'Unknown'
-        : 'Unknown',
+      industry: pData?.company?.industry || 'Unknown',
       aeName: (() => {
-        const email = (pData?.company as ProposalInputs['company'])?.contactEmail || '';
+        const email = pData?.company?.contactEmail || '';
         const name = email.split('|')[0]?.trim();
         return name || '';
       })(),
@@ -75,9 +76,9 @@ export async function GET() {
       createdAt: p.created_at,
       ownerEmail: p.owner_email,
       isOwner: p.owner_email === user?.email,
-      documentType: docType,
-      hasGeneratedContent: hasGenerated,
+      hasGeneratedContent: !!pData?.generatedContent,
       micrositeCount,
+      pdfCount,
       latestMicrositeSlug,
     };
   });
@@ -85,7 +86,7 @@ export async function GET() {
   return NextResponse.json({ proposals });
 }
 
-// POST - Create new proposal or MOU
+// POST - Create new proposal
 export async function POST(request: Request) {
   const user = await getAuthUser();
   if (!user?.email) {
@@ -93,37 +94,30 @@ export async function POST(request: Request) {
   }
 
   let name = 'New Proposal';
-  let documentType: DocumentType = 'proposal';
   try {
     const body = await request.json();
     if (body.name) name = body.name;
-    if (body.document_type === 'mou') {
-      documentType = 'mou';
-      if (!body.name) name = 'New MOU';
-    }
   } catch {
     // Use default name if no body
   }
 
-  const defaultData: ProposalInputs | MOUInputs = documentType === 'mou'
-    ? DEFAULT_MOU_INPUTS
-    : {
-        company: {
-          companyName: '',
-          industry: 'Technology',
-          headquarters: '',
-          contactName: '',
-          contactTitle: 'CHRO',
-          contactEmail: '',
-        },
-        pricing: DEFAULT_PRICING,
-        hrOperations: DEFAULT_HR_OPERATIONS,
-        legalCompliance: DEFAULT_LEGAL_COMPLIANCE,
-        employeeExperience: DEFAULT_EMPLOYEE_EXPERIENCE,
-        painPoints: [],
-        integrations: { hcm: '', identity: '', documents: '', communication: '', ticketing: '' },
-        nextSteps: ['technical-deepdive', 'pilot-scope'],
-      };
+  const defaultData: ProposalInputs = {
+    company: {
+      companyName: '',
+      industry: 'Technology',
+      headquarters: '',
+      contactName: '',
+      contactTitle: 'CHRO',
+      contactEmail: '',
+    },
+    pricing: DEFAULT_PRICING,
+    hrOperations: DEFAULT_HR_OPERATIONS,
+    legalCompliance: DEFAULT_LEGAL_COMPLIANCE,
+    employeeExperience: DEFAULT_EMPLOYEE_EXPERIENCE,
+    painPoints: [],
+    integrations: { hcm: '', identity: '', documents: '', communication: '', ticketing: '' },
+    nextSteps: ['technical-deepdive', 'pilot-scope'],
+  };
 
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
@@ -132,7 +126,6 @@ export async function POST(request: Request) {
       name,
       owner_email: user.email,
       data: defaultData,
-      document_type: documentType,
     })
     .select()
     .single();
@@ -151,7 +144,6 @@ export async function POST(request: Request) {
       data: data.data,
       ownerEmail: data.owner_email,
       isOwner: true,
-      documentType: (data.document_type as DocumentType) || 'proposal',
     },
   });
 }

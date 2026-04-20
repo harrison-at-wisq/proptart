@@ -5,6 +5,7 @@ import { ProposalInputs } from '@/types/proposal';
 import { formatCompactCurrency, formatCurrency } from '@/lib/pricing-calculator';
 import { useROIScenarios, Scenario } from '../hooks/useROIScenarios';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
+import { getEnabledPillarsFromProposal, type PillarKey } from '@/lib/pillar-visibility';
 
 interface Props {
   inputs: ProposalInputs;
@@ -20,13 +21,15 @@ export function MicrositeROIExplorer({ inputs }: Props) {
   const sectionRef = useScrollAnimation<HTMLElement>();
   const { scenario, setScenario, summary, hrOutput, legalOutput, eeOutput, pricing } = useROIScenarios(inputs);
 
-  const grossTotal = summary.hrOpsSavings + summary.legalSavings + summary.productivitySavings + pricing.annualRecurringRevenue;
-  const maxBar = Math.max(
-    summary.hrOpsSavings + pricing.annualRecurringRevenue,
-    summary.legalSavings,
-    summary.productivitySavings,
-    1
-  );
+  // Pillar bars: HR Ops value includes license cost (gross); others are net savings.
+  const enabledPillars = getEnabledPillarsFromProposal(inputs);
+  const barMeta: Record<PillarKey, { label: string; value: number; muted: boolean }> = {
+    hrOps: { label: 'HR Operations', value: summary.hrOpsSavings + pricing.annualRecurringRevenue, muted: false },
+    legal: { label: 'Compliance Value', value: summary.legalSavings, muted: false },
+    ex: { label: 'Productivity Gains', value: summary.productivitySavings, muted: true },
+  };
+  const bars = enabledPillars.map((k) => ({ key: k, ...barMeta[k] }));
+  const maxBar = Math.max(...bars.map((b) => b.value), 1);
 
   return (
     <section id="roi-explorer" className="py-20 sm:py-28 bg-white" ref={sectionRef}>
@@ -65,50 +68,25 @@ export function MicrositeROIExplorer({ inputs }: Props) {
           <div className="space-y-6">
             <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--theme-primary)' }}>Annual Savings Breakdown</h3>
 
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm text-gray-600">HR Operations</span>
-                <span className="text-sm font-semibold ms-number-transition" style={{ color: 'var(--theme-primary)' }}>
-                  {formatCompactCurrency(summary.hrOpsSavings + pricing.annualRecurringRevenue)}
-                </span>
+            {bars.map((bar) => (
+              <div key={bar.key}>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm text-gray-600">{bar.label}</span>
+                  <span className="text-sm font-semibold ms-number-transition" style={{ color: 'var(--theme-primary)' }}>
+                    {formatCompactCurrency(bar.value)}
+                  </span>
+                </div>
+                <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full ms-bar"
+                    style={{
+                      backgroundColor: bar.muted ? 'rgba(var(--theme-primary-rgb), 0.6)' : 'var(--theme-primary)',
+                      width: `${Math.max(2, (bar.value / maxBar) * 100)}%`,
+                    }}
+                  />
+                </div>
               </div>
-              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full ms-bar"
-                  style={{ backgroundColor: 'var(--theme-primary)', width: `${Math.max(2, ((summary.hrOpsSavings + pricing.annualRecurringRevenue) / maxBar) * 100)}%` }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm text-gray-600">Compliance Value</span>
-                <span className="text-sm font-semibold ms-number-transition" style={{ color: 'var(--theme-primary)' }}>
-                  {formatCompactCurrency(summary.legalSavings)}
-                </span>
-              </div>
-              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full ms-bar"
-                  style={{ backgroundColor: 'var(--theme-primary)', width: `${Math.max(2, (summary.legalSavings / maxBar) * 100)}%` }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm text-gray-600">Productivity Gains</span>
-                <span className="text-sm font-semibold ms-number-transition" style={{ color: 'var(--theme-primary)' }}>
-                  {formatCompactCurrency(summary.productivitySavings)}
-                </span>
-              </div>
-              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full ms-bar"
-                  style={{ backgroundColor: 'rgba(var(--theme-primary-rgb), 0.6)', width: `${Math.max(2, (summary.productivitySavings / maxBar) * 100)}%` }}
-                />
-              </div>
-            </div>
+            ))}
           </div>
 
           {/* Summary metrics */}

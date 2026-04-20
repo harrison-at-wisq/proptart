@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { DirectEditableText } from '@/components/ui/DirectEditableText';
+import { pillarGridColsClass } from '@/lib/pillar-visibility';
 
 interface LineItem {
   label: string;
@@ -55,7 +56,7 @@ export function ROIBreakdownColumns({
   darkTheme,
 }: ROIBreakdownColumnsProps) {
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className={`grid ${pillarGridColsClass(columns.length)} gap-3`}>
       {columns.map((col, ci) => (
         <div
           key={ci}

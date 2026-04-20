@@ -25,6 +25,7 @@ import {
 } from '@/lib/roi-calculator';
 import { getValueDriverContent, getPainPointContent, PAIN_POINT_CONTENT, WHY_NOW_CONTENT, NEXT_STEPS_OPTIONS } from '@/lib/content-templates';
 import { getSelectedQuoteForSection } from '@/lib/customer-quotes';
+import { getEnabledPillarsFromProposal, PILLAR_LABELS, type PillarKey } from '@/lib/pillar-visibility';
 import type { QuoteSection } from '@/types/proposal';
 import sharp from 'sharp';
 import path from 'path';
@@ -430,12 +431,21 @@ export async function generateProposalDocxWithLogo(inputs: ProposalInputs): Prom
   // ROI Breakdown
   children.push(subheader('Return on Investment'));
 
+  const enabledPillarKeys = getEnabledPillarsFromProposal(inputs);
+  const pillarAmounts: Record<PillarKey, number> = {
+    hrOps: summary.hrOpsSavings,
+    legal: summary.legalSavings,
+    ex: summary.productivitySavings,
+  };
+  const pillarRowLabels: Record<PillarKey, string> = {
+    hrOps: 'HR Operations Efficiency (Net)',
+    legal: 'Legal & Compliance Risk Reduction',
+    ex: 'Employee Productivity Gains',
+  };
   children.push(
     simpleTable([
       ['Value Category', 'Annual Savings'],
-      ['HR Operations Efficiency (Net)', formatCompactCurrency(summary.hrOpsSavings)],
-      ['Legal & Compliance Risk Reduction', formatCompactCurrency(summary.legalSavings)],
-      ['Employee Productivity Gains', formatCompactCurrency(summary.productivitySavings)],
+      ...enabledPillarKeys.map((k) => [pillarRowLabels[k], formatCompactCurrency(pillarAmounts[k])] as string[]),
       ['Net Annual Value', formatCompactCurrency(summary.netAnnualBenefit)],
     ])
   );

@@ -42,6 +42,51 @@ export function ROIPieChart({
   const colors = darkTheme ? SLICE_COLORS_DARK : SLICE_COLORS_LIGHT;
   const sum = slices.reduce((s, sl) => s + Math.max(0, sl.value), 0);
 
+  // Single-slice fallback: render a clean stat card rather than a full-circle "pie" of one color.
+  if (slices.length === 1) {
+    const only = slices[0];
+    return (
+      <div className="flex flex-col h-full">
+        {title && (
+          onTitleChange ? (
+            <DirectEditableText
+              value={title}
+              onChange={onTitleChange}
+              as="h3"
+              className={`text-lg font-semibold mb-3 ${darkTheme ? 'text-white/80' : ''}`}
+              style={darkTheme ? undefined : { color: 'var(--theme-primary)' }}
+            />
+          ) : (
+            <h3
+              className={`text-lg font-semibold mb-3 ${darkTheme ? 'text-white/80' : ''}`}
+              style={darkTheme ? undefined : { color: 'var(--theme-primary)' }}
+            >
+              {title}
+            </h3>
+          )
+        )}
+        <div
+          className={`flex-1 flex flex-col items-center justify-center rounded-xl p-6 ${
+            darkTheme ? 'bg-white/10 border border-white/10' : 'bg-gray-50 border border-gray-200'
+          }`}
+        >
+          <div
+            className={`text-sm font-semibold uppercase tracking-wide mb-2 ${darkTheme ? 'text-white/60' : ''}`}
+            style={!darkTheme ? { color: 'var(--theme-primary)' } : undefined}
+          >
+            {only.label}
+          </div>
+          <div
+            className={`text-4xl font-bold ${darkTheme ? 'text-white' : ''}`}
+            style={!darkTheme ? { color: 'var(--theme-primary)' } : undefined}
+          >
+            {only.formattedValue}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const cx = 180;
   const cy = 120;
   const r = 82;

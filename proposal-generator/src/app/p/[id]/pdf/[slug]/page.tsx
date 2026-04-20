@@ -9,12 +9,11 @@ import { ExportSection, buildDefaultSections } from '@/lib/export-sections';
 export default function PdfEditorPage({
   params,
 }: {
-  params: Promise<{ id: string; pdfSlug: string }>;
+  params: Promise<{ id: string; slug: string }>;
 }) {
   const resolvedParams = use(params);
   const proposalId = resolvedParams.id;
-  // URL is /p/[id]/assets/pdf-<uuid>, so pdfSlug = "pdf-<uuid>" — strip the prefix
-  const rawPdfId = resolvedParams.pdfSlug.replace(/^pdf-/, '');
+  const rawPdfId = resolvedParams.slug;
 
   const router = useRouter();
   const [pdfData, setPdfData] = useState<ProposalInputs | null>(null);
@@ -35,7 +34,7 @@ export default function PdfEditorPage({
       .then(json => {
         const record = json.pdfExport;
         if (!record) {
-          router.replace(`/p/${proposalId}/assets`);
+          router.replace(`/p/${proposalId}`);
           return;
         }
         const data = record.data as ProposalInputs;
@@ -107,10 +106,10 @@ export default function PdfEditorPage({
         <div className="text-center">
           <p className="text-red-500 mb-4">{error}</p>
           <button
-            onClick={() => router.push(`/p/${proposalId}/assets`)}
+            onClick={() => router.push(`/p/${proposalId}`)}
             className="px-4 py-2 bg-[#03143B] text-white rounded-lg hover:bg-[#03143B]/90"
           >
-            Back to Assets
+            Back to Workspace
           </button>
         </div>
       </div>
@@ -131,10 +130,10 @@ export default function PdfEditorPage({
           pdfName={pdfName}
           inputs={pdfData}
           saving={saving}
-          onClose={() => router.push(`/p/${proposalId}/assets`)}
+          onClose={() => router.push(`/p/${proposalId}`)}
         />
       }
-      onClose={() => router.push(`/p/${proposalId}/assets`)}
+      onClose={() => router.push(`/p/${proposalId}`)}
     />
   );
 }
@@ -237,7 +236,7 @@ function PdfToolbar({
           onClick={onClose}
           className="px-4 py-2 bg-white text-gray-700 rounded-lg shadow-lg hover:bg-gray-50 text-sm font-medium border border-gray-200"
         >
-          Back to Assets
+          Back to Workspace
         </button>
       </div>
 

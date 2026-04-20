@@ -11,6 +11,7 @@ import {
 } from '@/lib/roi-calculator';
 import { materializeDocumentContent } from '@/lib/materialize-content';
 import { getSelectedQuoteForSection } from '@/lib/customer-quotes';
+import { getEnabledPillarsFromProposal, PILLAR_LABELS, type PillarKey } from '@/lib/pillar-visibility';
 
 // ---------- Shared types ----------
 
@@ -375,25 +376,34 @@ export function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
       rows: investmentRows,
       showTotalRow: false,
     }, investLeftCol),
+  ];
+
+  // Filter pie slices + breakdown columns to only enabled pillars
+  const enabledPillars = getEnabledPillarsFromProposal(inputs);
+  const pillarData: Record<PillarKey, { annual: number; items: typeof hrItems }> = {
+    hrOps: { annual: summary.hrOpsSavings, items: hrItems },
+    legal: { annual: summary.legalSavings, items: legalItems },
+    ex: { annual: summary.productivitySavings, items: eeItems },
+  };
+  const pieSlices = enabledPillars.map(k => ({
+    label: PILLAR_LABELS[k],
+    value: pillarData[k].annual * contractYears,
+    formattedValue: formatCompactCurrency(pillarData[k].annual * contractYears),
+  }));
+  const breakdownColumns = enabledPillars.map(k => ({
+    title: PILLAR_LABELS[k],
+    total: `${formatCompactCurrency(pillarData[k].annual)}/yr`,
+    items: pillarData[k].items,
+  }));
+
+  investElements.push(
     el('roi-pie-chart', 6, {
       title: `Your Return (${contractYears}-Year Contract)`,
-      slices: [
-        { label: 'HR Operations', value: summary.hrOpsSavings * contractYears, formattedValue: formatCompactCurrency(summary.hrOpsSavings * contractYears) },
-        { label: 'Legal & Compliance', value: summary.legalSavings * contractYears, formattedValue: formatCompactCurrency(summary.legalSavings * contractYears) },
-        { label: 'Employee Experience', value: summary.productivitySavings * contractYears, formattedValue: formatCompactCurrency(summary.productivitySavings * contractYears) },
-      ],
+      slices: pieSlices,
     }, investRightCol),
-    // Breakdown heading
     el('sub-heading', 12, { text: 'Return Breakdown', borderPosition: 'none' }),
-    // Three-column breakdown
-    el('roi-breakdown-columns', 12, {
-      columns: [
-        { title: 'HR Operations', total: `${formatCompactCurrency(summary.hrOpsSavings)}/yr`, items: hrItems },
-        { title: 'Legal & Compliance', total: `${formatCompactCurrency(summary.legalSavings)}/yr`, items: legalItems },
-        { title: 'Employee Experience', total: `${formatCompactCurrency(summary.productivitySavings)}/yr`, items: eeItems },
-      ],
-    }),
-  ];
+    el('roi-breakdown-columns', 12, { columns: breakdownColumns }),
+  );
   const investQuote = getQuote('investment');
   if (investQuote) {
     investElements.push(el('customer-quote', 12, { text: investQuote.text, attribution: investQuote.attribution }));

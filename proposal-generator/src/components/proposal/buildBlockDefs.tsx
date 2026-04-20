@@ -9,6 +9,7 @@ import type {
 import type { FAQSection as FAQSectionType } from '@/types/proposal';
 import { formatCompactCurrency, formatCurrency } from '@/lib/pricing-calculator';
 import { getSelectedQuoteForSection } from '@/lib/customer-quotes';
+import { getEnabledPillarsFromProposal, type PillarKey } from '@/lib/pillar-visibility';
 
 // Element components
 import { SectionHeading } from './elements/SectionHeading';
@@ -331,19 +332,32 @@ export function buildBlockDefs(
           );
         }
 
-        case 'returnBreakdown':
+        case 'returnBreakdown': {
+          const returnRowLabels: Record<PillarKey, string> = {
+            hrOps: 'HR Operations Savings',
+            legal: 'Compliance Value',
+            ex: 'Productivity Gains',
+          };
+          const returnAmounts: Record<PillarKey, number> = {
+            hrOps: summary.hrOpsSavings,
+            legal: summary.legalSavings,
+            ex: summary.productivitySavings,
+          };
+          const returnEnabled = getEnabledPillarsFromProposal(inputs);
           return (
             <MetricTable
               title="Your Return"
               rows={[
-                { label: 'HR Operations Savings', value: formatCompactCurrency(summary.hrOpsSavings) },
-                { label: 'Compliance Value', value: formatCompactCurrency(summary.legalSavings) },
-                { label: 'Productivity Gains', value: formatCompactCurrency(summary.productivitySavings) },
+                ...returnEnabled.map((k) => ({
+                  label: returnRowLabels[k],
+                  value: formatCompactCurrency(returnAmounts[k]),
+                })),
                 { label: 'Net Annual Value', value: formatCompactCurrency(summary.netAnnualBenefit) },
               ]}
               darkTheme={dark}
             />
           );
+        }
 
         case 'kpiTiles':
           return (

@@ -5,28 +5,56 @@ import { ProposalInputs } from '@/types/proposal';
 
 export const dynamic = 'force-dynamic';
 
-// GET - List PDF exports for a proposal
+// GET - List PDF exports. Scope with ?proposalId=X for a single proposal,
+// or omit proposalId for cross-proposal listings (workspace home).
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const proposalId = searchParams.get('proposalId');
 
-  if (!proposalId) {
-    return NextResponse.json({ error: 'proposalId query param required' }, { status: 400 });
-  }
-
   const supabase = createServerSupabaseClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('pdf_exports')
-    .select('id, name, created_at, updated_at, owner_email')
-    .eq('proposal_id', proposalId)
+    .select('id, name, created_at, updated_at, owner_email, proposal_id')
     .order('updated_at', { ascending: false });
+
+  if (proposalId) {
+    query = query.eq('proposal_id', proposalId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ pdfExports: data || [] });
+  let pdfExports = data || [];
+  if (!proposalId && pdfExports.length > 0) {
+    const parentIds = Array.from(new Set(pdfExports.map((p) => p.proposal_id)));
+    const { data: parents } = await supabase
+      .from('proposals')
+      .select('id, name, data')
+      .in('id', parentIds);
+    const parentMap = new Map(
+      (parents || []).map((p) => {
+        const pData = p.data as ProposalInputs;
+        return [
+          p.id,
+          {
+            name: p.name,
+            companyName: pData?.company?.companyName || 'Unnamed',
+          },
+        ];
+      })
+    );
+    pdfExports = pdfExports.map((pdf) => ({
+      ...pdf,
+      proposalName: parentMap.get(pdf.proposal_id)?.name ?? null,
+      proposalCompanyName: parentMap.get(pdf.proposal_id)?.companyName ?? null,
+    }));
+  }
+
+  return NextResponse.json({ pdfExports });
 }
 
 // POST - Create a new PDF export

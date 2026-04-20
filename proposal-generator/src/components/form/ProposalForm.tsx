@@ -560,7 +560,7 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
     await saveNow();
     setIsGenerating(false);
     setHasBeenGenerated(true);
-    router.push(`/p/${proposalId}/assets`);
+    router.push(`/p/${proposalId}`);
   };
 
   const canProceed = () => {
@@ -591,7 +591,7 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
 
   const handleGoToWorkspace = async () => {
     await saveNow();
-    router.push(`/p/${proposalId}/assets`);
+    router.push(`/p/${proposalId}`);
   };
 
   const goToNextSection = () => {

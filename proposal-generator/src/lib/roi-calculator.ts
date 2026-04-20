@@ -16,6 +16,20 @@ import {
 
 const HOURS_PER_FTE_PER_YEAR = 2080;
 
+/** Build a per-year breakdown of a simple-mode flat dollar amount. */
+function simpleYearValues(
+  flatAmount: number,
+  scaleWithWorkforce: boolean,
+  yearSettings: ContractYearSettings[],
+  years: number
+): number[] {
+  return Array.from({ length: years }, (_, i) => {
+    const s = yearSettings[i] ?? yearSettings[yearSettings.length - 1] ?? { workforceChange: 0, wisqEffectiveness: 75 };
+    const mult = scaleWithWorkforce ? 1 + s.workforceChange / 100 : 1;
+    return flatAmount * mult;
+  });
+}
+
 /**
  * Calculate HR Operations ROI — multi-year, two-phase model
  */
@@ -32,6 +46,52 @@ export function calculateHROperationsROI(inputs: HROperationsInputs): HROperatio
         { wisqEffectiveness: 60, workforceChange: 5 },
         { wisqEffectiveness: 75, workforceChange: 10 },
       ];
+
+  // Simple mode: short-circuit with a flat annual amount (optionally workforce-scaled).
+  // Detail sub-fields all return 0 — renderers use the pillar total only.
+  if (inputs.mode === 'simple') {
+    const flat = inputs.simple?.flatAmount ?? 0;
+    const scale = inputs.simple?.scaleWithWorkforce ?? true;
+    const perYear = simpleYearValues(flat, scale, yearSettings, contractYears);
+    const yearResultsSimple: HROperationsYearResult[] = perYear.map((_, i) => ({
+      year: i + 1,
+      volumeMultiplier: scale ? 1 + (yearSettings[i]?.workforceChange ?? 0) / 100 : 1,
+      tier01Cases: 0,
+      tier2Cases: 0,
+      currentTotalMinutes: 0,
+      futureTotalMinutes: 0,
+      hoursSaved: 0,
+      tier01HoursSaved: 0,
+      tier2HoursSaved: 0,
+      casesDeflected: 0,
+      workloadReductionPercent: 0,
+      activeConfiguredCases: 0,
+    }));
+    const yearCostResultsSimple: HROperationsYearCostResult[] = perYear.map((v, i) => ({
+      year: i + 1,
+      headcountSavings: v,
+      tier01Savings: 0,
+      tier2Savings: 0,
+      managerSavings: 0,
+      triageSavings: 0,
+      totalSavings: v,
+      netSavings: v - (inputs.wisqLicenseCost || 0),
+      fteReduction: 0,
+    }));
+    const totalNet = yearCostResultsSimple.reduce((s, yr) => s + yr.netSavings, 0);
+    const totalLicense = contractYears * (inputs.wisqLicenseCost || 0);
+    return {
+      yearResults: yearResultsSimple,
+      totalHoursSavedOverContract: 0,
+      yearCostResults: yearCostResultsSimple,
+      totalNetSavings: totalNet,
+      contractROI: totalLicense > 0 ? (totalNet / totalLicense) * 100 : 0,
+      headcountReductionSavings: perYear.reduce((s, v) => s + v, 0),
+      managerTimeSavings: 0,
+      triageSavings: 0,
+      netSavings: totalNet,
+    };
+  }
   const tier01CasesPerYear = inputs.tier01CasesPerYear || (inputs as any).totalCasesPerYear * ((inputs as any).tier01Percent || 80) / 100 || 9600;
   // Per-year deflection: use byYear array, fall back to effectiveness directly
   const tier01DeflectionByYear = inputs.tier01DeflectionByYear?.length
@@ -213,6 +273,35 @@ export function calculateLegalComplianceROI(
   const years = contractYears || yearSettings?.length || 1;
   const settings = yearSettings?.length ? yearSettings : [{ wisqEffectiveness: 75, workforceChange: 0 }];
 
+  // Simple mode: flat annual amount, optionally workforce-scaled.
+  if (inputs.mode === 'simple') {
+    const flat = inputs.simple?.flatAmount ?? 0;
+    const scale = inputs.simple?.scaleWithWorkforce ?? true;
+    const perYear = simpleYearValues(flat, scale, settings, years);
+    const yearResults: LegalComplianceYearResult[] = perYear.map((v, i) => ({
+      year: i + 1,
+      highStakesCases: 0,
+      avoidedIncidents: 0,
+      avoidedLegalCosts: v,
+      adminCostSavings: 0,
+      auditPrepSavings: 0,
+      riskValue: 0,
+      proactiveValue: 0,
+      totalAvoidedCosts: v,
+    }));
+    return {
+      yearResults,
+      highStakesCases: 0,
+      avoidedIncidents: 0,
+      avoidedLegalCosts: perYear.reduce((s, v) => s + v, 0),
+      adminCostSavings: 0,
+      auditPrepSavings: 0,
+      riskValue: 0,
+      proactiveValue: 0,
+      totalAvoidedCosts: perYear.reduce((s, v) => s + v, 0),
+    };
+  }
+
   // Base total T2 volume (unscaled)
   const totalT2 = tier2PlusTotalCases || tier2PlusConfiguredCases || 1;
 
@@ -305,6 +394,25 @@ export function calculateEmployeeExperienceROI(
 ): EmployeeExperienceOutput {
   const years = contractYears || yearSettings?.length || 1;
   const settings = yearSettings?.length ? yearSettings : [{ wisqEffectiveness: 75, workforceChange: 0 }];
+
+  // Simple mode: flat annual amount, optionally workforce-scaled.
+  if (inputs.mode === 'simple') {
+    const flat = inputs.simple?.flatAmount ?? 0;
+    const scale = inputs.simple?.scaleWithWorkforce ?? true;
+    const perYear = simpleYearValues(flat, scale, settings, years);
+    const yearResults: EmployeeExperienceYearResult[] = perYear.map((v, i) => ({
+      year: i + 1,
+      totalInquiries: 0,
+      hoursSaved: 0,
+      totalMonetaryValue: v,
+    }));
+    return {
+      yearResults,
+      totalInquiries: 0,
+      hoursSaved: 0,
+      totalMonetaryValue: perYear.reduce((s, v) => s + v, 0),
+    };
+  }
 
   // Fallback for old data that had avgEmployeeHourlyRate / avgManagerHourlyRate
   const hourlyRate = inputs.avgHourlyRate ?? (inputs as any).avgEmployeeHourlyRate ?? 55;

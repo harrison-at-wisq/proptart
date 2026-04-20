@@ -12,6 +12,7 @@ import {
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
 import { useAnimatedCounter } from '../hooks/useAnimatedCounter';
 import { MicrositeQuote } from '../MicrositeQuote';
+import { getEnabledPillarsFromProposal, PILLAR_LABELS, pillarGridColsClass, type PillarKey } from '@/lib/pillar-visibility';
 
 interface Props {
   inputs: ProposalInputs;
@@ -257,18 +258,24 @@ export function MicrositeInvestment({ inputs }: Props) {
     });
   }
 
-  const breakdownColumns = [
-    { title: 'HR Operations', total: `${formatCompactCurrency(summary.hrOpsSavings)}/yr`, items: hrItems },
-    { title: 'Legal & Compliance', total: `${formatCompactCurrency(summary.legalSavings)}/yr`, items: legalItems },
-    { title: 'Employee Experience', total: `${formatCompactCurrency(summary.productivitySavings)}/yr`, items: eeItems },
-  ];
+  const enabledPillars = getEnabledPillarsFromProposal(inputs);
+  const pillarData: Record<PillarKey, { annual: number; items: typeof hrItems }> = {
+    hrOps: { annual: summary.hrOpsSavings, items: hrItems },
+    legal: { annual: summary.legalSavings, items: legalItems },
+    ex: { annual: summary.productivitySavings, items: eeItems },
+  };
+  const breakdownColumns = enabledPillars.map((k) => ({
+    title: PILLAR_LABELS[k],
+    total: `${formatCompactCurrency(pillarData[k].annual)}/yr`,
+    items: pillarData[k].items,
+  }));
 
   // Pie chart slices — contract totals
-  const pieSlices = [
-    { label: 'HR Operations', value: summary.hrOpsSavings * contractYears, formattedValue: formatCompactCurrency(summary.hrOpsSavings * contractYears) },
-    { label: 'Legal & Compliance', value: summary.legalSavings * contractYears, formattedValue: formatCompactCurrency(summary.legalSavings * contractYears) },
-    { label: 'Employee Experience', value: summary.productivitySavings * contractYears, formattedValue: formatCompactCurrency(summary.productivitySavings * contractYears) },
-  ];
+  const pieSlices = enabledPillars.map((k) => ({
+    label: PILLAR_LABELS[k],
+    value: pillarData[k].annual * contractYears,
+    formattedValue: formatCompactCurrency(pillarData[k].annual * contractYears),
+  }));
 
   // Build investment rows — implementation first, then years
   const investmentRows: { label: string; value: string }[] = [];
@@ -336,12 +343,21 @@ export function MicrositeInvestment({ inputs }: Props) {
             </div>
           </div>
 
-          {/* Return — pie chart */}
+          {/* Return — pie chart, or single-stat card if only one pillar is enabled */}
           <div>
             <h3 className="text-lg font-semibold text-white/70 mb-5">
               Your Return ({contractYears}-Year Contract)
             </h3>
-            <ReturnPieChart slices={pieSlices} />
+            {pieSlices.length === 1 ? (
+              <div className="bg-white/10 rounded-xl p-8 text-center backdrop-blur-sm">
+                <div className="text-white/60 text-sm font-semibold uppercase tracking-wide mb-2">
+                  {pieSlices[0].label}
+                </div>
+                <div className="text-4xl font-bold">{pieSlices[0].formattedValue}</div>
+              </div>
+            ) : (
+              <ReturnPieChart slices={pieSlices} />
+            )}
           </div>
         </div>
 
@@ -350,7 +366,7 @@ export function MicrositeInvestment({ inputs }: Props) {
         {/* Return Breakdown */}
         <div ref={breakdownRef} className="ms-fade-up">
           <h3 className="text-lg font-semibold text-white/70 mb-6">Return Breakdown</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className={`grid ${pillarGridColsClass(breakdownColumns.length)} gap-4`}>
             {breakdownColumns.map((col) => (
               <div key={col.title} className="bg-white/5 rounded-xl p-5 backdrop-blur-sm">
                 <h4 className="text-sm font-semibold text-white/80 mb-1">{col.title}</h4>

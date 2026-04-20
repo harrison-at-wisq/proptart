@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/supabase-server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { ProposalInputs } from '@/types/proposal';
-import { MOUInputs } from '@/types/mou';
-import { DocumentType } from '@/types/database';
 
 // Force dynamic rendering to avoid build-time data fetching
 export const dynamic = 'force-dynamic';
@@ -13,8 +11,7 @@ interface ProposalRow {
   id: string;
   name: string;
   owner_email: string;
-  data: ProposalInputs | MOUInputs;
-  document_type: DocumentType;
+  data: ProposalInputs;
   created_at: string;
   updated_at: string;
 }
@@ -57,7 +54,6 @@ export async function GET(
       data: proposal.data,
       ownerEmail: proposal.owner_email,
       isOwner: proposal.owner_email === user?.email,
-      documentType: proposal.document_type || 'proposal',
     },
   });
 }
@@ -130,7 +126,6 @@ export async function PUT(
       data: updated.data,
       ownerEmail: updated.owner_email,
       isOwner: true,
-      documentType: updated.document_type || 'proposal',
     },
   });
 }
@@ -167,6 +162,21 @@ export async function DELETE(
 
   if (existing.owner_email !== user.email) {
     return NextResponse.json({ error: 'Not authorized to delete this proposal' }, { status: 403 });
+  }
+
+  // Cascade: delete child microsites and PDF exports first.
+  // The FK uses ON DELETE SET NULL, so explicit cleanup is required.
+  const [micrositeDel, pdfDel] = await Promise.all([
+    supabase.from('microsites').delete().eq('proposal_id', id),
+    supabase.from('pdf_exports').delete().eq('proposal_id', id),
+  ]);
+  if (micrositeDel.error) {
+    console.error('Failed to delete microsites:', micrositeDel.error);
+    return NextResponse.json({ error: micrositeDel.error.message }, { status: 500 });
+  }
+  if (pdfDel.error) {
+    console.error('Failed to delete pdf_exports:', pdfDel.error);
+    return NextResponse.json({ error: pdfDel.error.message }, { status: 500 });
   }
 
   const { error } = await supabase

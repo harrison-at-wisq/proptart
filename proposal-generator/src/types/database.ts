@@ -1,7 +1,4 @@
 import { ProposalInputs } from './proposal';
-import { MOUInputs } from './mou';
-
-export type DocumentType = 'proposal' | 'mou';
 
 export interface Database {
   public: {
@@ -11,8 +8,7 @@ export interface Database {
           id: string;
           name: string;
           owner_email: string;
-          data: ProposalInputs | MOUInputs;
-          document_type: DocumentType;
+          data: ProposalInputs;
           created_at: string;
           updated_at: string;
         };
@@ -20,15 +16,13 @@ export interface Database {
           id?: string;
           name: string;
           owner_email: string;
-          data: ProposalInputs | MOUInputs;
-          document_type?: DocumentType;
+          data: ProposalInputs;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           name?: string;
-          data?: ProposalInputs | MOUInputs;
-          document_type?: DocumentType;
+          data?: ProposalInputs;
           updated_at?: string;
         };
       };
@@ -47,8 +41,8 @@ export interface ProposalListItemWithOwnership {
   createdAt: string;
   ownerEmail: string;
   isOwner: boolean;
-  documentType: DocumentType;
   hasGeneratedContent: boolean;
   micrositeCount: number;
+  pdfCount: number;
   latestMicrositeSlug: string | null;
 }

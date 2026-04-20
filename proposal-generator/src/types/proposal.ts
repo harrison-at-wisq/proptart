@@ -168,7 +168,20 @@ export interface ContractYearSettings {
   workforceChange: number;    // % change relative to today (e.g. 0, +5, +10)
 }
 
+// Simple-mode override: a single annual dollar amount, optionally scaled year-over-year
+// by the same workforce multiplier used by detailed mode.
+export type PillarMode = 'detailed' | 'simple';
+
+export interface PillarSimpleOverride {
+  flatAmount: number;           // year-1 annual dollar value
+  scaleWithWorkforce: boolean;  // if true, year N = flatAmount × (1 + workforceChange_N / 100)
+}
+
 export interface HROperationsInputs {
+  // Detailed vs. simple flat-amount mode
+  mode?: PillarMode;
+  simple?: PillarSimpleOverride;
+
   // Contract & multi-year
   contractYears: number;
   yearSettings: ContractYearSettings[];
@@ -265,6 +278,8 @@ export interface ProactiveAlerts {
 }
 
 export interface LegalComplianceInputs {
+  mode?: PillarMode;
+  simple?: PillarSimpleOverride;
   highStakesPercent: number;
   useManualCaseVolume: boolean;
   manualHighStakesCases: number;
@@ -304,6 +319,8 @@ export interface LegalComplianceOutput {
 }
 
 export interface EmployeeExperienceInputs {
+  mode?: PillarMode;
+  simple?: PillarSimpleOverride;
   totalEmployeePopulation: number;
   inquiriesPerEmployeePerYear: number;
   avgTimePerInquiry: number;
@@ -856,6 +873,8 @@ export const SLIDE_MAPPINGS: SlideMapping[] = [
 
 // Default Values
 export const DEFAULT_HR_OPERATIONS: HROperationsInputs = {
+  mode: 'detailed',
+  simple: { flatAmount: 0, scaleWithWorkforce: true },
   contractYears: 3,
   yearSettings: [
     { wisqEffectiveness: 30, workforceChange: 0 },
@@ -876,6 +895,8 @@ export const DEFAULT_HR_OPERATIONS: HROperationsInputs = {
 };
 
 export const DEFAULT_LEGAL_COMPLIANCE: LegalComplianceInputs = {
+  mode: 'detailed',
+  simple: { flatAmount: 0, scaleWithWorkforce: true },
   highStakesPercent: 2,
   useManualCaseVolume: false,
   manualHighStakesCases: 50,
@@ -887,6 +908,8 @@ export const DEFAULT_LEGAL_COMPLIANCE: LegalComplianceInputs = {
 };
 
 export const DEFAULT_EMPLOYEE_EXPERIENCE: EmployeeExperienceInputs = {
+  mode: 'detailed',
+  simple: { flatAmount: 0, scaleWithWorkforce: true },
   totalEmployeePopulation: 2000,
   inquiriesPerEmployeePerYear: 3,
   avgTimePerInquiry: 15,

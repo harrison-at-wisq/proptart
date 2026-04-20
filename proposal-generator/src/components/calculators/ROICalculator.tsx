@@ -7,7 +7,10 @@ import {
   EmployeeExperienceInputs,
   Tier2Workflow,
   ContractYearSettings,
+  PillarMode,
+  PillarSimpleOverride,
 } from '@/types/proposal';
+import { isPillarEnabled } from '@/lib/pillar-visibility';
 import {
   calculateHROperationsROI,
   calculateLegalComplianceROI,
@@ -177,6 +180,15 @@ export function ROICalculator({
     { id: 'employee-experience' as const, label: 'Employee Experience' },
     { id: 'summary' as const, label: 'Summary' },
   ];
+
+  // Pillar enablement — a pillar is enabled in detailed mode or simple mode with > $0.
+  const hrEnabled = isPillarEnabled(hrInputs);
+  const legalEnabled = isPillarEnabled(legalInputs);
+  const eeEnabled = isPillarEnabled(employeeInputs);
+  const enabledCount = (hrEnabled ? 1 : 0) + (legalEnabled ? 1 : 0) + (eeEnabled ? 1 : 0);
+  const hrIsOnlyEnabled = hrEnabled && enabledCount === 1;
+  const legalIsOnlyEnabled = legalEnabled && enabledCount === 1;
+  const eeIsOnlyEnabled = eeEnabled && enabledCount === 1;
 
   // Quick ROI: generate estimates from profile
   const handleProfileSubmit = () => {
@@ -375,6 +387,7 @@ export function ROICalculator({
           onUpdateWorkflow={updateWorkflow}
           estimatedFields={estimatedFields}
           employeeCount={companyProfile.employeeCount}
+          isOnlyEnabled={hrIsOnlyEnabled}
         />
       )}
 
@@ -388,6 +401,7 @@ export function ROICalculator({
           yearSettings={yearSettings}
           contractYears={contractYears}
           estimatedFields={estimatedFields}
+          isOnlyEnabled={legalIsOnlyEnabled}
         />
       )}
 
@@ -399,6 +413,7 @@ export function ROICalculator({
           estimatedFields={estimatedFields}
           contractYears={contractYears}
           yearSettings={yearSettings}
+          isOnlyEnabled={eeIsOnlyEnabled}
         />
       )}
 
@@ -412,6 +427,9 @@ export function ROICalculator({
           wisqLicenseCost={hrInputs.wisqLicenseCost}
           narrative={narrative}
           contractYears={contractYears}
+          hrEnabled={hrEnabled}
+          legalEnabled={legalEnabled}
+          eeEnabled={eeEnabled}
         />
       )}
 
@@ -1243,6 +1261,113 @@ function EditableWorkflowName({ name, onChange }: { name: string; onChange: (nam
   );
 }
 
+// ──────────────────────────────────────────────
+// Pillar Mode Header (Detailed vs. Simple flat-amount toggle)
+// ──────────────────────────────────────────────
+
+function PillarModeHeader({
+  pillarLabel,
+  mode,
+  simple,
+  onChange,
+  isOnlyEnabled,
+}: {
+  pillarLabel: string;
+  mode: PillarMode | undefined;
+  simple: PillarSimpleOverride | undefined;
+  onChange: (updates: { mode?: PillarMode; simple?: PillarSimpleOverride }) => void;
+  isOnlyEnabled: boolean;
+}) {
+  const effectiveMode: PillarMode = mode ?? 'detailed';
+  const flat = simple?.flatAmount ?? 0;
+  const scale = simple?.scaleWithWorkforce ?? true;
+  const isSimple = effectiveMode === 'simple';
+  const isZeroed = isSimple && flat === 0;
+  const violatesGuardrail = isZeroed && isOnlyEnabled;
+
+  const handleModeChange = (next: PillarMode) => {
+    // Block switching to simple+$0 if this is the only enabled pillar.
+    if (next === 'simple' && flat === 0 && isOnlyEnabled) {
+      onChange({
+        mode: 'simple',
+        simple: { flatAmount: simple?.flatAmount ?? 0, scaleWithWorkforce: scale },
+      });
+      return;
+    }
+    onChange({ mode: next, simple: simple ?? { flatAmount: 0, scaleWithWorkforce: true } });
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="text-xs uppercase tracking-wider text-gray-400 font-semibold">Input Mode</div>
+          <div className="text-sm text-gray-600 mt-0.5">
+            {isSimple
+              ? 'Enter a single annual dollar value for this section.'
+              : 'Calculate this section from detailed inputs below.'}
+          </div>
+        </div>
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg shrink-0">
+          {(['detailed', 'simple'] as PillarMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => handleModeChange(m)}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                effectiveMode === m ? 'bg-white text-[#03143B] shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {m === 'detailed' ? 'Detailed' : 'Simple'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {isSimple && (
+        <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
+          <div className="grid md:grid-cols-2 gap-4">
+            <InputField
+              label={`${pillarLabel} — Annual Value`}
+              value={flat}
+              onChange={(v) => onChange({ simple: { flatAmount: v, scaleWithWorkforce: scale } })}
+              type="currency"
+            />
+            <label className="flex items-center gap-2 self-end pb-2">
+              <input
+                type="checkbox"
+                checked={scale}
+                onChange={(e) =>
+                  onChange({ simple: { flatAmount: flat, scaleWithWorkforce: e.target.checked } })
+                }
+                className="w-4 h-4 text-[#03143B] rounded focus:ring-[#03143B]"
+              />
+              <span className="text-sm text-gray-700">Scale year-over-year with workforce growth</span>
+            </label>
+          </div>
+          {violatesGuardrail ? (
+            <div className="rounded-md border border-red-300 bg-red-50 p-3 flex items-start gap-3">
+              <span className="text-xl leading-none">⚠️</span>
+              <div className="text-sm text-red-800">
+                <strong>At least one value driver must remain active.</strong>{' '}
+                {pillarLabel} is currently the only enabled section — enter a non-zero amount,
+                or switch another section back on first.
+              </div>
+            </div>
+          ) : isZeroed ? (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 flex items-start gap-3">
+              <span className="text-xl leading-none">⚠️</span>
+              <div className="text-sm text-amber-800">
+                <strong>This section will be excluded from the proposal.</strong>{' '}
+                The pie chart, breakdown columns, microsite, and exports will all omit {pillarLabel}.
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HROperationsTab({
   inputs,
   output,
@@ -1252,6 +1377,7 @@ function HROperationsTab({
   onUpdateWorkflow,
   estimatedFields,
   employeeCount,
+  isOnlyEnabled,
 }: {
   inputs: HROperationsInputs;
   output: ReturnType<typeof calculateHROperationsROI>;
@@ -1261,6 +1387,7 @@ function HROperationsTab({
   onUpdateWorkflow: (id: string, updates: Partial<Tier2Workflow>) => void;
   estimatedFields: Set<string>;
   employeeCount: number;
+  isOnlyEnabled: boolean;
 }) {
   const YEAR_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
 
@@ -1359,8 +1486,20 @@ function HROperationsTab({
     setModifiedFields(new Set());
   };
 
+  const isSimpleMode = inputs.mode === 'simple';
+
   return (
     <div className="space-y-6">
+      <PillarModeHeader
+        pillarLabel="HR Operations"
+        mode={inputs.mode}
+        simple={inputs.simple}
+        onChange={(updates) => onChange(updates as Partial<HROperationsInputs>)}
+        isOnlyEnabled={isOnlyEnabled}
+      />
+
+      {isSimpleMode ? null : (
+      <>
       <p className="text-gray-600">
         Model how Wisq reduces workload across contract years, then translate hours saved into cost savings.
       </p>
@@ -2022,6 +2161,8 @@ function HROperationsTab({
           </table>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }
@@ -2039,6 +2180,7 @@ function LegalComplianceTab({
   yearSettings,
   contractYears,
   estimatedFields,
+  isOnlyEnabled,
 }: {
   inputs: LegalComplianceInputs;
   output: ReturnType<typeof calculateLegalComplianceROI>;
@@ -2048,6 +2190,7 @@ function LegalComplianceTab({
   yearSettings: ContractYearSettings[];
   contractYears: number;
   estimatedFields: Set<string>;
+  isOnlyEnabled: boolean;
 }) {
   const [selectedYear, setSelectedYear] = useState(0);
   const yearColors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
@@ -2060,9 +2203,20 @@ function LegalComplianceTab({
     : tier2PlusTotalCases * (inputs.highStakesPercent / 100);
   const scaledHighStakes = baseHighStakes * volMult;
   const yr = output.yearResults?.[selectedYear] ?? output.yearResults?.[0];
+  const isSimpleMode = inputs.mode === 'simple';
 
   return (
     <div className="space-y-6">
+      <PillarModeHeader
+        pillarLabel="Legal & Compliance"
+        mode={inputs.mode}
+        simple={inputs.simple}
+        onChange={(updates) => onChange(updates as Partial<LegalComplianceInputs>)}
+        isOnlyEnabled={isOnlyEnabled}
+      />
+
+      {isSimpleMode ? null : (
+      <>
       <div className="flex items-center justify-between">
         <p className="text-gray-600">
           Quantify the financial impact of accurate, compliant HR guidance. Every incorrect answer in
@@ -2511,6 +2665,8 @@ function LegalComplianceTab({
           </div>
         </div>
       )}
+      </>
+      )}
     </div>
   );
 }
@@ -2526,6 +2682,7 @@ function EmployeeExperienceTab({
   estimatedFields,
   contractYears,
   yearSettings,
+  isOnlyEnabled,
 }: {
   inputs: EmployeeExperienceInputs;
   output: ReturnType<typeof calculateEmployeeExperienceROI>;
@@ -2533,13 +2690,25 @@ function EmployeeExperienceTab({
   estimatedFields: Set<string>;
   contractYears: number;
   yearSettings: ContractYearSettings[];
+  isOnlyEnabled: boolean;
 }) {
   const [selectedYear, setSelectedYear] = useState(0);
   const yearColors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
   const yr = output.yearResults?.[selectedYear] ?? output.yearResults?.[0];
+  const isSimpleMode = inputs.mode === 'simple';
 
   return (
     <div className="space-y-6">
+      <PillarModeHeader
+        pillarLabel="Employee Experience"
+        mode={inputs.mode}
+        simple={inputs.simple}
+        onChange={(updates) => onChange(updates as Partial<EmployeeExperienceInputs>)}
+        isOnlyEnabled={isOnlyEnabled}
+      />
+
+      {isSimpleMode ? null : (
+      <>
       <div className="flex items-center justify-between">
         <p className="text-gray-600">
           Every HR inquiry costs your organization in lost productivity. Wisq provides instant,
@@ -2718,6 +2887,8 @@ function EmployeeExperienceTab({
           </div>
         </div>
       )}
+      </>
+      )}
     </div>
   );
 }
@@ -2778,6 +2949,9 @@ function SummaryTab({
   wisqLicenseCost,
   narrative,
   contractYears,
+  hrEnabled,
+  legalEnabled,
+  eeEnabled,
 }: {
   summary: ReturnType<typeof calculateROISummary>;
   projection: ReturnType<typeof calculateMultiYearProjection>;
@@ -2787,13 +2961,19 @@ function SummaryTab({
   wisqLicenseCost: number;
   narrative: string;
   contractYears: number;
+  hrEnabled: boolean;
+  legalEnabled: boolean;
+  eeEnabled: boolean;
 }) {
   const yearColors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626'];
   const yrs = summary.yearResults;
-  const total = summary.hrOpsSavings + summary.legalSavings + summary.productivitySavings;
-  const hrPct = total > 0 ? (summary.hrOpsSavings / total) * 100 : 0;
-  const legalPct = total > 0 ? (summary.legalSavings / total) * 100 : 0;
-  const prodPct = total > 0 ? (summary.productivitySavings / total) * 100 : 0;
+  const hrVal = hrEnabled ? summary.hrOpsSavings : 0;
+  const legalVal = legalEnabled ? summary.legalSavings : 0;
+  const prodVal = eeEnabled ? summary.productivitySavings : 0;
+  const total = hrVal + legalVal + prodVal;
+  const hrPct = total > 0 ? (hrVal / total) * 100 : 0;
+  const legalPct = total > 0 ? (legalVal / total) * 100 : 0;
+  const prodPct = total > 0 ? (prodVal / total) * 100 : 0;
 
   // Per-year data for HR sub-items
   const hrYearCosts = hrOutput.yearCostResults;
@@ -2911,94 +3091,106 @@ function SummaryTab({
           )}
         </div>
 
-        {/* Three pillar cards */}
-        <div className="grid md:grid-cols-3 gap-4">
-          <HoverYearPopup label="HR Operations" yearValues={yrs.map(yr => ({ year: yr.year, value: yr.hrOpsSavings }))}>
-            <div className="rounded-lg border-2 border-[#03143B]/20 p-4 cursor-default hover:border-[#03143B]/40 transition-colors">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 rounded-full bg-[#03143B]" />
-                <span className="text-sm font-semibold text-[#03143B]">HR Operations</span>
-              </div>
-              <p className="text-xl font-bold text-[#03143B]">{formatCurrency(summary.hrOpsSavings)}<span className="text-xs font-normal text-gray-400">/yr</span></p>
-              <div className="mt-2 space-y-0.5 text-[11px] text-gray-500">
-                <div className="flex justify-between">
-                  <span>Headcount reduction</span>
-                  <span>{formatCurrency(hrOutput.headcountReductionSavings / nYrs)}</span>
-                </div>
-                {hrOutput.managerTimeSavings > 0 && (
-                  <div className="flex justify-between">
-                    <span>Manager time savings</span>
-                    <span>{formatCurrency(hrOutput.managerTimeSavings / nYrs)}</span>
+        {/* Pillar cards — only enabled ones */}
+        {(() => {
+          const enabledCount = (hrEnabled ? 1 : 0) + (legalEnabled ? 1 : 0) + (eeEnabled ? 1 : 0);
+          const gridCols = enabledCount <= 1 ? 'md:grid-cols-1' : enabledCount === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3';
+          return (
+            <div className={`grid grid-cols-1 ${gridCols} gap-4`}>
+              {hrEnabled && (
+                <HoverYearPopup label="HR Operations" yearValues={yrs.map(yr => ({ year: yr.year, value: yr.hrOpsSavings }))}>
+                  <div className="rounded-lg border-2 border-[#03143B]/20 p-4 cursor-default hover:border-[#03143B]/40 transition-colors">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-3 h-3 rounded-full bg-[#03143B]" />
+                      <span className="text-sm font-semibold text-[#03143B]">HR Operations</span>
+                    </div>
+                    <p className="text-xl font-bold text-[#03143B]">{formatCurrency(summary.hrOpsSavings)}<span className="text-xs font-normal text-gray-400">/yr</span></p>
+                    <div className="mt-2 space-y-0.5 text-[11px] text-gray-500">
+                      <div className="flex justify-between">
+                        <span>Headcount reduction</span>
+                        <span>{formatCurrency(hrOutput.headcountReductionSavings / nYrs)}</span>
+                      </div>
+                      {hrOutput.managerTimeSavings > 0 && (
+                        <div className="flex justify-between">
+                          <span>Manager time savings</span>
+                          <span>{formatCurrency(hrOutput.managerTimeSavings / nYrs)}</span>
+                        </div>
+                      )}
+                      {hrOutput.triageSavings > 0 && (
+                        <div className="flex justify-between">
+                          <span>Triage role savings</span>
+                          <span>{formatCurrency(hrOutput.triageSavings / nYrs)}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-                {hrOutput.triageSavings > 0 && (
-                  <div className="flex justify-between">
-                    <span>Triage role savings</span>
-                    <span>{formatCurrency(hrOutput.triageSavings / nYrs)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </HoverYearPopup>
+                </HoverYearPopup>
+              )}
 
-          <HoverYearPopup label="Legal & Compliance" yearValues={yrs.map(yr => ({ year: yr.year, value: yr.legalSavings }))}>
-            <div className="rounded-lg border-2 border-[#6b7fff]/20 p-4 cursor-default hover:border-[#6b7fff]/40 transition-colors">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 rounded-full bg-[#6b7fff]" />
-                <span className="text-sm font-semibold text-[#03143B]">Legal & Compliance</span>
-              </div>
-              <p className="text-xl font-bold text-[#03143B]">{formatCurrency(summary.legalSavings)}<span className="text-xs font-normal text-gray-400">/yr</span></p>
-              <div className="mt-2 space-y-0.5 text-[11px] text-gray-500">
-                <div className="flex justify-between">
-                  <span>Legal cost avoidance</span>
-                  <span>{formatCurrency(legalOutput.avoidedLegalCosts / nYrs)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Admin savings</span>
-                  <span>{formatCurrency(legalOutput.adminCostSavings / nYrs)}</span>
-                </div>
-                {legalOutput.auditPrepSavings > 0 && (
-                  <div className="flex justify-between">
-                    <span>Audit prep</span>
-                    <span>{formatCurrency(legalOutput.auditPrepSavings / nYrs)}</span>
+              {legalEnabled && (
+                <HoverYearPopup label="Legal & Compliance" yearValues={yrs.map(yr => ({ year: yr.year, value: yr.legalSavings }))}>
+                  <div className="rounded-lg border-2 border-[#6b7fff]/20 p-4 cursor-default hover:border-[#6b7fff]/40 transition-colors">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-3 h-3 rounded-full bg-[#6b7fff]" />
+                      <span className="text-sm font-semibold text-[#03143B]">Legal & Compliance</span>
+                    </div>
+                    <p className="text-xl font-bold text-[#03143B]">{formatCurrency(summary.legalSavings)}<span className="text-xs font-normal text-gray-400">/yr</span></p>
+                    <div className="mt-2 space-y-0.5 text-[11px] text-gray-500">
+                      <div className="flex justify-between">
+                        <span>Legal cost avoidance</span>
+                        <span>{formatCurrency(legalOutput.avoidedLegalCosts / nYrs)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Admin savings</span>
+                        <span>{formatCurrency(legalOutput.adminCostSavings / nYrs)}</span>
+                      </div>
+                      {legalOutput.auditPrepSavings > 0 && (
+                        <div className="flex justify-between">
+                          <span>Audit prep</span>
+                          <span>{formatCurrency(legalOutput.auditPrepSavings / nYrs)}</span>
+                        </div>
+                      )}
+                      {legalOutput.riskValue > 0 && (
+                        <div className="flex justify-between">
+                          <span>Risk detection</span>
+                          <span>{formatCurrency(legalOutput.riskValue / nYrs)}</span>
+                        </div>
+                      )}
+                      {legalOutput.proactiveValue > 0 && (
+                        <div className="flex justify-between">
+                          <span>Proactive alerts</span>
+                          <span>{formatCurrency(legalOutput.proactiveValue / nYrs)}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-                {legalOutput.riskValue > 0 && (
-                  <div className="flex justify-between">
-                    <span>Risk detection</span>
-                    <span>{formatCurrency(legalOutput.riskValue / nYrs)}</span>
-                  </div>
-                )}
-                {legalOutput.proactiveValue > 0 && (
-                  <div className="flex justify-between">
-                    <span>Proactive alerts</span>
-                    <span>{formatCurrency(legalOutput.proactiveValue / nYrs)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </HoverYearPopup>
+                </HoverYearPopup>
+              )}
 
-          <HoverYearPopup label="Employee Experience" yearValues={yrs.map(yr => ({ year: yr.year, value: yr.productivitySavings }))}>
-            <div className="rounded-lg border-2 border-[#059669]/20 p-4 cursor-default hover:border-[#059669]/40 transition-colors">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 rounded-full bg-[#059669]" />
-                <span className="text-sm font-semibold text-[#03143B]">Employee Experience</span>
-              </div>
-              <p className="text-xl font-bold text-[#03143B]">{formatCurrency(summary.productivitySavings)}<span className="text-xs font-normal text-gray-400">/yr</span></p>
-              <div className="mt-2 space-y-0.5 text-[11px] text-gray-500">
-                <div className="flex justify-between">
-                  <span>Hours saved/yr</span>
-                  <span>{Math.round(employeeOutput.hoursSaved / nYrs).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Productivity value</span>
-                  <span>{formatCurrency(employeeOutput.totalMonetaryValue / nYrs)}</span>
-                </div>
-              </div>
+              {eeEnabled && (
+                <HoverYearPopup label="Employee Experience" yearValues={yrs.map(yr => ({ year: yr.year, value: yr.productivitySavings }))}>
+                  <div className="rounded-lg border-2 border-[#059669]/20 p-4 cursor-default hover:border-[#059669]/40 transition-colors">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-3 h-3 rounded-full bg-[#059669]" />
+                      <span className="text-sm font-semibold text-[#03143B]">Employee Experience</span>
+                    </div>
+                    <p className="text-xl font-bold text-[#03143B]">{formatCurrency(summary.productivitySavings)}<span className="text-xs font-normal text-gray-400">/yr</span></p>
+                    <div className="mt-2 space-y-0.5 text-[11px] text-gray-500">
+                      <div className="flex justify-between">
+                        <span>Hours saved/yr</span>
+                        <span>{Math.round(employeeOutput.hoursSaved / nYrs).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Productivity value</span>
+                        <span>{formatCurrency(employeeOutput.totalMonetaryValue / nYrs)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </HoverYearPopup>
+              )}
             </div>
-          </HoverYearPopup>
-        </div>
+          );
+        })()}
       </div>
 
       {/* Cumulative Value Chart */}
@@ -3050,15 +3242,30 @@ function SummaryTab({
               );
             })}
 
-            {/* Legend */}
-            <rect x={pad.left + 5} y={pad.top + 2} width={8} height={8} rx={2} fill="#03143B" />
-            <text x={pad.left + 16} y={pad.top + 10} fontSize={8} fill="#6b7280">HR Ops</text>
-            <rect x={pad.left + 55} y={pad.top + 2} width={8} height={8} rx={2} fill="#6b7fff" />
-            <text x={pad.left + 66} y={pad.top + 10} fontSize={8} fill="#6b7280">Legal</text>
-            <rect x={pad.left + 95} y={pad.top + 2} width={8} height={8} rx={2} fill="#059669" />
-            <text x={pad.left + 106} y={pad.top + 10} fontSize={8} fill="#6b7280">EX</text>
-            <line x1={pad.left + 140} x2={pad.left + 155} y1={pad.top + 6} y2={pad.top + 6} stroke="#dc2626" strokeWidth={1.5} strokeDasharray="4,2" />
-            <text x={pad.left + 158} y={pad.top + 10} fontSize={8} fill="#6b7280">License Cost</text>
+            {/* Legend — only enabled pillars */}
+            {(() => {
+              const entries: { color: string; label: string }[] = [];
+              if (hrEnabled) entries.push({ color: '#03143B', label: 'HR Ops' });
+              if (legalEnabled) entries.push({ color: '#6b7fff', label: 'Legal' });
+              if (eeEnabled) entries.push({ color: '#059669', label: 'EX' });
+              let x = pad.left + 5;
+              return (
+                <>
+                  {entries.map((e) => {
+                    const itemX = x;
+                    x += 50;
+                    return (
+                      <g key={e.label}>
+                        <rect x={itemX} y={pad.top + 2} width={8} height={8} rx={2} fill={e.color} />
+                        <text x={itemX + 11} y={pad.top + 10} fontSize={8} fill="#6b7280">{e.label}</text>
+                      </g>
+                    );
+                  })}
+                  <line x1={x + 5} x2={x + 20} y1={pad.top + 6} y2={pad.top + 6} stroke="#dc2626" strokeWidth={1.5} strokeDasharray="4,2" />
+                  <text x={x + 23} y={pad.top + 10} fontSize={8} fill="#6b7280">License Cost</text>
+                </>
+              );
+            })()}
           </svg>
         </div>
       )}
@@ -3067,74 +3274,83 @@ function SummaryTab({
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h4 className="font-semibold text-[#03143B] mb-4">Detailed Breakdown</h4>
         <div className="space-y-2">
-          {/* HR Ops items */}
-          <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium px-3 pt-2">HR Operations</div>
-          <HoverBreakdownRow
-            label="Simple Transaction Savings"
-            avgValue={hrYearCosts.reduce((s, yr) => s + yr.tier01Savings, 0) / nYrs}
-            yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.tier01Savings }))}
-          />
-          <HoverBreakdownRow
-            label="Complex Case Savings"
-            avgValue={hrYearCosts.reduce((s, yr) => s + yr.tier2Savings, 0) / nYrs}
-            yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.tier2Savings }))}
-          />
-          {hrOutput.managerTimeSavings > 0 && (
-            <HoverBreakdownRow
-              label="Manager Time Savings"
-              avgValue={hrOutput.managerTimeSavings / nYrs}
-              yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.managerSavings }))}
-            />
-          )}
-          {hrOutput.triageSavings > 0 && (
-            <HoverBreakdownRow
-              label="Triage Role Savings"
-              avgValue={hrOutput.triageSavings / nYrs}
-              yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.triageSavings }))}
-            />
-          )}
-
-          {/* Legal items */}
-          <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium px-3 pt-3">Legal & Compliance</div>
-          <HoverBreakdownRow
-            label="Legal Cost Avoidance"
-            avgValue={legalOutput.avoidedLegalCosts / nYrs}
-            yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.avoidedLegalCosts }))}
-          />
-          <HoverBreakdownRow
-            label="Administrative Savings"
-            avgValue={legalOutput.adminCostSavings / nYrs}
-            yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.adminCostSavings }))}
-          />
-          {legalOutput.auditPrepSavings > 0 && (
-            <HoverBreakdownRow
-              label="Audit Prep Savings"
-              avgValue={legalOutput.auditPrepSavings / nYrs}
-              yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.auditPrepSavings }))}
-            />
-          )}
-          {legalOutput.riskValue > 0 && (
-            <HoverBreakdownRow
-              label="Risk Pattern Detection"
-              avgValue={legalOutput.riskValue / nYrs}
-              yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.riskValue }))}
-            />
-          )}
-          {legalOutput.proactiveValue > 0 && (
-            <HoverBreakdownRow
-              label="Proactive Compliance Alerts"
-              avgValue={legalOutput.proactiveValue / nYrs}
-              yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.proactiveValue }))}
-            />
+          {hrEnabled && (
+            <>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium px-3 pt-2">HR Operations</div>
+              <HoverBreakdownRow
+                label="Simple Transaction Savings"
+                avgValue={hrYearCosts.reduce((s, yr) => s + yr.tier01Savings, 0) / nYrs}
+                yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.tier01Savings }))}
+              />
+              <HoverBreakdownRow
+                label="Complex Case Savings"
+                avgValue={hrYearCosts.reduce((s, yr) => s + yr.tier2Savings, 0) / nYrs}
+                yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.tier2Savings }))}
+              />
+              {hrOutput.managerTimeSavings > 0 && (
+                <HoverBreakdownRow
+                  label="Manager Time Savings"
+                  avgValue={hrOutput.managerTimeSavings / nYrs}
+                  yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.managerSavings }))}
+                />
+              )}
+              {hrOutput.triageSavings > 0 && (
+                <HoverBreakdownRow
+                  label="Triage Role Savings"
+                  avgValue={hrOutput.triageSavings / nYrs}
+                  yearValues={hrYearCosts.map(yr => ({ year: yr.year, value: yr.triageSavings }))}
+                />
+              )}
+            </>
           )}
 
-          {/* EX items */}
-          <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium px-3 pt-3">Employee Experience</div>
-          <HoverBreakdownRow
-            label="Productivity Savings"
-            avgValue={employeeOutput.totalMonetaryValue / nYrs}
-            yearValues={exYearResults.map(yr => ({ year: yr.year, value: yr.totalMonetaryValue }))}
-          />
+          {legalEnabled && (
+            <>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium px-3 pt-3">Legal & Compliance</div>
+              <HoverBreakdownRow
+                label="Legal Cost Avoidance"
+                avgValue={legalOutput.avoidedLegalCosts / nYrs}
+                yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.avoidedLegalCosts }))}
+              />
+              <HoverBreakdownRow
+                label="Administrative Savings"
+                avgValue={legalOutput.adminCostSavings / nYrs}
+                yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.adminCostSavings }))}
+              />
+              {legalOutput.auditPrepSavings > 0 && (
+                <HoverBreakdownRow
+                  label="Audit Prep Savings"
+                  avgValue={legalOutput.auditPrepSavings / nYrs}
+                  yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.auditPrepSavings }))}
+                />
+              )}
+              {legalOutput.riskValue > 0 && (
+                <HoverBreakdownRow
+                  label="Risk Pattern Detection"
+                  avgValue={legalOutput.riskValue / nYrs}
+                  yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.riskValue }))}
+                />
+              )}
+              {legalOutput.proactiveValue > 0 && (
+                <HoverBreakdownRow
+                  label="Proactive Compliance Alerts"
+                  avgValue={legalOutput.proactiveValue / nYrs}
+                  yearValues={legalYearResults.map(yr => ({ year: yr.year, value: yr.proactiveValue }))}
+                />
+              )}
+            </>
+          )}
+
+          {eeEnabled && (
+            <>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium px-3 pt-3">Employee Experience</div>
+              <HoverBreakdownRow
+                label="Productivity Savings"
+                avgValue={employeeOutput.totalMonetaryValue / nYrs}
+                yearValues={exYearResults.map(yr => ({ year: yr.year, value: yr.totalMonetaryValue }))}
+              />
+            </>
+          )}
 
           {/* Total row */}
           <div className="border-t-2 border-[#03143B]/20 mt-3 pt-3 flex justify-between items-center px-3 py-2">

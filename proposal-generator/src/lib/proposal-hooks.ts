@@ -2,13 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ProposalInputs, SavedProposal } from '@/types/proposal';
-import { MOUInputs } from '@/types/mou';
-import { ProposalListItemWithOwnership, DocumentType } from '@/types/database';
+import { ProposalListItemWithOwnership } from '@/types/database';
 
 export interface ProposalWithOwnership extends SavedProposal {
   ownerEmail: string;
   isOwner: boolean;
-  documentType: DocumentType;
 }
 
 export function useProposals() {
@@ -38,11 +36,11 @@ export function useProposals() {
     fetchProposals();
   }, [fetchProposals]);
 
-  const createProposal = async (name?: string, documentType?: DocumentType): Promise<ProposalWithOwnership> => {
+  const createProposal = async (name?: string): Promise<ProposalWithOwnership> => {
     const res = await fetch('/api/proposals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, document_type: documentType }),
+      body: JSON.stringify({ name }),
     });
     if (!res.ok) {
       const data = await res.json();
@@ -68,13 +66,12 @@ export function useProposals() {
     if (!res.ok) throw new Error('Failed to fetch proposal');
     const { proposal: original } = await res.json();
 
-    // Create new with same name + (Copy), preserving document type
+    // Create new with same name + (Copy)
     const createRes = await fetch('/api/proposals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: `${original.name} (Copy)`,
-        document_type: original.documentType || 'proposal',
       }),
     });
     if (!createRes.ok) throw new Error('Failed to create duplicate');
@@ -135,7 +132,6 @@ export function useProposal(id: string | null) {
           data: proposal.data as ProposalInputs,
           ownerEmail: proposal.ownerEmail,
           isOwner: proposal.isOwner,
-          documentType: proposal.documentType || 'proposal',
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -148,7 +144,7 @@ export function useProposal(id: string | null) {
   }, [id]);
 
   const updateProposal = useCallback(
-    async (updates: { name?: string; data?: ProposalInputs | MOUInputs }) => {
+    async (updates: { name?: string; data?: ProposalInputs }) => {
       if (!id || !proposal?.isOwner) return;
 
       try {
