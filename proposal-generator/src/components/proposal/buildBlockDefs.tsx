@@ -188,6 +188,7 @@ export function buildBlockDefs(
                 { label: 'Return on Investment', value: `${formatCompactCurrency(summary.netAnnualBenefit)}/yr` },
                 { label: 'Payback Period', value: `${ctx.paybackMonths.toFixed(1)} mo` },
               ]}
+              hideSubText
               darkTheme={dark}
             />
           );

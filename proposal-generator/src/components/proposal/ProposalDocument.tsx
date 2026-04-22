@@ -387,7 +387,7 @@ export function ProposalDocument({ inputs, proposalId, onClose, onDocumentConten
     inputs.legalCompliance, tier2PlusConfiguredCasesLocal, yearSettingsLocal, contractYears, tier2PlusTotalCasesLocal, activeConfiguredCasesByYearLocal
   );
   const employeeOutput = calculateEmployeeExperienceROI(inputs.employeeExperience, yearSettingsLocal, contractYears);
-  const wisqLicenseCostLocal = hrInputsLocal.wisqLicenseCost || pricing.annualRecurringRevenue;
+  const wisqLicenseCostLocal = pricing.annualRecurringRevenue;
   const summary = calculateROISummary(hrOutput, legalOutput, employeeOutput, wisqLicenseCostLocal, contractYears);
   const projection = calculateMultiYearProjection(hrOutput, legalOutput, employeeOutput, wisqLicenseCostLocal);
 

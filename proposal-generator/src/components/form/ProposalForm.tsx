@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ProposalInputs,
@@ -208,6 +208,15 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
 
   const [pricing, setPricing] = useState<PricingInputs>(DEFAULT_PRICING);
   const [hrOperations, setHROperations] = useState<HROperationsInputs>(DEFAULT_HR_OPERATIONS);
+  // Always derive the ROI license cost from the current pricing. The stored
+  // hrOperations.wisqLicenseCost can drift from pricing (e.g., a saved proposal
+  // loaded with an outdated value), which made the Pricing tab and ROI Summary
+  // disagree. Keep them in sync by recomputing from pricing on every render.
+  const livePricingOutput = useMemo(() => calculatePricing(pricing), [pricing]);
+  const hrOperationsWithFreshLicense = useMemo(
+    () => ({ ...hrOperations, wisqLicenseCost: livePricingOutput.annualRecurringRevenue }),
+    [hrOperations, livePricingOutput.annualRecurringRevenue]
+  );
   const [legalCompliance, setLegalCompliance] = useState<LegalComplianceInputs>(DEFAULT_LEGAL_COMPLIANCE);
   const [employeeExperience, setEmployeeExperience] = useState<EmployeeExperienceInputs>(DEFAULT_EMPLOYEE_EXPERIENCE);
   const [roiEstimateGenerated, setRoiEstimateGenerated] = useState(false);
@@ -1465,7 +1474,7 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
             </div>
 
             <ROICalculator
-              hrInputs={hrOperations}
+              hrInputs={hrOperationsWithFreshLicense}
               legalInputs={legalCompliance}
               employeeInputs={employeeExperience}
               onHRChange={(updates) => setHROperations({ ...hrOperations, ...updates })}

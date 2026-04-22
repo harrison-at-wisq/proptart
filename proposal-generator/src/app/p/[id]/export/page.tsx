@@ -7,7 +7,7 @@ import { resolveOtherValue } from '@/types/proposal';
 import { ExportToolbar } from '@/components/ui/ExportToolbar';
 import { ELEMENT_REGISTRY, ELEMENT_CATALOG } from '@/components/proposal/templates/registry';
 import { LayoutModeContext } from '@/components/ui/LayoutModeContext';
-import { getDefaultElementData, getEditableDataKey } from '@/components/proposal/templates/element-defaults';
+import { getDefaultElementData } from '@/components/proposal/templates/element-defaults';
 import { calculatePricing, formatCompactCurrency, formatCurrency } from '@/lib/pricing-calculator';
 import {
   calculateHROperationsROI,
@@ -20,6 +20,7 @@ import { materializeDocumentContent } from '@/lib/materialize-content';
 import { getSelectedQuoteForSection } from '@/lib/customer-quotes';
 import { getThemeVars } from '@/lib/theme';
 import { getEnabledPillarsFromProposal, PILLAR_LABELS, type PillarKey } from '@/lib/pillar-visibility';
+import { wireElementProps } from '@/lib/editor-wiring';
 
 // ---------- Local types ----------
 
@@ -84,7 +85,7 @@ function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
     inputs.legalCompliance, tier2PlusConfiguredCases, yearSettings, contractYears, tier2PlusTotalCases, activeConfiguredCasesByYear
   );
   const employeeOutput = calculateEmployeeExperienceROI(inputs.employeeExperience, yearSettings, contractYears);
-  const wisqLicenseCost = hrInputs.wisqLicenseCost || pricing.annualRecurringRevenue;
+  const wisqLicenseCost = pricing.annualRecurringRevenue;
   const summary = calculateROISummary(hrOutput, legalOutput, employeeOutput, wisqLicenseCost, contractYears);
   const projection = calculateMultiYearProjection(hrOutput, legalOutput, employeeOutput, wisqLicenseCost);
 
@@ -1797,127 +1798,11 @@ function ExportElementBlock({
   const Component = ELEMENT_REGISTRY[element.elementType];
   if (!Component) return null;
 
-  const editableKey = getEditableDataKey(element.elementType);
-
   const props: Record<string, unknown> = {
     ...element.data,
     darkTheme,
+    ...wireElementProps(element, onUpdateData),
   };
-
-  if (editableKey === 'text') {
-    props.onChange = (value: string) => {
-      onUpdateData({ ...element.data, text: value });
-    };
-  } else if (editableKey === 'items') {
-    props.onChange = (items: unknown[]) => {
-      onUpdateData({ ...element.data, items });
-    };
-  }
-
-  // Multi-field element wiring
-  if (element.elementType === 'cover-title-block') {
-    props.onEyebrowChange = (value: string) => {
-      onUpdateData({ ...element.data, eyebrow: value });
-    };
-    props.onTitleChange = (value: string) => {
-      onUpdateData({ ...element.data, title: value });
-    };
-    props.onQuoteChange = (value: string) => {
-      onUpdateData({ ...element.data, quote: value });
-    };
-    props.onContactNameChange = (value: string) => {
-      onUpdateData({ ...element.data, contactName: value });
-    };
-    props.onContactTitleChange = (value: string) => {
-      onUpdateData({ ...element.data, contactTitle: value });
-    };
-  } else if (element.elementType === 'metric-table') {
-    props.onTitleChange = (value: string) => {
-      onUpdateData({ ...element.data, title: value });
-    };
-    props.onRowChange = (index: number, field: string, value: string) => {
-      const rows = [...((element.data.rows as Array<Record<string, string>>) || [])];
-      rows[index] = { ...rows[index], [field]: value };
-      onUpdateData({ ...element.data, rows });
-    };
-  } else if (element.elementType === 'kpi-tiles') {
-    props.onTileChange = (index: number, field: string, value: string) => {
-      const tiles = [...((element.data.tiles as Array<Record<string, string>>) || [])];
-      tiles[index] = { ...tiles[index], [field]: value };
-      onUpdateData({ ...element.data, tiles });
-    };
-  } else if (element.elementType === 'roi-pie-chart') {
-    props.onTitleChange = (value: string) => {
-      onUpdateData({ ...element.data, title: value });
-    };
-  } else if (element.elementType === 'roi-breakdown-columns') {
-    props.onColumnChange = (colIndex: number, field: string, value: string) => {
-      const columns = [...((element.data.columns as Array<Record<string, unknown>>) || [])];
-      columns[colIndex] = { ...columns[colIndex], [field]: value };
-      onUpdateData({ ...element.data, columns });
-    };
-    props.onItemChange = (colIndex: number, itemIndex: number, field: string, value: string) => {
-      const columns = [...((element.data.columns as Array<{ items: Array<Record<string, string>> } & Record<string, unknown>>) || [])];
-      const items = [...(columns[colIndex]?.items || [])];
-      items[itemIndex] = { ...items[itemIndex], [field]: value };
-      columns[colIndex] = { ...columns[colIndex], items };
-      onUpdateData({ ...element.data, columns });
-    };
-  } else if (element.elementType === 'projection-panel') {
-    props.onTitleChange = (value: string) => {
-      onUpdateData({ ...element.data, title: value });
-    };
-    props.onColumnChange = (index: number, field: string, value: string) => {
-      const columns = [...((element.data.columns as Array<Record<string, string>>) || [])];
-      columns[index] = { ...columns[index], [field]: value };
-      onUpdateData({ ...element.data, columns });
-    };
-  } else if (element.elementType === 'integration-pills') {
-    props.onTitleChange = (value: string) => {
-      onUpdateData({ ...element.data, title: value });
-    };
-    props.onIntegrationChange = (index: number, field: string, value: string) => {
-      const integrations = [...((element.data.integrations as Array<Record<string, string>>) || [])];
-      integrations[index] = { ...integrations[index], [field]: value };
-      onUpdateData({ ...element.data, integrations });
-    };
-  } else if (element.elementType === 'customer-quote') {
-    props.onTextChange = (value: string) => {
-      onUpdateData({ ...element.data, text: value });
-    };
-    props.onAttributionChange = (value: string) => {
-      onUpdateData({ ...element.data, attribution: value });
-    };
-  } else if (element.elementType === 'contact-card') {
-    props.onPromptChange = (value: string) => {
-      onUpdateData({ ...element.data, prompt: value });
-    };
-    props.onNameChange = (value: string) => {
-      onUpdateData({ ...element.data, name: value });
-    };
-    props.onEmailChange = (value: string) => {
-      onUpdateData({ ...element.data, email: value });
-    };
-  } else if (element.elementType === 'faq-section') {
-    props.onUpdate = (index: number, field: string, value: string) => {
-      const faqs = [...((element.data.faqs as Array<Record<string, string>>) || [])];
-      faqs[index] = { ...faqs[index], [field]: value };
-      onUpdateData({ ...element.data, faqs });
-    };
-    props.onAdd = () => {
-      const faqs = [...((element.data.faqs as Array<Record<string, string>>) || [])];
-      faqs.push({ question: 'New question?', answer: 'Answer here...' });
-      onUpdateData({ ...element.data, faqs });
-    };
-    props.onRemove = (index: number) => {
-      const faqs = ((element.data.faqs as Array<Record<string, string>>) || []).filter((_, i) => i !== index);
-      onUpdateData({ ...element.data, faqs });
-    };
-  } else if (element.elementType === 'spacer') {
-    props.onHeightChange = (h: number) => {
-      onUpdateData({ ...element.data, height: h });
-    };
-  }
 
   return (
     <div

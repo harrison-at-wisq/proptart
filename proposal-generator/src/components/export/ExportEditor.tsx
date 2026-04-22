@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { ProposalInputs, ProposalElementType, ColorPalette } from '@/types/proposal';
 import { DEFAULT_COLOR_PALETTE } from '@/types/proposal';
 import { ELEMENT_REGISTRY, ELEMENT_CATALOG } from '@/components/proposal/templates/registry';
 import { LayoutModeContext } from '@/components/ui/LayoutModeContext';
+import { ExportVariablesProvider } from '@/components/ui/ExportVariablesContext';
+import { buildExportVariables } from '@/lib/export-variables';
 import { getThemeVars } from '@/lib/theme';
-import { getDefaultElementData, getEditableDataKey } from '@/components/proposal/templates/element-defaults';
+import { getDefaultElementData } from '@/components/proposal/templates/element-defaults';
+import { wireElementProps } from '@/lib/editor-wiring';
 import {
   ExportElement,
   ExportSection,
@@ -302,14 +305,101 @@ export default function ExportEditor({
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
+  // Compute live variable dictionary from the current proposal inputs. Edit
+  // mode renders raw `{{tokens}}` so users can see which text is dynamic;
+  // display mode resolves them to the live values via ExportVariablesProvider.
+  const exportVariables = useMemo(() => buildExportVariables(inputs), [inputs]);
+
+  // ── Undo / redo history ──────────────────────────────────────────────────
+  // Keep stacks of prior/future section snapshots so users can back out of
+  // accidental changes without losing their customizations. Snapshots are
+  // deep-cloned on push so later mutations can't corrupt history.
+  const HISTORY_LIMIT = 100;
+  const undoStackRef = useRef<ExportSection[][]>([]);
+  const redoStackRef = useRef<ExportSection[][]>([]);
+  const isTimeTravelingRef = useRef(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const cloneSections = (s: ExportSection[]): ExportSection[] =>
+    JSON.parse(JSON.stringify(s)) as ExportSection[];
+
+  // Reset history whenever a fresh document is loaded via prop.
+  useEffect(() => {
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+    setCanUndo(false);
+    setCanRedo(false);
+  }, [initialSections]);
+
   // Notify parent whenever sections change
   const updateSections = useCallback((updater: ExportSection[] | ((prev: ExportSection[]) => ExportSection[])) => {
     setSections(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
+      // Push the prior state to history unless this change came from undo/redo
+      if (!isTimeTravelingRef.current) {
+        undoStackRef.current.push(cloneSections(prev));
+        if (undoStackRef.current.length > HISTORY_LIMIT) undoStackRef.current.shift();
+        redoStackRef.current = [];
+        setCanUndo(true);
+        setCanRedo(false);
+      }
       onSectionsChange?.(next);
       return next;
     });
   }, [onSectionsChange]);
+
+  const undo = useCallback(() => {
+    if (undoStackRef.current.length === 0) return;
+    const prior = undoStackRef.current.pop()!;
+    setSections(current => {
+      redoStackRef.current.push(cloneSections(current));
+      isTimeTravelingRef.current = true;
+      onSectionsChange?.(prior);
+      // Clear the flag on the next tick so subsequent real edits push history again
+      queueMicrotask(() => { isTimeTravelingRef.current = false; });
+      return prior;
+    });
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(true);
+  }, [onSectionsChange]);
+
+  const redo = useCallback(() => {
+    if (redoStackRef.current.length === 0) return;
+    const future = redoStackRef.current.pop()!;
+    setSections(current => {
+      undoStackRef.current.push(cloneSections(current));
+      isTimeTravelingRef.current = true;
+      onSectionsChange?.(future);
+      queueMicrotask(() => { isTimeTravelingRef.current = false; });
+      return future;
+    });
+    setCanUndo(true);
+    setCanRedo(redoStackRef.current.length > 0);
+  }, [onSectionsChange]);
+
+  // Keyboard shortcuts: Cmd/Ctrl+Z undo, Cmd/Ctrl+Shift+Z (or Ctrl+Y) redo
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      // Let text inputs handle their own undo natively
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      if (e.key === 'z' || e.key === 'Z') {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+      } else if (e.key === 'y' || e.key === 'Y') {
+        e.preventDefault();
+        redo();
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
 
   // Update color palette and notify parent
   const updateColorPalette = useCallback((newPalette: ColorPalette) => {
@@ -488,6 +578,32 @@ export default function ExportEditor({
 
   return (
     <LayoutModeContext.Provider value={{ layoutMode, setLayoutMode }}>
+      <ExportVariablesProvider value={exportVariables}>
+      {/* Undo / redo controls (fixed top-left, hidden on print). Keyboard
+          shortcuts: Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z (or Ctrl+Y) for redo. */}
+      <div className="fixed top-16 left-4 z-40 flex gap-1 bg-white/90 backdrop-blur rounded-lg shadow-lg border border-gray-200 p-1 print:hidden">
+        <button
+          onClick={undo}
+          disabled={!canUndo}
+          title="Undo (⌘Z)"
+          className="p-2 rounded-md text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4" />
+          </svg>
+        </button>
+        <button
+          onClick={redo}
+          disabled={!canRedo}
+          title="Redo (⌘⇧Z)"
+          className="p-2 rounded-md text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a5 5 0 00-5 5v2m15-7l-4-4m4 4l-4 4" />
+          </svg>
+        </button>
+      </div>
+
       {/* Toolbars */}
       {(toolbar || leftToolbar) && (
         <>
@@ -1099,6 +1215,7 @@ export default function ExportEditor({
           }
         }
       `}</style>
+      </ExportVariablesProvider>
     </LayoutModeContext.Provider>
   );
 }
@@ -1445,95 +1562,11 @@ function ExportElementBlock({
   const Component = ELEMENT_REGISTRY[element.elementType];
   if (!Component) return null;
 
-  const editableKey = getEditableDataKey(element.elementType);
-
   const props: Record<string, unknown> = {
     ...element.data,
     darkTheme,
+    ...wireElementProps(element, onUpdateData),
   };
-
-  if (editableKey === 'text') {
-    props.onChange = (value: string) => {
-      onUpdateData({ ...element.data, text: value });
-    };
-  } else if (editableKey === 'items') {
-    props.onChange = (items: unknown[]) => {
-      onUpdateData({ ...element.data, items });
-    };
-  }
-
-  // Multi-field element wiring
-  if (element.elementType === 'cover-title-block') {
-    props.onEyebrowChange = (value: string) => {
-      onUpdateData({ ...element.data, eyebrow: value });
-    };
-    props.onTitleChange = (value: string) => {
-      onUpdateData({ ...element.data, title: value });
-    };
-    props.onQuoteChange = (value: string) => {
-      onUpdateData({ ...element.data, quote: value });
-    };
-    props.onContactNameChange = (value: string) => {
-      onUpdateData({ ...element.data, contactName: value });
-    };
-    props.onContactTitleChange = (value: string) => {
-      onUpdateData({ ...element.data, contactTitle: value });
-    };
-  } else if (element.elementType === 'cover-prepared-for') {
-    props.onContactNameChange = (value: string) => {
-      onUpdateData({ ...element.data, contactName: value });
-    };
-    props.onContactTitleChange = (value: string) => {
-      onUpdateData({ ...element.data, contactTitle: value });
-    };
-  } else if (element.elementType === 'customer-quote') {
-    props.onTextChange = (value: string) => {
-      onUpdateData({ ...element.data, text: value });
-    };
-    props.onAttributionChange = (value: string) => {
-      onUpdateData({ ...element.data, attribution: value });
-    };
-  } else if (element.elementType === 'contact-card') {
-    props.onPromptChange = (value: string) => {
-      onUpdateData({ ...element.data, prompt: value });
-    };
-    props.onNameChange = (value: string) => {
-      onUpdateData({ ...element.data, name: value });
-    };
-    props.onEmailChange = (value: string) => {
-      onUpdateData({ ...element.data, email: value });
-    };
-  } else if (element.elementType === 'faq-section') {
-    props.onUpdate = (index: number, field: string, value: string) => {
-      const faqs = [...((element.data.faqs as Array<Record<string, string>>) || [])];
-      faqs[index] = { ...faqs[index], [field]: value };
-      onUpdateData({ ...element.data, faqs });
-    };
-    props.onAdd = () => {
-      const faqs = [...((element.data.faqs as Array<Record<string, string>>) || [])];
-      faqs.push({ question: 'New question?', answer: 'Answer here...' });
-      onUpdateData({ ...element.data, faqs });
-    };
-    props.onRemove = (index: number) => {
-      const faqs = ((element.data.faqs as Array<Record<string, string>>) || []).filter((_, i) => i !== index);
-      onUpdateData({ ...element.data, faqs });
-    };
-  } else if (element.elementType === 'cover-image') {
-    props.onSrcChange = (value: string) => {
-      onUpdateData({ ...element.data, src: value });
-    };
-    props.onMaxHeightChange = (value: number) => {
-      onUpdateData({ ...element.data, maxHeight: value });
-    };
-  } else if (element.elementType === 'table-of-contents') {
-    props.onHeadingChange = (value: string) => {
-      onUpdateData({ ...element.data, heading: value });
-    };
-  } else if (element.elementType === 'spacer') {
-    props.onHeightChange = (h: number) => {
-      onUpdateData({ ...element.data, height: h });
-    };
-  }
 
   return (
     <div

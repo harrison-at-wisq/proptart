@@ -140,7 +140,7 @@ export function MicrositeInvestment({ inputs }: Props) {
     inputs.legalCompliance, tier2PlusConfiguredCases, yearSettings, contractYears, tier2PlusTotalCases, activeConfiguredCasesByYear
   );
   const eeOutput = calculateEmployeeExperienceROI(inputs.employeeExperience, yearSettings, contractYears);
-  const wisqLicenseCost = hrInputs.wisqLicenseCost || pricing.annualRecurringRevenue;
+  const wisqLicenseCost = pricing.annualRecurringRevenue;
   const summary = calculateROISummary(hrOutput, legalOutput, eeOutput, wisqLicenseCost, contractYears);
 
   const avgAnnualInvestment = pricing.totalContractValue / contractYears;

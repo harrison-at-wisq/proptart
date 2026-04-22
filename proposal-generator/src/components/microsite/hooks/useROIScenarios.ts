@@ -69,7 +69,7 @@ export function useROIScenarios(inputs: ProposalInputs) {
       inputs.legalCompliance, tier2PlusConfiguredCases, yearSettings, contractYears, tier2PlusTotalCases, activeConfiguredCasesByYear
     );
     const eeOutput = calculateEmployeeExperienceROI(adjustedEE, yearSettings, contractYears);
-    const wisqLicenseCost = hrInputs.wisqLicenseCost || pricing.annualRecurringRevenue;
+    const wisqLicenseCost = pricing.annualRecurringRevenue;
     const summary = calculateROISummary(hrOutput, legalOutput, eeOutput, wisqLicenseCost, contractYears);
 
     return {

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { DirectEditableText } from '@/components/ui/DirectEditableText';
+import { ResolvedSpan } from '@/components/ui/ExportVariablesContext';
 
 interface SubHeadingProps {
   text?: string;
@@ -30,7 +31,7 @@ export function SubHeading({ text = SUB_HEADING_PLACEHOLDER.text, borderPosition
           style={darkTheme ? undefined : { color: 'var(--theme-primary)' }}
         />
       ) : (
-        <h3 className={`text-xl font-semibold ${darkTheme ? 'text-white' : ''}`} style={darkTheme ? undefined : { color: 'var(--theme-primary)' }}>{text}</h3>
+        <ResolvedSpan as="h3" className={`text-xl font-semibold ${darkTheme ? 'text-white' : ''}`} style={darkTheme ? undefined : { color: 'var(--theme-primary)' }}>{text}</ResolvedSpan>
       )}
     </div>
   );

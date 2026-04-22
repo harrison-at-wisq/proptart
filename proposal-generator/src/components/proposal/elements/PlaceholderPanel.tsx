@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
+import { DirectEditableText } from '@/components/ui/DirectEditableText';
 
 interface PlaceholderPanelProps {
   label?: string;
   height?: number;
   imageSrc?: string;
+  onLabelChange?: (value: string) => void;
   darkTheme?: boolean;
 }
 
@@ -18,6 +20,7 @@ export function PlaceholderPanel({
   label = PLACEHOLDER_PANEL_PLACEHOLDER.label,
   height = PLACEHOLDER_PANEL_PLACEHOLDER.height,
   imageSrc,
+  onLabelChange,
   darkTheme,
 }: PlaceholderPanelProps) {
   if (imageSrc) {
@@ -33,6 +36,8 @@ export function PlaceholderPanel({
     );
   }
 
+  const labelCls = `text-sm font-medium ${darkTheme ? 'text-white/40' : 'text-gray-400'}`;
+
   return (
     <div
       className={`rounded-xl border-2 border-dashed flex items-center justify-center ${
@@ -42,9 +47,11 @@ export function PlaceholderPanel({
       }`}
       style={{ minHeight: `${height}px` }}
     >
-      <p className={`text-sm font-medium ${darkTheme ? 'text-white/40' : 'text-gray-400'}`}>
-        {label}
-      </p>
+      {onLabelChange ? (
+        <DirectEditableText value={label} onChange={onLabelChange} as="p" className={labelCls} />
+      ) : (
+        <p className={labelCls}>{label}</p>
+      )}
     </div>
   );
 }

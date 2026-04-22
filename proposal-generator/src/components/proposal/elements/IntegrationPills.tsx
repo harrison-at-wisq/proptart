@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { DirectEditableText } from '@/components/ui/DirectEditableText';
+import { AddItemButton, RemoveItemButton } from '@/components/ui/InlineItemControls';
 
 interface Integration {
   category: string;
@@ -13,6 +14,8 @@ interface IntegrationPillsProps {
   integrations?: Integration[];
   onTitleChange?: (value: string) => void;
   onIntegrationChange?: (index: number, field: 'category' | 'name', value: string) => void;
+  onAddIntegration?: () => void;
+  onRemoveIntegration?: (index: number) => void;
   darkTheme?: boolean;
 }
 
@@ -30,6 +33,8 @@ export function IntegrationPills({
   integrations = INTEGRATION_PILLS_PLACEHOLDER.integrations,
   onTitleChange,
   onIntegrationChange,
+  onAddIntegration,
+  onRemoveIntegration,
   darkTheme,
 }: IntegrationPillsProps) {
   const pillClass = darkTheme
@@ -42,7 +47,7 @@ export function IntegrationPills({
 
   return (
     <>
-      {title && (
+      {title !== undefined && (
         onTitleChange ? (
           <DirectEditableText value={title} onChange={onTitleChange} as="h3" className={`text-lg font-semibold ${titleColor} mb-4`} style={titleStyle} />
         ) : (
@@ -50,9 +55,12 @@ export function IntegrationPills({
         )
       )}
       {integrations.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           {integrations.map((integration, i) => (
-            <div key={i} className={pillClass} style={pillStyle}>
+            <div key={i} className={`${pillClass} relative group`} style={pillStyle}>
+              {onRemoveIntegration && (
+                <RemoveItemButton onRemove={() => onRemoveIntegration(i)} title="Remove integration" />
+              )}
               {onIntegrationChange ? (
                 <>
                   <DirectEditableText value={integration.category} onChange={(v) => onIntegrationChange(i, 'category', v)} as="span" className={`${categoryOpacity} mr-2`} />
@@ -66,11 +74,19 @@ export function IntegrationPills({
               )}
             </div>
           ))}
+          {onAddIntegration && (
+            <AddItemButton onAdd={onAddIntegration} label="Add pill" darkTheme={darkTheme} />
+          )}
         </div>
       ) : (
-        <p className={`text-sm italic ${darkTheme ? 'text-white/50' : 'text-gray-500'}`}>
-          Integration requirements to be discussed
-        </p>
+        <div className="flex items-center gap-3">
+          <p className={`text-sm italic ${darkTheme ? 'text-white/50' : 'text-gray-500'}`}>
+            Integration requirements to be discussed
+          </p>
+          {onAddIntegration && (
+            <AddItemButton onAdd={onAddIntegration} label="Add pill" darkTheme={darkTheme} />
+          )}
+        </div>
       )}
     </>
   );

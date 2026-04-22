@@ -1,13 +1,12 @@
 import type { ProposalInputs, ProposalElementType, QuoteSection } from '@/types/proposal';
 import { resolveOtherValue } from '@/types/proposal';
 import { getDefaultElementData } from '@/components/proposal/templates/element-defaults';
-import { calculatePricing, formatCompactCurrency, formatCurrency } from '@/lib/pricing-calculator';
+import { calculatePricing } from '@/lib/pricing-calculator';
 import {
   calculateHROperationsROI,
   calculateLegalComplianceROI,
   calculateEmployeeExperienceROI,
   calculateROISummary,
-  calculateMultiYearProjection,
 } from '@/lib/roi-calculator';
 import { materializeDocumentContent } from '@/lib/materialize-content';
 import { getSelectedQuoteForSection } from '@/lib/customer-quotes';
@@ -74,17 +73,10 @@ export function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
     inputs.legalCompliance, tier2PlusConfiguredCases, yearSettings, contractYears, tier2PlusTotalCases, activeConfiguredCasesByYear
   );
   const employeeOutput = calculateEmployeeExperienceROI(inputs.employeeExperience, yearSettings, contractYears);
-  const wisqLicenseCost = hrInputs.wisqLicenseCost || pricing.annualRecurringRevenue;
+  const wisqLicenseCost = pricing.annualRecurringRevenue;
+  // summary drives pillar visibility (non-zero savings → pillar shown). Resolved
+  // numbers themselves come from buildExportVariables at render time.
   const summary = calculateROISummary(hrOutput, legalOutput, employeeOutput, wisqLicenseCost, contractYears);
-  const projection = calculateMultiYearProjection(hrOutput, legalOutput, employeeOutput, wisqLicenseCost);
-
-  // Average annual investment across the contract (total contract value / years)
-  const avgAnnualInvestment = pricing.totalContractValue / contractYears;
-
-  // Payback: what fraction of the year are they in the negative?
-  // monthlyGross = average monthly gross value; payback = months until investment is recouped
-  const monthlyGross = summary.grossAnnualValue / 12;
-  const paybackMonths = monthlyGross > 0 ? avgAnnualInvestment / monthlyGross : 0;
 
   // Build integrations list
   const customerIntegrations = [
@@ -112,132 +104,160 @@ export function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
     return sec.faqs;
   };
 
-  // Build investment breakdown rows (implementation listed first, above Year 1)
+  // Build investment breakdown rows (implementation listed first, above Year 1).
+  // Token names for the dynamic per-year values are emitted inline and must
+  // match buildExportVariables() — see yearN_softwareNetPrice below.
   const investmentRows: { label: string; value: string; subText?: string }[] = [];
   if (pricing.implementationNetPrice > 0) {
-    investmentRows.push({ label: 'One-Time Implementation', value: formatCompactCurrency(pricing.implementationNetPrice) });
+    investmentRows.push({ label: 'One-Time Implementation', value: '{{implementationNetPrice}}' });
   }
   pricing.yearlyBreakdown.forEach((year, index) => {
     const yearConfig = inputs.pricing.yearlyConfig[index];
     const suffix = yearConfig?.workflows.included ? ' (Platform + Workflows)' : ' (Platform)';
-    investmentRows.push({ label: `Year ${year.year} Software${suffix}`, value: formatCompactCurrency(year.softwareNetPrice) });
+    investmentRows.push({ label: `Year ${year.year} Software${suffix}`, value: `{{year${year.year}SoftwareNetPrice}}` });
   });
   if (pricing.servicesNetPrice > 0) {
-    investmentRows.push({ label: 'Professional Services', value: formatCompactCurrency(pricing.servicesNetPrice) });
+    investmentRows.push({ label: 'Professional Services', value: '{{servicesNetPrice}}' });
   }
   if (pricing.integrationsNetPrice > 0) {
-    investmentRows.push({ label: 'Additional Integrations', value: formatCompactCurrency(pricing.integrationsNetPrice) });
+    investmentRows.push({ label: 'Additional Integrations', value: '{{integrationsNetPrice}}' });
   }
   // Total Contract Value now shown in the KPI tiles above, not as a row
 
   // ---------- ROI Breakdown line items with auto-generated explanations ----------
-  const fmtNum = (n: number) => Math.round(n).toLocaleString('en-US');
-  const fmtRate = (n: number) => `$${n.toFixed(2)}`;
-  const HOURS_PER_FTE = 2080;
+  // Every numeric value below is emitted as a `{{variableName}}` token instead
+  // of a resolved string. ExportEditor resolves them at render time via
+  // ExportVariablesProvider + buildExportVariables, so text-edit mode shows
+  // users which values are dynamic. Token names must match keys in
+  // lib/export-variables.ts.
 
-  // HR Operations line items (yearly averages)
-  const avgTier01Savings = hrOutput.yearCostResults.reduce((s, yr) => s + yr.tier01Savings, 0) / contractYears;
-  const avgTier2Savings = hrOutput.yearCostResults.reduce((s, yr) => s + yr.tier2Savings, 0) / contractYears;
-  const avgManagerSavings = hrOutput.yearCostResults.reduce((s, yr) => s + yr.managerSavings, 0) / contractYears;
-  const avgTriageSavings = hrOutput.yearCostResults.reduce((s, yr) => s + yr.triageSavings, 0) / contractYears;
-  const avgTier01Deflection = hrInputs.tier01DeflectionByYear?.length
-    ? hrInputs.tier01DeflectionByYear.reduce((s, d) => s + d, 0) / hrInputs.tier01DeflectionByYear.length
-    : 50;
+  // In simple mode the user has mutually agreed on a flat annual amount with
+  // the customer — we can't (and shouldn't) break it down into calculated line
+  // items. Show a single "Mutually agreed upon" row instead.
+  const SIMPLE_EXPLANATION = 'Mutually agreed upon';
 
-  const hrItems: { label: string; value: string; explanation: string }[] = [
-    {
-      label: 'Simple Workflow Savings',
-      value: formatCompactCurrency(avgTier01Savings),
-      explanation: `${fmtNum(hrInputs.tier01CasesPerYear)} simple transactions/yr, ~${Math.round(avgTier01Deflection)}% deflected at ${fmtRate(hrInputs.tier01HandlerSalary / HOURS_PER_FTE)}/hr`,
-    },
-    {
-      label: 'Complex Case Efficiency',
-      value: formatCompactCurrency(avgTier2Savings),
-      explanation: `${hrInputs.tier2Workflows.length} configured workflows reducing complex case processing time`,
-    },
-  ];
-  if (hrInputs.managerHRTime?.enabled && avgManagerSavings > 0) {
-    const mgr = hrInputs.managerHRTime;
-    hrItems.push({
-      label: 'Manager Time Savings',
-      value: formatCompactCurrency(avgManagerSavings),
-      explanation: `${fmtNum(mgr.managersDoingHR)} managers × ${mgr.hoursPerWeekPerManager} hrs/wk × ${fmtRate(mgr.managerHourlyCost)}/hr`,
-    });
-  }
-  if (hrInputs.triageRole?.enabled && avgTriageSavings > 0) {
-    const tri = hrInputs.triageRole;
-    hrItems.push({
-      label: 'Triage Role Savings',
-      value: formatCompactCurrency(avgTriageSavings),
-      explanation: `${tri.triageFTEs} triage FTEs × ${formatCompactCurrency(tri.triageSalary)} salary × workload reduction`,
-    });
-  }
-
-  // Legal & Compliance line items (yearly averages)
-  const legalYears = legalOutput.yearResults;
-  const avgAvoidedLegal = legalYears.reduce((s, yr) => s + yr.avoidedLegalCosts, 0) / contractYears;
-  const avgAdminSavings = legalYears.reduce((s, yr) => s + yr.adminCostSavings, 0) / contractYears;
-  const avgAuditPrep = legalYears.reduce((s, yr) => s + yr.auditPrepSavings, 0) / contractYears;
-  const avgRiskValue = legalYears.reduce((s, yr) => s + yr.riskValue, 0) / contractYears;
-  const avgProactiveValue = legalYears.reduce((s, yr) => s + yr.proactiveValue, 0) / contractYears;
-  const avgAvoidedIncidents = legalYears.reduce((s, yr) => s + yr.avoidedIncidents, 0) / contractYears;
-
-  const legalItems: { label: string; value: string; explanation: string }[] = [];
-  if (avgAvoidedLegal > 0) {
-    legalItems.push({
-      label: 'Legal Cost Avoidance',
-      value: formatCompactCurrency(avgAvoidedLegal),
-      explanation: `~${avgAvoidedIncidents.toFixed(1)} incidents avoided/yr × ${formatCompactCurrency(inputs.legalCompliance.avgLegalCostPerIncident)}/incident`,
-    });
-  }
-  if (avgAdminSavings > 0) {
-    legalItems.push({
-      label: 'Compliance Admin Savings',
-      value: formatCompactCurrency(avgAdminSavings),
-      explanation: `${inputs.legalCompliance.adminHoursPerCase} hrs saved/case × ${fmtRate(inputs.legalCompliance.adminHourlyRate)}/hr`,
-    });
-  }
-  if (avgAuditPrep > 0 && inputs.legalCompliance.auditPrep?.enabled) {
-    const audit = inputs.legalCompliance.auditPrep;
-    legalItems.push({
-      label: 'Audit Prep Savings',
-      value: formatCompactCurrency(avgAuditPrep),
-      explanation: `${audit.auditsPerYear} audits/yr × ${audit.prepHoursPerAudit} hrs × ${audit.wisqReductionPercent}% time saved`,
-    });
-  }
-  if (avgRiskValue > 0) {
-    legalItems.push({
-      label: 'Risk Detection Value',
-      value: formatCompactCurrency(avgRiskValue),
-      explanation: 'Proactive risk pattern identification across case data',
-    });
-  }
-  if (avgProactiveValue > 0) {
-    legalItems.push({
-      label: 'Proactive Alerts Value',
-      value: formatCompactCurrency(avgProactiveValue),
-      explanation: 'Early warning system for emerging compliance risks',
-    });
+  // HR Operations line items
+  let hrItems: { label: string; value: string; explanation: string }[];
+  if (hrInputs.mode === 'simple') {
+    hrItems = [
+      {
+        label: 'HR Operations Savings',
+        value: '{{hrOpsSavingsPerYr}}',
+        explanation: SIMPLE_EXPLANATION,
+      },
+    ];
+  } else {
+    const avgManagerSavings = hrOutput.yearCostResults.reduce((s, yr) => s + yr.managerSavings, 0) / contractYears;
+    const avgTriageSavings = hrOutput.yearCostResults.reduce((s, yr) => s + yr.triageSavings, 0) / contractYears;
+    hrItems = [
+      {
+        label: 'Simple Workflow Savings',
+        value: '{{avgTier01Savings}}',
+        explanation: '{{tier01CasesPerYear}} simple transactions/yr, ~{{tier01DeflectionPct}} deflected at {{tier01HandlerRate}}/hr',
+      },
+      {
+        label: 'Complex Case Efficiency',
+        value: '{{avgTier2Savings}}',
+        explanation: '{{tier2WorkflowCount}} configured workflows reducing complex case processing time',
+      },
+    ];
+    if (hrInputs.managerHRTime?.enabled && avgManagerSavings > 0) {
+      hrItems.push({
+        label: 'Manager Time Savings',
+        value: '{{avgManagerSavings}}',
+        explanation: '{{managersDoingHR}} managers × {{managerHoursPerWeek}} hrs/wk × {{managerHourlyCost}}/hr',
+      });
+    }
+    if (hrInputs.triageRole?.enabled && avgTriageSavings > 0) {
+      hrItems.push({
+        label: 'Triage Role Savings',
+        value: '{{avgTriageSavings}}',
+        explanation: '{{triageFTEs}} triage FTEs × {{triageSalary}} salary × workload reduction',
+      });
+    }
   }
 
-  // Employee Experience line items (yearly averages)
-  const eeInputs = inputs.employeeExperience;
-  const avgProductivity = employeeOutput.yearResults.reduce((s, yr) => s + yr.totalMonetaryValue, 0) / contractYears;
-  const avgHoursSaved = employeeOutput.yearResults.reduce((s, yr) => s + yr.hoursSaved, 0) / contractYears;
+  // Legal & Compliance line items
+  let legalItems: { label: string; value: string; explanation: string }[];
+  if (inputs.legalCompliance.mode === 'simple') {
+    legalItems = [
+      {
+        label: 'Compliance Value',
+        value: '{{legalSavingsPerYr}}',
+        explanation: SIMPLE_EXPLANATION,
+      },
+    ];
+  } else {
+    const legalYears = legalOutput.yearResults;
+    const avgAvoidedLegal = legalYears.reduce((s, yr) => s + yr.avoidedLegalCosts, 0) / contractYears;
+    const avgAdminSavings = legalYears.reduce((s, yr) => s + yr.adminCostSavings, 0) / contractYears;
+    const avgAuditPrep = legalYears.reduce((s, yr) => s + yr.auditPrepSavings, 0) / contractYears;
+    const avgRiskValue = legalYears.reduce((s, yr) => s + yr.riskValue, 0) / contractYears;
+    const avgProactiveValue = legalYears.reduce((s, yr) => s + yr.proactiveValue, 0) / contractYears;
+    legalItems = [];
+    if (avgAvoidedLegal > 0) {
+      legalItems.push({
+        label: 'Legal Cost Avoidance',
+        value: '{{avgAvoidedLegal}}',
+        explanation: '~{{avgAvoidedIncidents}} incidents avoided/yr × {{avgLegalCostPerIncident}}/incident',
+      });
+    }
+    if (avgAdminSavings > 0) {
+      legalItems.push({
+        label: 'Compliance Admin Savings',
+        value: '{{avgAdminSavings}}',
+        explanation: '{{adminHoursPerCase}} hrs saved/case × {{adminHourlyRate}}/hr',
+      });
+    }
+    if (avgAuditPrep > 0 && inputs.legalCompliance.auditPrep?.enabled) {
+      legalItems.push({
+        label: 'Audit Prep Savings',
+        value: '{{avgAuditPrep}}',
+        explanation: '{{auditsPerYear}} audits/yr × {{auditPrepHoursPerAudit}} hrs × {{auditWisqReductionPercent}} time saved',
+      });
+    }
+    if (avgRiskValue > 0) {
+      legalItems.push({
+        label: 'Risk Detection Value',
+        value: '{{avgRiskValue}}',
+        explanation: 'Proactive risk pattern identification across case data',
+      });
+    }
+    if (avgProactiveValue > 0) {
+      legalItems.push({
+        label: 'Proactive Alerts Value',
+        value: '{{avgProactiveValue}}',
+        explanation: 'Early warning system for emerging compliance risks',
+      });
+    }
+  }
 
-  const eeItems: { label: string; value: string; explanation: string }[] = [
-    {
-      label: 'Employee Productivity Gains',
-      value: formatCompactCurrency(avgProductivity),
-      explanation: `${fmtNum(eeInputs.totalEmployeePopulation)} employees × ${eeInputs.inquiriesPerEmployeePerYear} inquiries/yr × ${eeInputs.timeReductionPercent}% faster at ${fmtRate(eeInputs.avgHourlyRate ?? 55)}/hr`,
-    },
-  ];
-  if (avgHoursSaved > 0) {
-    eeItems.push({
-      label: 'Hours Returned to Workforce',
-      value: `${fmtNum(avgHoursSaved)} hrs/yr`,
-      explanation: `Equivalent to ${(avgHoursSaved / HOURS_PER_FTE).toFixed(1)} FTEs of productive time returned`,
-    });
+  // Employee Experience line items
+  let eeItems: { label: string; value: string; explanation: string }[];
+  if (inputs.employeeExperience.mode === 'simple') {
+    eeItems = [
+      {
+        label: 'Employee Productivity Gains',
+        value: '{{productivitySavingsPerYr}}',
+        explanation: SIMPLE_EXPLANATION,
+      },
+    ];
+  } else {
+    const avgHoursSaved = employeeOutput.yearResults.reduce((s, yr) => s + yr.hoursSaved, 0) / contractYears;
+    eeItems = [
+      {
+        label: 'Employee Productivity Gains',
+        value: '{{avgProductivity}}',
+        explanation: '{{totalEmployeePopulation}} employees × {{inquiriesPerEmployeePerYear}} inquiries/yr × {{timeReductionPercent}} faster at {{eeHourlyRate}}/hr',
+      },
+    ];
+    if (avgHoursSaved > 0) {
+      eeItems.push({
+        label: 'Hours Returned to Workforce',
+        value: '{{avgHoursSaved}}',
+        explanation: 'Equivalent to {{avgFtesReturned}} FTEs of productive time returned',
+      });
+    }
   }
 
   const sections: ExportSection[] = [];
@@ -274,11 +294,12 @@ export function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
     el('body-text', 7, { text: docContent.execSummaryInsight }, execLeftCol),
     el('metric-table', 5, {
       title: 'Key Metrics',
+      hideSubText: true,
       rows: [
-        { label: 'Avg. Annual Investment', value: formatCompactCurrency(avgAnnualInvestment) },
-        { label: 'Projected Annual Value', value: formatCompactCurrency(summary.grossAnnualValue) },
-        { label: 'Return on Investment', value: `${formatCompactCurrency(summary.netAnnualBenefit)}/yr` },
-        { label: 'Payback Period', value: `${paybackMonths.toFixed(1)} mo` },
+        { label: 'Avg. Annual Investment', value: '{{avgAnnualInvestment}}' },
+        { label: 'Projected Annual Value', value: '{{grossAnnualValue}}' },
+        { label: 'Return on Investment', value: '{{netAnnualBenefitPerYr}}' },
+        { label: 'Payback Period', value: '{{paybackMonthsLabel}}' },
       ],
     }),
     el('vision-callout', 7, { text: docContent.execSummaryVision }, execLeftCol),
@@ -364,15 +385,15 @@ export function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
     // KPI summary tiles
     el('kpi-tiles', 12, {
       tiles: [
-        { value: formatCompactCurrency(pricing.totalContractValue), label: 'Total Investment' },
-        { value: `${paybackMonths.toFixed(1)} mo`, label: 'Payback' },
-        { value: formatCompactCurrency(projection.total), label: `${contractYears}-Year Value` },
-        { value: formatCompactCurrency(projection.netTotal), label: `${contractYears}-Year Net` },
+        { value: '{{totalContractValue}}', label: 'Total Investment' },
+        { value: '{{paybackMonthsLabel}}', label: 'Payback' },
+        { value: '{{projectionTotal}}', label: '{{contractYearsOrdinal}} Value' },
+        { value: '{{projectionNetTotal}}', label: '{{contractYearsOrdinal}} Net' },
       ],
     }),
     // Side-by-side: Investment (left) + Return pie chart (right)
     el('metric-table', 6, {
-      title: `Your Investment (${inputs.pricing.contractTermYears}-Year Contract)`,
+      title: 'Your Investment ({{contractYearsOrdinal}} Contract)',
       rows: investmentRows,
       showTotalRow: false,
     }, investLeftCol),
@@ -385,20 +406,34 @@ export function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
     legal: { annual: summary.legalSavings, items: legalItems },
     ex: { annual: summary.productivitySavings, items: eeItems },
   };
+  // Map each pillar key to its total-value token name. The pie & breakdown
+  // consume tokens so the editor's text-edit mode shows which values are dynamic.
+  const pillarTotalTokens: Record<PillarKey, string> = {
+    hrOps: '{{hrOpsTotal}}',
+    legal: '{{legalTotal}}',
+    ex: '{{productivityTotal}}',
+  };
+  const pillarAnnualTokens: Record<PillarKey, string> = {
+    hrOps: '{{hrOpsSavingsPerYr}}',
+    legal: '{{legalSavingsPerYr}}',
+    ex: '{{productivitySavingsPerYr}}',
+  };
+
   const pieSlices = enabledPillars.map(k => ({
     label: PILLAR_LABELS[k],
+    // `value` drives geometry and must be numeric — keep as a real number
     value: pillarData[k].annual * contractYears,
-    formattedValue: formatCompactCurrency(pillarData[k].annual * contractYears),
+    formattedValue: pillarTotalTokens[k],
   }));
   const breakdownColumns = enabledPillars.map(k => ({
     title: PILLAR_LABELS[k],
-    total: `${formatCompactCurrency(pillarData[k].annual)}/yr`,
+    total: pillarAnnualTokens[k],
     items: pillarData[k].items,
   }));
 
   investElements.push(
     el('roi-pie-chart', 6, {
-      title: `Your Return (${contractYears}-Year Contract)`,
+      title: 'Your Return ({{contractYearsOrdinal}} Contract)',
       slices: pieSlices,
     }, investRightCol),
     el('sub-heading', 12, { text: 'Return Breakdown', borderPosition: 'none' }),

@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useLayoutMode } from './LayoutModeContext';
+import { useExportVariables } from './ExportVariablesContext';
+import { resolveTokens } from '@/lib/export-variables';
 
 export interface DirectEditableTextProps {
   value: string;
@@ -26,6 +28,7 @@ export function DirectEditableText({
 }: DirectEditableTextProps) {
   const { layoutMode: rawLayoutMode } = useLayoutMode();
   const layoutMode = alwaysEditable ? false : rawLayoutMode;
+  const variables = useExportVariables();
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(value);
   const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
@@ -64,7 +67,10 @@ export function DirectEditableText({
     }
   };
 
-  const displayValue = localValue || placeholder;
+  // In edit mode we show the raw text (with `{{tokens}}`) so the user can see
+  // exactly where the dynamic values are. In display mode we resolve tokens.
+  const resolvedValue = variables ? resolveTokens(localValue, variables) : localValue;
+  const displayValue = resolvedValue || placeholder;
 
   if (isEditing) {
     const inputClasses = `
