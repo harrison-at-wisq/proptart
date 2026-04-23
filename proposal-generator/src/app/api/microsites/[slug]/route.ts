@@ -37,14 +37,17 @@ export async function GET(
     .eq('id', data.id)
     .then(() => {});
 
+  const published = data.published_data as Record<string, unknown> | null;
+  const draft = data.draft_data as Record<string, unknown> | null;
+  const companyFromPublished = (published?.company as Record<string, string> | undefined)?.companyName;
+
   return NextResponse.json({
     microsite: {
       slug: data.slug,
-      data: data.data,
+      draft_data: draft,
+      published_data: published,
       published_at: data.published_at,
-      company_name: (data.data as Record<string, unknown>)?.company
-        ? ((data.data as Record<string, Record<string, string>>).company.companyName || 'Company')
-        : 'Company',
+      company_name: companyFromPublished || 'Company',
     },
   });
 }
@@ -85,9 +88,6 @@ export async function PUT(
   if (body.republish) {
     updates.unpublished_at = null;
     updates.published_at = new Date().toISOString();
-  }
-  if (body.data) {
-    updates.data = body.data;
   }
   if (body.name !== undefined) {
     updates.name = body.name;

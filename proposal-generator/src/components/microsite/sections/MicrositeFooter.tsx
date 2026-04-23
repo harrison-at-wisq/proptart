@@ -18,11 +18,15 @@ export function MicrositeFooter({ customerLogoBase64 }: MicrositeFooterProps) {
       <div className="max-w-5xl mx-auto px-6">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
-            <img src="/wisq-logo.svg" alt="Wisq" className="h-8 w-8 invert brightness-0" style={{ filter: 'brightness(0) invert(1)' }} />
+            <img src="/wisq-logo.svg" alt="Wisq" className="h-8 w-8" style={{ filter: 'brightness(0) invert(1)' }} />
             {customerLogoBase64 && (
               <>
                 <span className="text-white/20 text-sm">&times;</span>
-                <img src={customerLogoBase64} alt="Customer" className="h-8 w-auto max-w-[100px] object-contain brightness-0 invert" />
+                <img
+                  src={customerLogoBase64}
+                  alt="Customer"
+                  className="h-8 w-auto max-w-[100px] object-contain bg-white rounded px-2 py-1"
+                />
               </>
             )}
             <span className="text-white/50 text-sm">wisq.com</span>

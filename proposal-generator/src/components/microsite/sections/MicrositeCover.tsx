@@ -1,16 +1,30 @@
 'use client';
 
 import React from 'react';
-import { ProposalInputs, resolveOtherValue } from '@/types/proposal';
+import { ProposalInputs } from '@/types/proposal';
+import type { CoverSectionData } from '@/types/microsite';
+import { DirectEditableText } from '@/components/ui/DirectEditableText';
+import { ResolvedSpan } from '@/components/ui/ExportVariablesContext';
 
 interface Props {
   inputs: ProposalInputs;
+  data?: Record<string, unknown>;
+  onDataChange?: (next: Record<string, unknown>) => void;
 }
 
-export function MicrositeCover({ inputs }: Props) {
+export function MicrositeCover({ inputs, data, onDataChange }: Props) {
   const companyName = inputs.company.companyName || 'Your Company';
-  const contactName = inputs.company.contactName;
-  const contactTitle = resolveOtherValue(inputs.company.contactTitle, inputs.company.customContactTitle);
+
+  const sectionData = (data ?? {}) as CoverSectionData;
+  const eyebrow = sectionData.eyebrow ?? 'Strategic Proposal';
+  const defaultTitle = `Transforming HR at ${companyName}`;
+  const title = sectionData.title ?? inputs.contentOverrides?.coverTitle ?? defaultTitle;
+  const quote = sectionData.coverQuote ?? inputs.contentOverrides?.coverQuote ?? inputs.coverQuote ?? '';
+  const preparedFor = sectionData.preparedFor ?? 'Prepared for {{contactName}}, {{contactTitle}}';
+
+  function update<K extends keyof CoverSectionData>(key: K, value: CoverSectionData[K]) {
+    onDataChange?.({ ...sectionData, [key]: value } as unknown as Record<string, unknown>);
+  }
 
   return (
     <section
@@ -49,32 +63,68 @@ export function MicrositeCover({ inputs }: Props) {
           )}
         </div>
 
-        <div className="text-sm font-semibold tracking-[0.2em] uppercase mb-5" style={{ color: 'rgba(var(--theme-primary-rgb), 0.4)' }}>
-          Strategic Proposal
-        </div>
+        {onDataChange ? (
+          <DirectEditableText
+            as="div"
+            value={eyebrow}
+            onChange={(v) => update('eyebrow', v)}
+            className="text-sm font-semibold tracking-[0.2em] uppercase mb-5"
+            style={{ color: 'rgba(var(--theme-primary-rgb), 0.4)' }}
+          />
+        ) : (
+          <ResolvedSpan as="div" className="text-sm font-semibold tracking-[0.2em] uppercase mb-5" style={{ color: 'rgba(var(--theme-primary-rgb), 0.4)' }}>
+            {eyebrow}
+          </ResolvedSpan>
+        )}
 
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-6" style={{ color: 'var(--theme-primary)' }}>
-          {inputs.contentOverrides?.coverTitle || (
-            <>
-              Transforming HR at<br />
-              <span>{companyName}</span>
-            </>
-          )}
-        </h1>
+        {onDataChange ? (
+          <DirectEditableText
+            as="h1"
+            multiline
+            value={title}
+            onChange={(v) => update('title', v)}
+            className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-6"
+            style={{ color: 'var(--theme-primary)' }}
+          />
+        ) : (
+          <ResolvedSpan as="h1" className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-6" style={{ color: 'var(--theme-primary)' }}>
+            {title}
+          </ResolvedSpan>
+        )}
 
         <div className="w-16 h-0.5 mx-auto mb-8" style={{ backgroundColor: 'var(--theme-primary)' }} />
 
-        {inputs.coverQuote && (
-          <p className="text-lg sm:text-xl italic max-w-xl mx-auto mb-8 leading-relaxed" style={{ color: 'rgba(var(--theme-primary-rgb), 0.5)' }}>
-            &ldquo;{inputs.contentOverrides?.coverQuote || inputs.coverQuote}&rdquo;
-          </p>
+        {(quote || onDataChange) && (
+          onDataChange ? (
+            <DirectEditableText
+              as="p"
+              multiline
+              value={quote}
+              onChange={(v) => update('coverQuote', v)}
+              placeholder="Optional quote (use {{tokens}} if helpful)"
+              className="text-lg sm:text-xl italic max-w-xl mx-auto mb-8 leading-relaxed"
+              style={{ color: 'rgba(var(--theme-primary-rgb), 0.5)' }}
+            />
+          ) : quote ? (
+            <p className="text-lg sm:text-xl italic max-w-xl mx-auto mb-8 leading-relaxed" style={{ color: 'rgba(var(--theme-primary-rgb), 0.5)' }}>
+              <ResolvedSpan as="span">{`“${quote}”`}</ResolvedSpan>
+            </p>
+          ) : null
         )}
 
-        <div className="text-base" style={{ color: 'rgba(var(--theme-primary-rgb), 0.4)' }}>
-          Prepared for{' '}
-          <span className="font-medium" style={{ color: 'var(--theme-primary)' }}>{contactName}</span>
-          {contactTitle && <>, {contactTitle}</>}
-        </div>
+        {onDataChange ? (
+          <DirectEditableText
+            as="div"
+            value={preparedFor}
+            onChange={(v) => update('preparedFor', v)}
+            className="text-base"
+            style={{ color: 'rgba(var(--theme-primary-rgb), 0.4)' }}
+          />
+        ) : (
+          <ResolvedSpan as="div" className="text-base" style={{ color: 'rgba(var(--theme-primary-rgb), 0.4)' }}>
+            {preparedFor}
+          </ResolvedSpan>
+        )}
       </div>
 
       {/* Scroll indicator */}

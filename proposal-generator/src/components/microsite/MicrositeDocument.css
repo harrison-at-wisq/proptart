@@ -94,3 +94,78 @@ html {
   transform: translateY(0);
   opacity: 1;
 }
+
+/* Section-level dark theme override. Applies when a section wrapper carries
+ * the .ms-section-dark class (toggled from the studio). Paints the background
+ * in the theme's primary color and flips surfaces / text to light. */
+.ms-section-dark {
+  background: var(--theme-primary) !important;
+  color: #fff;
+}
+.ms-section-dark section {
+  background: transparent !important;
+}
+.ms-section-dark h1,
+.ms-section-dark h2,
+.ms-section-dark h3,
+.ms-section-dark h4,
+.ms-section-dark p,
+.ms-section-dark span,
+.ms-section-dark li,
+.ms-section-dark div {
+  color: inherit;
+}
+.ms-section-dark [style*="color: var(--theme-primary)"] {
+  color: #fff !important;
+}
+.ms-section-dark [style*="color: rgba(var(--theme-primary-rgb)"] {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+.ms-section-dark [style*="background-color: var(--theme-primary)"] {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+.ms-section-dark [style*="backgroundColor: var(--theme-primary)"] {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+.ms-section-dark .bg-white,
+.ms-section-dark .bg-gray-50,
+.ms-section-dark .bg-\[\#f3f4f6\] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.9);
+}
+.ms-section-dark .text-gray-600,
+.ms-section-dark .text-gray-700,
+.ms-section-dark .text-gray-900,
+.ms-section-dark .text-gray-500,
+.ms-section-dark .text-gray-400 {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+.ms-section-dark .border-gray-200,
+.ms-section-dark .border-\[\#e0e3eb\] {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* And the inverse: when a naturally-dark section is forced to light. */
+.ms-section-light {
+  background: #fff !important;
+  color: #111827;
+}
+.ms-section-light section {
+  background: transparent !important;
+  color: inherit;
+}
+.ms-section-light .text-white,
+.ms-section-light .text-white\/70,
+.ms-section-light .text-white\/60,
+.ms-section-light .text-white\/40,
+.ms-section-light .text-white\/80 {
+  color: var(--theme-primary) !important;
+}
+.ms-section-light .bg-white\/10,
+.ms-section-light .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+.ms-section-light .border-white\/15,
+.ms-section-light .border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}

@@ -165,10 +165,12 @@ export default function AssetsWorkspacePage({
   const handleDuplicateMicrosite = async (site: MicrositeAsset) => {
     setCreating('microsite');
     try {
-      // Fetch full data from the microsite
+      // Fetch full data from the microsite. Seed the duplicate from the
+      // published snapshot so the new microsite starts from what customers
+      // most recently saw, not an unpublished draft.
       const res = await fetch(`/api/microsites/${site.slug}`);
       const json = await res.json();
-      const data = json.microsite?.data;
+      const data = json.microsite?.published_data;
       if (!data) throw new Error('No data');
       await fetch('/api/microsites', {
         method: 'POST',
@@ -393,6 +395,7 @@ export default function AssetsWorkspacePage({
                 <MicrositeCard
                   key={site.id}
                   site={site}
+                  proposalId={id}
                   versionNumber={versionNum}
                   colorPalette={proposalData?.colorPalette}
                   onArchive={() => handleArchiveMicrosite(site.slug)}
@@ -430,6 +433,7 @@ export default function AssetsWorkspacePage({
 
 function MicrositeCard({
   site,
+  proposalId,
   versionNumber,
   colorPalette,
   onArchive,
@@ -439,6 +443,7 @@ function MicrositeCard({
   onRename,
 }: {
   site: MicrositeAsset;
+  proposalId: string;
   versionNumber: number;
   colorPalette?: ColorPalette;
   onArchive: () => void;
@@ -542,7 +547,17 @@ function MicrositeCard({
               </svg>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+              <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <a
+                  href={`/p/${proposalId}/microsite/${site.slug}/internal`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMenuOpen(false)}
+                  className="w-full block px-3 py-2 text-left text-sm hover:bg-gray-50 text-gray-700"
+                >
+                  Internal Preview
+                </a>
+                <hr className="my-1" />
                 {isArchived ? (
                   <button onClick={() => { onRepublish(); setMenuOpen(false); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 text-gray-700">
                     Republish
@@ -603,6 +618,15 @@ function MicrositeCard({
 
         {/* Actions */}
         <div className="flex gap-2">
+          <a
+            href={`/p/${proposalId}/microsite/${site.slug}/studio`}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-[#03143B] rounded-lg hover:bg-[#03143B]/90 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Studio
+          </a>
           <button
             onClick={handleCopyLink}
             className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -628,7 +652,8 @@ function MicrositeCard({
               href={`/m/${site.slug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-[#03143B] rounded-lg hover:bg-[#03143B]/90 transition-colors"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              title="Open customer view"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { ProposalInputs } from '@/types/proposal';
 import { MicrositeDocument } from '@/components/microsite/MicrositeDocument';
+import { MicrositeTracker } from '@/components/microsite/MicrositeTracker';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,7 @@ export async function generateMetadata({ params }: MicrositePageProps): Promise<
     return { title: 'Not Found' };
   }
 
-  const proposalData = data.data as ProposalInputs;
+  const proposalData = data.published_data as ProposalInputs;
   const companyName = proposalData?.company?.companyName || 'Your Company';
 
   return {
@@ -65,7 +66,12 @@ export default async function MicrositePage({ params }: MicrositePageProps) {
     notFound();
   }
 
-  const proposalData = data.data as ProposalInputs;
+  const proposalData = data.published_data as ProposalInputs;
 
-  return <MicrositeDocument inputs={proposalData} />;
+  return (
+    <>
+      <MicrositeDocument inputs={proposalData} />
+      <MicrositeTracker slug={slug} />
+    </>
+  );
 }

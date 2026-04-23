@@ -1,4 +1,5 @@
 import type { ProposalInputs } from '@/types/proposal';
+import { resolveOtherValue } from '@/types/proposal';
 import { calculatePricing, formatCompactCurrency } from './pricing-calculator';
 import {
   calculateHROperationsROI,
@@ -103,8 +104,22 @@ export function buildExportVariables(inputs: ProposalInputs): ExportVariables {
     yearVars[`year${year.year}AgentEngineeringNetPrice`] = formatCompactCurrency(year.agentEngineeringNetPrice);
   });
 
+  const grossContractValue = summary.grossAnnualValue * contractYears;
+  const netContractValue = grossContractValue - pricing.totalContractValue;
+  const company = inputs.company;
+  const contactEmailRaw = company.contactEmail ?? '';
+  const [nameFromEmail, emailFromEmail] = contactEmailRaw.includes('|')
+    ? contactEmailRaw.split('|').map((s) => s.trim())
+    : [company.contactName ?? '', contactEmailRaw];
+
   return {
     ...yearVars,
+    // Customer
+    companyName: company.companyName ?? '',
+    contactName: company.contactName ?? nameFromEmail ?? '',
+    contactTitle: resolveOtherValue(company.contactTitle ?? '', company.customContactTitle) ?? '',
+    contactEmail: emailFromEmail ?? contactEmailRaw,
+
     // Pricing + contract
     contractYears: String(contractYears),
     contractYearsOrdinal: `${contractYears}-Year`,
@@ -119,6 +134,10 @@ export function buildExportVariables(inputs: ProposalInputs): ExportVariables {
 
     // ROI summary
     grossAnnualValue: formatCompactCurrency(summary.grossAnnualValue),
+    grossContractValue: formatCompactCurrency(grossContractValue),
+    netContractValue: formatCompactCurrency(netContractValue),
+    projectedAnnualValue: formatCompactCurrency(summary.grossAnnualValue),
+    projectedAnnualValueK: `$${Math.round(summary.grossAnnualValue / 1000)}K`,
     netAnnualBenefit: formatCompactCurrency(summary.netAnnualBenefit),
     netAnnualBenefitPerYr: `${formatCompactCurrency(summary.netAnnualBenefit)}/yr`,
     totalROIPct: `${summary.totalROI.toFixed(0)}%`,

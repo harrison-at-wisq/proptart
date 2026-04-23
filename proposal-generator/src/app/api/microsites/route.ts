@@ -3,6 +3,8 @@ import { getAuthUser } from '@/lib/supabase-server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { generateMicrositeSlug } from '@/lib/microsite-slug';
 import { ProposalInputs } from '@/types/proposal';
+import { buildDefaultMicrositeSections } from '@/lib/microsite-sections';
+import type { MicrositeData } from '@/types/microsite';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,13 +103,24 @@ export async function POST(request: Request) {
   const micrositeName = name || `${proposalData.company?.companyName || 'Company'} Microsite`;
   const slug = generateMicrositeSlug(proposalData.company?.companyName || 'proposal');
 
+  // On creation we seed both draft and published from the same snapshot so the
+  // customer URL is immediately live; later edits land in draft_data only until
+  // an explicit Publish promotes them. Include a default _layout so the studio
+  // renders a concrete sections array rather than relying on the read-time
+  // fallback — makes reorder/delete persistable from the first edit.
+  const seeded: MicrositeData = {
+    ...(proposalData as MicrositeData),
+    _layout: { sections: buildDefaultMicrositeSections() },
+  };
+
   const { data: created, error: createError } = await supabase
     .from('microsites')
     .insert({
       proposal_id: proposalId,
       slug,
       name: micrositeName,
-      data: proposalData,
+      draft_data: seeded,
+      published_data: seeded,
       published_at: new Date().toISOString(),
       owner_email: user.email,
       view_count: 0,
