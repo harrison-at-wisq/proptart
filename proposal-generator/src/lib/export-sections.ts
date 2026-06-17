@@ -298,7 +298,7 @@ export function buildDefaultSections(inputs: ProposalInputs): ExportSection[] {
       rows: [
         { label: 'Avg. Annual Investment', value: '{{avgAnnualInvestment}}' },
         { label: 'Projected Annual Value', value: '{{grossAnnualValue}}' },
-        { label: 'Return on Investment', value: '{{netAnnualBenefitPerYr}}' },
+        { label: 'Return on Investment', value: '{{netAnnualBenefit}}/yr' },
         { label: 'Payback Period', value: '{{paybackMonthsLabel}}' },
       ],
     }),

@@ -79,7 +79,7 @@ export interface ExecutiveSummarySectionData {
   currentStateTitle?: string;
   blockOrder?: string[];
   // Freeform token-string overrides for each metric tile value.
-  // Defaults embed tokens: "{{avgAnnualInvestment}}", "{{netAnnualBenefitPerYr}}", etc.
+  // Defaults embed tokens: "{{avgAnnualInvestment}}", "{{netAnnualBenefit}}/yr", etc.
   metricValueOverrides?: {
     avgAnnualInvestment?: string;
     projectedAnnualValue?: string;

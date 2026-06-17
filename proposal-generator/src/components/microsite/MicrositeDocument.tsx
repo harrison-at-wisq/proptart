@@ -21,9 +21,12 @@ interface Props {
   // Studio uses this to persist per-section data edits (e.g. element-level
   // add/remove inside Value Drivers).
   onSectionDataChange?: (sectionId: string, data: Record<string, unknown>) => void;
+  // The studio renders its own sticky toolbar, so it suppresses the microsite's
+  // own fixed section nav (which would otherwise float over that toolbar).
+  hideNav?: boolean;
 }
 
-export function MicrositeDocument({ inputs, sections, renderSection, onSectionDataChange }: Props) {
+export function MicrositeDocument({ inputs, sections, renderSection, onSectionDataChange, hideNav }: Props) {
   const resolved = sections ?? readMicrositeSections(inputs);
   // Share the PDF editor's variable map so `{{paybackMonths}}`-style tokens
   // in any editable text field resolve the same way in /m/[slug], the studio,
@@ -36,7 +39,7 @@ export function MicrositeDocument({ inputs, sections, renderSection, onSectionDa
       className="min-h-screen bg-white font-[family-name:var(--font-geist-sans)]"
       style={getThemeVars(inputs.colorPalette)}
     >
-      <MicrositeNav customerLogoBase64={inputs.company.customerLogoBase64} />
+      {!hideNav && <MicrositeNav customerLogoBase64={inputs.company.customerLogoBase64} />}
       {resolved.map((section) => {
         const renderer = MICROSITE_SECTION_REGISTRY[section.sectionType];
         if (!renderer) return null;

@@ -358,8 +358,8 @@ export function MicrositeExecutiveSummary({ inputs, data, onDataChange }: Props)
               )}
               {([
                 { key: 'avgAnnualInvestment' as const, label: 'Avg. Annual Investment', defaultValue: '{{avgAnnualInvestment}}' },
-                { key: 'projectedAnnualValue' as const, label: 'Projected Annual Value', defaultValue: '{{projectedAnnualValueK}}' },
-                { key: 'roi' as const, label: 'Return on Investment', defaultValue: '{{netAnnualBenefitPerYr}}' },
+                { key: 'projectedAnnualValue' as const, label: 'Projected Annual Value', defaultValue: '{{projectedAnnualValue}}' },
+                { key: 'roi' as const, label: 'Return on Investment', defaultValue: '{{netAnnualBenefit}}/yr' },
                 { key: 'payback' as const, label: 'Payback Period', defaultValue: '{{paybackMonthsLabel}}' },
               ]).map((metric, idx, arr) => {
                 const labelText = sectionData.metricLabelOverrides?.[metric.key] ?? metric.label;

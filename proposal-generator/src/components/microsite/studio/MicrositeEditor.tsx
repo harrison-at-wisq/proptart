@@ -261,6 +261,7 @@ export function MicrositeEditor({ slug, initialDraft, onDraftSaved }: Props) {
         <MicrositeDocument
           inputs={draft}
           sections={sections}
+          hideNav
           onSectionDataChange={handleSectionDataChange}
           renderSection={(section, body) => {
             const idx = sections.findIndex((s) => s.id === section.id);

@@ -243,20 +243,50 @@ export function formatCurrency(amount: number, decimals = 0): string {
 }
 
 /**
- * Format currency in compact form (e.g., $2.39M instead of $2,393,609)
+ * Format currency in compact form using ~3 significant figures:
+ *   - thousands stay whole:            $5K, $50K, $500K
+ *   - millions keep precision:         $2.39M, $12.5M, $123M
+ *   - billions follow the same rule:   $1.20B, $12.3B
+ *
+ * Decimals shrink as the leading number grows so we never exceed three
+ * significant digits, and a tier is promoted when rounding would overflow it
+ * (e.g. 999.6K becomes $1.00M, never "$1,000K"). This is the canonical
+ * formatter for every dollar figure shown in proposals/microsites.
  */
 export function formatCompactCurrency(amount: number): string {
-  const absAmount = Math.abs(amount);
+  if (Math.abs(amount) < 1_000) return formatCurrency(amount);
 
-  if (absAmount >= 1_000_000) {
-    const millions = amount / 1_000_000;
-    return `$${millions.toFixed(2)}M`;
-  } else if (absAmount >= 1_000) {
-    const thousands = amount / 1_000;
-    return `$${thousands.toFixed(0)}K`;
-  } else {
-    return formatCurrency(amount);
+  const units: Array<{ value: number; suffix: string }> = [
+    { value: 1_000, suffix: 'K' },
+    { value: 1_000_000, suffix: 'M' },
+    { value: 1_000_000_000, suffix: 'B' },
+  ];
+
+  // Start at the largest unit that applies.
+  let idx = 0;
+  for (let i = units.length - 1; i >= 0; i--) {
+    if (Math.abs(amount) >= units[i].value) {
+      idx = i;
+      break;
+    }
   }
+
+  while (idx < units.length) {
+    const { value, suffix } = units[idx];
+    const scaled = amount / value;
+    const absScaled = Math.abs(scaled);
+    // Thousands render whole; larger units keep three significant figures.
+    const decimals = suffix === 'K' ? 0 : absScaled >= 100 ? 0 : absScaled >= 10 ? 1 : 2;
+    // Rounding can push a value into the next tier (999.6K -> "1,000K"); when it
+    // does, promote and re-format so the leading number never reaches 1000.
+    if (Math.abs(Number(scaled.toFixed(decimals))) >= 1000 && idx < units.length - 1) {
+      idx++;
+      continue;
+    }
+    return `$${scaled.toFixed(decimals)}${suffix}`;
+  }
+
+  return formatCurrency(amount);
 }
 
 /**

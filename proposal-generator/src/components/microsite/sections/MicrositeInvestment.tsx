@@ -321,17 +321,11 @@ export function MicrositeInvestment({ inputs, data, onDataChange }: Props) {
 
 
   // ---------- ROI Breakdown line items (same logic as PDF) ----------
-  const fmtNum = (n: number) => Math.round(n).toLocaleString('en-US');
-  const fmtRate = (n: number) => `$${n.toFixed(2)}`;
-  const HOURS_PER_FTE = 2080;
-
-  const avgTier01Savings = hrOutput.yearCostResults.reduce((s, yr) => s + yr.tier01Savings, 0) / contractYears;
-  const avgTier2Savings = hrOutput.yearCostResults.reduce((s, yr) => s + yr.tier2Savings, 0) / contractYears;
+  // Values/explanations below are token strings (e.g. {{avgManagerSavings}})
+  // resolved against the export variables, so the only locals we need here are
+  // the magnitudes that decide which conditional line items appear.
   const avgManagerSavings = hrOutput.yearCostResults.reduce((s, yr) => s + yr.managerSavings, 0) / contractYears;
   const avgTriageSavings = hrOutput.yearCostResults.reduce((s, yr) => s + yr.triageSavings, 0) / contractYears;
-  const avgTier01Deflection = hrInputs.tier01DeflectionByYear?.length
-    ? hrInputs.tier01DeflectionByYear.reduce((s, d) => s + d, 0) / hrInputs.tier01DeflectionByYear.length
-    : 50;
 
   // Mirrors the PDF editor's three-branch logic: simple-mode collapses a
   // pillar's detail rows into a single "Mutually agreed upon" entry; detailed
@@ -344,7 +338,7 @@ export function MicrositeInvestment({ inputs, data, onDataChange }: Props) {
     hrItems = [
       {
         label: 'HR Operations Savings',
-        value: `${formatCompactCurrency(summary.hrOpsSavings)}/yr`,
+        value: '{{hrOpsSavings}}/yr',
         explanation: SIMPLE_EXPLANATION,
       },
     ];
@@ -352,29 +346,27 @@ export function MicrositeInvestment({ inputs, data, onDataChange }: Props) {
     hrItems = [
       {
         label: 'Simple Workflow Savings',
-        value: formatCompactCurrency(avgTier01Savings),
-        explanation: `${fmtNum(hrInputs.tier01CasesPerYear)} simple transactions/yr, ~${Math.round(avgTier01Deflection)}% deflected at ${fmtRate(hrInputs.tier01HandlerSalary / HOURS_PER_FTE)}/hr`,
+        value: '{{avgTier01Savings}}',
+        explanation: '{{tier01CasesPerYear}} simple transactions/yr, ~{{tier01DeflectionPct}} deflected at {{tier01HandlerRate}}/hr',
       },
       {
         label: 'Complex Case Efficiency',
-        value: formatCompactCurrency(avgTier2Savings),
-        explanation: `${hrInputs.tier2Workflows.length} configured workflows reducing complex case processing time`,
+        value: '{{avgTier2Savings}}',
+        explanation: '{{tier2WorkflowCount}} configured workflows reducing complex case processing time',
       },
     ];
     if (hrInputs.managerHRTime?.enabled && avgManagerSavings > 0) {
-      const mgr = hrInputs.managerHRTime;
       hrItems.push({
         label: 'Manager Time Savings',
-        value: formatCompactCurrency(avgManagerSavings),
-        explanation: `${fmtNum(mgr.managersDoingHR)} managers × ${mgr.hoursPerWeekPerManager} hrs/wk × ${fmtRate(mgr.managerHourlyCost)}/hr`,
+        value: '{{avgManagerSavings}}',
+        explanation: '{{managersDoingHR}} managers × {{managerHoursPerWeek}} hrs/wk × {{managerHourlyCost}}/hr',
       });
     }
     if (hrInputs.triageRole?.enabled && avgTriageSavings > 0) {
-      const tri = hrInputs.triageRole;
       hrItems.push({
         label: 'Triage Role Savings',
-        value: formatCompactCurrency(avgTriageSavings),
-        explanation: `${tri.triageFTEs} triage FTEs × ${formatCompactCurrency(tri.triageSalary)} salary × workload reduction`,
+        value: '{{avgTriageSavings}}',
+        explanation: '{{triageFTEs}} triage FTEs × {{triageSalary}} salary × workload reduction',
       });
     }
   }
@@ -385,14 +377,13 @@ export function MicrositeInvestment({ inputs, data, onDataChange }: Props) {
   const avgAuditPrep = legalYears.reduce((s, yr) => s + yr.auditPrepSavings, 0) / contractYears;
   const avgRiskValue = legalYears.reduce((s, yr) => s + yr.riskValue, 0) / contractYears;
   const avgProactiveValue = legalYears.reduce((s, yr) => s + yr.proactiveValue, 0) / contractYears;
-  const avgAvoidedIncidents = legalYears.reduce((s, yr) => s + yr.avoidedIncidents, 0) / contractYears;
 
   let legalItems: { label: string; value: string; explanation: string }[];
   if (inputs.legalCompliance.mode === 'simple') {
     legalItems = [
       {
         label: 'Compliance Value',
-        value: `${formatCompactCurrency(summary.legalSavings)}/yr`,
+        value: '{{legalSavings}}/yr',
         explanation: SIMPLE_EXPLANATION,
       },
     ];
@@ -401,43 +392,41 @@ export function MicrositeInvestment({ inputs, data, onDataChange }: Props) {
     if (avgAvoidedLegal > 0) {
       legalItems.push({
         label: 'Legal Cost Avoidance',
-        value: formatCompactCurrency(avgAvoidedLegal),
-        explanation: `~${avgAvoidedIncidents.toFixed(1)} incidents avoided/yr × ${formatCompactCurrency(inputs.legalCompliance.avgLegalCostPerIncident)}/incident`,
+        value: '{{avgAvoidedLegal}}',
+        explanation: '~{{avgAvoidedIncidents}} incidents avoided/yr × {{avgLegalCostPerIncident}}/incident',
       });
     }
     if (avgAdminSavings > 0) {
       legalItems.push({
         label: 'Compliance Admin Savings',
-        value: formatCompactCurrency(avgAdminSavings),
-        explanation: `${inputs.legalCompliance.adminHoursPerCase} hrs saved/case × ${fmtRate(inputs.legalCompliance.adminHourlyRate)}/hr`,
+        value: '{{avgAdminSavings}}',
+        explanation: '{{adminHoursPerCase}} hrs saved/case × {{adminHourlyRate}}/hr',
       });
     }
     if (avgAuditPrep > 0 && inputs.legalCompliance.auditPrep?.enabled) {
-      const audit = inputs.legalCompliance.auditPrep;
       legalItems.push({
         label: 'Audit Prep Savings',
-        value: formatCompactCurrency(avgAuditPrep),
-        explanation: `${audit.auditsPerYear} audits/yr × ${audit.prepHoursPerAudit} hrs × ${audit.wisqReductionPercent}% time saved`,
+        value: '{{avgAuditPrep}}',
+        explanation: '{{auditsPerYear}} audits/yr × {{auditPrepHoursPerAudit}} hrs × {{auditWisqReductionPercent}} time saved',
       });
     }
     if (avgRiskValue > 0) {
       legalItems.push({
         label: 'Risk Detection Value',
-        value: formatCompactCurrency(avgRiskValue),
+        value: '{{avgRiskValue}}',
         explanation: 'Proactive risk pattern identification across case data',
       });
     }
     if (avgProactiveValue > 0) {
       legalItems.push({
         label: 'Proactive Alerts Value',
-        value: formatCompactCurrency(avgProactiveValue),
+        value: '{{avgProactiveValue}}',
         explanation: 'Early warning system for emerging compliance risks',
       });
     }
   }
 
   const eeInputs = inputs.employeeExperience;
-  const avgProductivity = eeOutput.yearResults.reduce((s, yr) => s + yr.totalMonetaryValue, 0) / contractYears;
   const avgHoursSaved = eeOutput.yearResults.reduce((s, yr) => s + yr.hoursSaved, 0) / contractYears;
 
   let eeItems: { label: string; value: string; explanation: string }[];
@@ -445,7 +434,7 @@ export function MicrositeInvestment({ inputs, data, onDataChange }: Props) {
     eeItems = [
       {
         label: 'Employee Productivity Gains',
-        value: `${formatCompactCurrency(summary.productivitySavings)}/yr`,
+        value: '{{productivitySavings}}/yr',
         explanation: SIMPLE_EXPLANATION,
       },
     ];
@@ -453,20 +442,27 @@ export function MicrositeInvestment({ inputs, data, onDataChange }: Props) {
     eeItems = [
       {
         label: 'Employee Productivity Gains',
-        value: formatCompactCurrency(avgProductivity),
-        explanation: `${fmtNum(eeInputs.totalEmployeePopulation)} employees × ${eeInputs.inquiriesPerEmployeePerYear} inquiries/yr × ${eeInputs.timeReductionPercent}% faster at ${fmtRate(eeInputs.avgHourlyRate ?? 55)}/hr`,
+        value: '{{avgProductivity}}',
+        explanation: '{{totalEmployeePopulation}} employees × {{inquiriesPerEmployeePerYear}} inquiries/yr × {{timeReductionPercent}} faster at {{eeHourlyRate}}/hr',
       },
     ];
     if (avgHoursSaved > 0) {
       eeItems.push({
         label: 'Hours Returned to Workforce',
-        value: `${fmtNum(avgHoursSaved)} hrs/yr`,
-        explanation: `Equivalent to ${(avgHoursSaved / HOURS_PER_FTE).toFixed(1)} FTEs of productive time returned`,
+        value: '{{avgHoursSavedNum}} hrs/yr',
+        explanation: 'Equivalent to {{avgFtesReturned}} FTEs of productive time returned',
       });
     }
   }
 
   const enabledPillars = getEnabledPillarsFromProposal(inputs);
+  // Pure-currency tokens per pillar; "/yr" is kept as hardcoded text outside
+  // the token so the currency formatter never sees the suffix.
+  const pillarTotalToken: Record<PillarKey, string> = {
+    hrOps: '{{hrOpsSavings}}/yr',
+    legal: '{{legalSavings}}/yr',
+    ex: '{{productivitySavings}}/yr',
+  };
   const pillarData: Record<PillarKey, { annual: number; items: typeof hrItems }> = {
     hrOps: { annual: summary.hrOpsSavings, items: hrItems },
     legal: { annual: summary.legalSavings, items: legalItems },
@@ -474,7 +470,7 @@ export function MicrositeInvestment({ inputs, data, onDataChange }: Props) {
   };
   const breakdownColumns = enabledPillars.map((k) => ({
     title: PILLAR_LABELS[k],
-    total: `${formatCompactCurrency(pillarData[k].annual)}/yr`,
+    total: pillarTotalToken[k],
     items: pillarData[k].items,
   }));
 

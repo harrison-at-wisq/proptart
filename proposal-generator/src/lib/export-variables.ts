@@ -193,6 +193,8 @@ export function buildExportVariables(inputs: ProposalInputs): ExportVariables {
     // EE breakdown values
     avgProductivity: formatCompactCurrency(avgProductivity),
     avgHoursSaved: `${fmtNum(avgHoursSaved)} hrs/yr`,
+    // Pure number variant so templates can keep "hrs/yr" as hardcoded text.
+    avgHoursSavedNum: fmtNum(avgHoursSaved),
     avgFtesReturned: avgFtesReturned.toFixed(1),
 
     // EE explanation inputs

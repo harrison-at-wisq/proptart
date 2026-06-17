@@ -26,6 +26,15 @@ export default async function MicrositeStudioPage({ params }: Props) {
   if (data.owner_email !== user.email) notFound();
   if (data.proposal_id !== id) notFound();
 
+  // The live proposal inputs — used to detect drift between the microsite's
+  // snapshot (draft_data) and the current proposal so the studio can offer a
+  // "Sync input changes" action.
+  const { data: proposal } = await supabase
+    .from('proposals')
+    .select('data')
+    .eq('id', id)
+    .single();
+
   return (
     <MicrositeStudio
       proposalId={id}
@@ -34,6 +43,7 @@ export default async function MicrositeStudioPage({ params }: Props) {
       initialDraft={data.draft_data as MicrositeData}
       initialPublished={data.published_data as MicrositeData}
       initialPublishedAt={data.published_at as string}
+      proposalData={(proposal?.data ?? null) as MicrositeData | null}
     />
   );
 }
