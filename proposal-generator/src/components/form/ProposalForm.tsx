@@ -1042,6 +1042,7 @@ export function ProposalForm({ proposalId }: ProposalFormProps) {
                   <option value="Marc Lombardo | mlombardo@wisq.com">Marc Lombardo | mlombardo@wisq.com</option>
                   <option value="Scott Sinatra | ssinatra@wisq.com">Scott Sinatra | ssinatra@wisq.com</option>
                   <option value="Jim Barnett | jjb@wisq.com">Jim Barnett | jjb@wisq.com</option>
+                  <option value="Jonathan Hoffman | jhoffman@wisq.com">Jonathan Hoffman | jhoffman@wisq.com</option>
                 </select>
               </div>
             </div>
